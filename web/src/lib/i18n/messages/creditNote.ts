@@ -1,0 +1,47 @@
+import type { Namespace } from './types';
+
+const creditNote: Namespace = {
+  lt: {
+    defaultTitle: 'Kreditinė sąskaita pagal',
+    number: 'Numeris',
+    date: 'Data',
+    reason: 'Korekcijos priežastis',
+    hint: 'Kredituojamos sumos (teigiamos; sistema išsaugos kaip neigiamas). Eilutes su 0 kiekiu ar kaina galite praleisti.',
+    quantity: 'Kiekis',
+    price: 'Kaina',
+    totals: 'Be PVM: -{net} · Su PVM: -{gross}',
+    cancel: 'Atšaukti',
+    creating: 'Kuriama…',
+    create: 'Sukurti kreditinę',
+    errFailed: 'Nepavyko sukurti kreditinės sąskaitos',
+  },
+  ru: {
+    defaultTitle: 'Кредитовый счёт к',
+    number: 'Номер',
+    date: 'Дата',
+    reason: 'Причина корректировки',
+    hint: 'Кредитуемые суммы (положительные; система сохранит их как отрицательные). Строки с нулевым количеством или ценой можно пропустить.',
+    quantity: 'Количество',
+    price: 'Цена',
+    totals: 'Без PVM: -{net} · С PVM: -{gross}',
+    cancel: 'Отмена',
+    creating: 'Создаётся…',
+    create: 'Создать кредитовый',
+    errFailed: 'Не удалось создать кредитовый счёт',
+  },
+  en: {
+    defaultTitle: 'Credit note for',
+    number: 'Number',
+    date: 'Date',
+    reason: 'Reason for correction',
+    hint: 'Amounts to credit (enter positive values; the system stores them as negative). You can skip lines with zero quantity or price.',
+    quantity: 'Quantity',
+    price: 'Price',
+    totals: 'Excl. PVM: -{net} · Incl. PVM: -{gross}',
+    cancel: 'Cancel',
+    creating: 'Creating…',
+    create: 'Create credit note',
+    errFailed: 'Failed to create the credit note',
+  },
+};
+export default creditNote;

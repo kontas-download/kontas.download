@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+
+.next-audit
+.env*
+prisma/*.db*
+tests

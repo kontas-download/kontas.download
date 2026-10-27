@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="lt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title data-i18n="meta.index.title">kontas.download</title>
+  <meta name="description" content="kontas.download: nemokama apskaitos programa Lietuvos įmonėms, veikianti jūsų kompiuteryje." data-i18n-attr="content:meta.index.desc">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="config.js" defer></script>
+  <script src="i18n/en.js" defer></script>
+  <script src="i18n/lt.js" defer></script>
+  <script src="i18n/ru.js" defer></script>
+  <script src="assets/app.js" defer></script>
+</head>
+<body data-page="index">
+  <a class="skip-link" href="#main" data-i18n="ui.skip">Pereiti prie turinio</a>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="index.html"><img src="assets/logo.svg" alt="" width="32" height="32"><span>kontas.download <small data-i18n="brand.tagline">Nemokama apskaita jūsų kompiuteryje</small></span></a>
+      <nav class="site-nav" aria-label="Pagrindinis meniu" data-i18n-attr="aria-label:ui.nav">
+        <ul>
+        <li><a href="index.html" data-nav="index" data-i18n="nav.index">Pradžia</a></li>
+        <li><a href="download.html" data-nav="download" data-i18n="nav.download">Atsisiųsti</a></li>
+        <li><a href="manual.html" data-nav="manual" data-i18n="nav.manual">Vadovas</a></li>
+        <li><a href="faq.html" data-nav="faq" data-i18n="nav.faq">DUK</a></li>
+        <li><a href="about.html" data-nav="about" data-i18n="nav.about">Apie ir teisinė informacija</a></li>
+        <li data-config-if="donateUrl,contactEmail,issuesUrl"><a href="support.html" data-nav="support" data-i18n="nav.support">Pagalba</a></li>
+        </ul>
+      </nav>
+      <div class="lang-switch" role="group" aria-label="Kalba" data-i18n-attr="aria-label:ui.language">
+        <button type="button" data-lang="lt" lang="lt" aria-label="Lietuvių" aria-pressed="true">LT</button>
+        <button type="button" data-lang="ru" lang="ru" aria-label="Русский" aria-pressed="false">RU</button>
+        <button type="button" data-lang="en" lang="en" aria-label="English" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+  <noscript><div class="wrap"><p class="warn">Įjunkite JavaScript: be jo šio puslapio tekstai nerodomi. / Turn on JavaScript to see the texts. / Включите JavaScript, чтобы увидеть тексты.</p></div></noscript>
+  <main id="main" tabindex="-1">
+    <div class="wrap">
+      <section class="hero" aria-labelledby="hero-title">
+        <h1 id="hero-title" data-i18n="index.title"></h1>
+        <p class="lead" data-i18n="index.lead"></p>
+        <div class="actions">
+          <a class="button" href="download.html" data-i18n="index.ctaDownload"></a>
+          <a class="button secondary" href="manual.html#quick" data-i18n="index.ctaQuick"></a>
+        </div>
+        <ul class="facts">
+          <li><strong data-i18n="index.fact1.t"></strong> <span data-i18n="index.fact1.d"></span></li>
+          <li><strong data-i18n="index.fact2.t"></strong> <span data-i18n="index.fact2.d"></span></li>
+          <li><strong data-i18n="index.fact3.t"></strong> <span data-i18n="index.fact3.d"></span></li>
+          <li><strong data-i18n="index.fact4.t"></strong> <span data-i18n="index.fact4.d"></span></li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="vmi-title">
+        <h2 id="vmi-title" data-i18n="index.vmi.title"></h2>
+        <div class="warn" data-i18n-html="index.vmi.body"></div>
+      </section>
+
+      <section aria-labelledby="features-title">
+        <h2 id="features-title" data-i18n="index.features.title"></h2>
+        <p data-i18n="index.features.intro"></p>
+        <div class="grid">
+          <div class="card"><h3 data-i18n="index.f1.t"></h3><div data-i18n-html="index.f1.d"></div></div>
+          <div class="card"><h3 data-i18n="index.f2.t"></h3><div data-i18n-html="index.f2.d"></div></div>
+          <div class="card"><h3 data-i18n="index.f3.t"></h3><div data-i18n-html="index.f3.d"></div></div>
+          <div class="card"><h3 data-i18n="index.f4.t"></h3><div data-i18n-html="index.f4.d"></div></div>
+          <div class="card"><h3 data-i18n="index.f5.t"></h3><div data-i18n-html="index.f5.d"></div></div>
+          <div class="card"><h3 data-i18n="index.f6.t"></h3><div data-i18n-html="index.f6.d"></div></div>
+          <div class="card"><h3 data-i18n="index.f7.t"></h3><div data-i18n-html="index.f7.d"></div></div>
+          <div class="card"><h3 data-i18n="index.f8.t"></h3><div data-i18n-html="index.f8.d"></div></div>
+          <div class="card"><h3 data-i18n="index.f9.t"></h3><div data-i18n-html="index.f9.d"></div></div>
+          <div class="card"><h3 data-i18n="index.f10.t"></h3><div data-i18n-html="index.f10.d"></div></div>
+        </div>
+      </section>
+
+      <section aria-labelledby="limits-title">
+        <h2 id="limits-title" data-i18n="index.limits.title"></h2>
+        <p data-i18n="index.limits.intro"></p>
+        <ul data-i18n-html="index.limits.list"></ul>
+      </section>
+
+      <section aria-labelledby="run-title">
+        <h2 id="run-title" data-i18n="index.run.title"></h2>
+        <div data-i18n-html="index.run.body"></div>
+        <p><a class="button" href="manual.html" data-i18n="index.ctaManual"></a></p>
+      </section>
+    </div>
+  </main>
+  <footer class="site-footer">
+    <div class="wrap">
+      <p data-i18n="footer.privacy">Ši svetainė nesikreipia į kitus serverius ir nenaudoja slapukų.</p>
+      <p data-i18n-html="footer.disclaimer">kontas.download teikiama „tokia, kokia yra“. Tai nėra mokesčių konsultacija.</p>
+    </div>
+  </footer>
+</body>
+</html>

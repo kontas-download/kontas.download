@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Company {
+  taxMode      String?
+  isVatPayer   Int               @default(0)
+  id           Int               @id @default(autoincrement())
+  name         String
+  code         String?
+  vatCode      String?
+  address      String?
+  email        String?
+  phone        String?
+  bankName     String?
+  bankIban     String?
+  bankSwift    String?
+  currencyCode String            @default("EUR")
+  isDefault    Int               @default(0)
+  clients      Client[]
+  sales        Sale[]
+  purchases    Purchase[]
+  stockItems   StockItem[]
+  bankTxns     BankTransaction[]
+  payrolls     Payroll[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+model Client {
+  isVatPayer  Int        @default(0)
+  id          Int        @id @default(autoincrement())
+  companyId   Int        @default(1)
+  company     Company    @relation(fields: [companyId], references: [id])
+  externalId   Int?       @unique
+  name        String
+  code        String?
+  vatCode     String?
+  email       String?
+  phone       String?
+  address     String?
+  city        String?
+  countryName String?
+  sales       Sale[]
+  purchases   Purchase[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Sale {
+  sellerVatMode     String?
+  sellerIsVatPayer   Int?
+  id                Int        @id @default(autoincrement())
+  companyId         Int        @default(1)
+  company           Company    @relation(fields: [companyId], references: [id])
+  externalId         Int?       @unique
+  series            String?
+  number            String?
+  saleDate          String
+  payUntil          String?
+  statusName        String?    @default("Apmokėta")
+  warehouseName     String?    @default("Pagrindinis")
+  clientId          Int?
+  client            Client?    @relation(fields: [clientId], references: [id])
+  clientName        String?
+  clientCode        String?
+  clientVatCode     String?
+  sumWithoutVat     Float      @default(0)
+  vat               Float      @default(0)
+  sumWithVat        Float      @default(0)
+  currencyCode      String     @default("EUR")
+  operationTypeName String?
+  notes             String?
+  items             SaleItem[]
+  createdAt         DateTime   @default(now())
+}
+
+model SaleItem {
+  id            Int      @id @default(autoincrement())
+  saleId        Int
+  sale          Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  itemName      String
+  itemCode      String?
+  quantity      Float    @default(1)
+  price         Float    @default(0)
+  priceWithVat  Float    @default(0)
+  vatRate       Float?   @default(0)
+  sumWithoutVat Float    @default(0)
+  sumWithVat    Float    @default(0)
+  warehouseName String?
+}
+
+model Purchase {
+  buyerVatMode   String?
+  deductionPercent Float?
+  deductibleVat Float?
+  id            Int            @id @default(autoincrement())
+  companyId     Int            @default(1)
+  company       Company        @relation(fields: [companyId], references: [id])
+  externalId     Int?           @unique
+  series        String?
+  number        String?
+  purchaseDate  String
+  clientId      Int?
+  client        Client?        @relation(fields: [clientId], references: [id])
+  clientName    String?
+  clientCode    String?
+  sumWithoutVat Float          @default(0)
+  vat           Float          @default(0)
+  sumWithVat    Float          @default(0)
+  currencyCode  String         @default("EUR")
+  notes         String?
+  items         PurchaseItem[]
+  createdAt     DateTime       @default(now())
+}
+
+model PurchaseItem {
+  vatRate       Float?
+  id            Int      @id @default(autoincrement())
+  purchaseId    Int
+  purchase      Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  itemName      String
+  itemCode      String?
+  quantity      Float    @default(1)
+  price         Float    @default(0)
+  sumWithoutVat Float    @default(0)
+  sumWithVat    Float    @default(0)
+}
+
+model StockItem {
+  id            Int      @id @default(autoincrement())
+  companyId     Int      @default(1)
+  company       Company  @relation(fields: [companyId], references: [id])
+  externalId     Int?     @unique
+  name          String
+  code          String?
+  barcode       String?
+  warehouseName String?  @default("Pagrindinis")
+  stock         Float    @default(0)
+  remainder     Float    @default(0)
+  price         Float    @default(0)
+  cost          Float?   @default(0)
+  purchaseDate  String?
+  clientName    String?
+}
+
+model BankTransaction {
+  id                         Int      @id @default(autoincrement())
+  companyId                  Int      @default(1)
+  company                    Company  @relation(fields: [companyId], references: [id])
+  externalId                  Int?     @unique
+  date                       String
+  number                     String?
+  clientName                 String?
+  clientCode                 String?
+  sum                        Float    @default(0)
+  correspondenceAccountCode  String?
+  accountingBankInternalName String?
+  notes                      String?
+}
+
+model Payroll {
+  id         Int               @id @default(autoincrement())
+  companyId  Int               @default(1)
+  company    Company           @relation(fields: [companyId], references: [id])
+  externalId  Int?              @unique
+  year       Int
+  month      Int
+  sumWithVat Float             @default(0)
+  employees  PayrollEmployee[]
+  createdAt  DateTime          @default(now())
+}
+
+model PayrollEmployee {
+  id            Int      @id @default(autoincrement())
+  payrollId     Int
+  payroll       Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  employeeName  String
+  employeeCode  String?
+  grossSalary   Float    @default(0)
+  netSalary     Float    @default(0)
+  gpm           Float    @default(0)
+  sodraEmployee Float    @default(0)
+  sodraEmployer Float    @default(0)
+}
+
+model ChartOfAccount {
+  id   Int    @id @default(autoincrement())
+  code String @unique
+  name String
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+}

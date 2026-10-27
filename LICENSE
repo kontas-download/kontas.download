@@ -1,0 +1,69 @@
+kontas.download licencija (naudoti galima, platinti negalima)
+Versija 1.1 · Pagrindinė kalba: lietuvių. Vertimai: LICENSE.en.md, LICENSE.ru.md (jei yra neatitikimų, galioja lietuviškas tekstas).
+
+Teisių turėtojas: kontas.download projekto autorius (kontaktas: contact@kontas.download). Teisių turėtojo duomenys bus patikslinti, kai bus pasirinkta teisinė forma.
+Autorių teisės © 2026 kontas.download projekto autorius. Visos teisės, kurios čia aiškiai nesuteikiamos, pasilieka teisių turėtojui.
+
+Šis tekstas yra licencijos projektas. Prieš skelbiant programą jį turi peržiūrėti Lietuvos teisininkas.
+
+0. PRITARIMAS
+
+Atsisiųsdami, įdiegdami ar naudodami programą kontas.download (toliau – „Programa“), patvirtinate, kad susipažinote su šia licencija ir jai pritariate. Jei nepritariate, Programos nenaudokite ir ištrinkite jos kopijas.
+
+1. KĄ LEIDŽIAMA
+
+Jums suteikiama neišimtinė, neperduodama, nesublicencijuojama, nuolatinė, nemokama teisė:
+1.1. atsisiųsti Programą iš oficialių projekto šaltinių ir ją įdiegti bei naudoti bet kuriame savo kontroliuojamame kompiuteryje ar serveryje;
+1.2. naudoti Programą bet kokiam teisėtam tikslui, įskaitant komercinį naudojimą, savo įmonės ar savo klientų apskaitai tvarkyti (pvz., buhalterio ar apskaitos įmonės veikloje), be įmonių ar naudotojų skaičiaus apribojimų;
+1.3. daryti Programos atsargines kopijas ir ją atkurti savo reikmėms;
+1.4. keisti Programą (pvz., pritaikyti savo poreikiams) ir naudoti pakeistą versiją savo reikmėms su sąlyga, kad laikotės 2 straipsnio;
+1.5. duoti prieigą prie savo Programos egzemplioriaus savo darbuotojams ir rangovams, kurie dirba jūsų vardu, kad jie ją naudotų jūsų reikmėms;
+1.6. naudoti Programą kitų asmenų (pvz., savo klientų) apskaitai tvarkyti ir jūsų valdomame egzemplioriuje suteikti jūsų klientams prieigą prie jų pačių įmonės duomenų. Tai nelaikoma Programos teikimu kaip paslaugos pagal 2.3 punktą, jei neimate mokesčio už pačią Programą ar prieigą prie jos.
+
+2. KO NEGALIMA
+
+Be išankstinio rašytinio teisių turėtojo sutikimo, išskyrus tai, ką leidžia 3 straipsnis, draudžiama:
+2.1. platinti Programą ar jos dalį originalia ar pakeista forma: parduoti, nuomoti, dalytis, siųsti kitiems asmenims, skelbti ar įkelti į viešas ar privačias saugyklas, atvaizdų (angl. mirrors), paketų valdymo sistemas, failų mainų ar kitas svetaines, dalytis konteinerių atvaizdais ar archyvais;
+2.2. skelbti pakeistas Programos versijas ar išvestinius kūrinius, taip pat kurti viešus Programos atšakų (angl. forks) egzempliorius, išskyrus tai, kas neišvengiamai vyksta naudojantis tuo šaltiniu, kuriame teisių turėtojas pats paskelbė Programą (žr. 6 straipsnį);
+2.3. teikti Programą trečiosioms šalims kaip paslaugą (pvz., kaip prieigos prie Programos nuomą ar „SaaS“ paslaugą), pasiūlyti ją kaip savo produktą ar jo dalį, arba imti mokestį už pačią Programą ar prieigą prie jos. Tai nedraudžia imti mokestį už savo paslaugas, pavyzdžiui, už apskaitos tvarkymą savo klientams, naudojant Programą (žr. 1.6 punktą);
+2.4. šalinti ar keisti autorių teisių, licencijos ar kilmės pranešimus;
+2.5. naudoti pavadinimą „kontas.download“, logotipą ar domeną taip, kad susidarytų įspūdis, jog jūsų produktas ar paslauga yra oficiali, patvirtinta ar su projektu susijusi;
+2.6. apeiti ar šalinti techninius apribojimus, jei tokių yra.
+
+3. IMPERATYVIOSIOS TEISĖS NORMOS
+
+Nė viena šios licencijos nuostata neriboja jūsų teisių, kurių pagal imperatyviąsias teisės normas negalima apriboti sutartimi. Tai apima teisėto naudotojo teises pagal Europos Parlamento ir Tarybos direktyvą 2009/24/EB dėl kompiuterių programų teisinės apsaugos ir ją įgyvendinančius Lietuvos Respublikos teisės aktus, pavyzdžiui, teisę pasidaryti atsarginę kopiją, stebėti, tirti ir bandyti Programos veikimą, taisyti klaidas (kiek tai būtina Programai naudoti pagal paskirtį) ir atlikti dekompiliavimą sąveikai su kitomis programomis užtikrinti, kai tai leidžiama.
+
+4. TREČIŲJŲ ŠALIŲ KOMPONENTAI
+
+Programoje naudojami trečiųjų šalių komponentai (pvz., Next.js, React, SQLite biblioteka) lieka jų autorių licencijose. Ši licencija jų nekeičia ir neteikia teisių į juos. Jų sąrašas ir licencijos nurodytos faile THIRD-PARTY-NOTICES.md.
+
+5. DUOMENYS
+
+5.1. Jūsų apskaitos duomenys priklauso jums. Programa be jūsų veiksmo (pvz., be laiško išsiuntimo per jūsų nurodytą SMTP serverį) jokių duomenų niekam nesiunčia.
+5.2. Teisių turėtojas nėra jūsų duomenų valdytojas ar tvarkytojas, nes Programa veikia jūsų kontroliuojamoje aplinkoje ir teisių turėtojas prie jos neturi prieigos. Už savo klientų, darbuotojų ir kitų asmenų asmens duomenų tvarkymą pagal Reglamentą (ES) 2016/679 (BDAR) atsakote jūs.
+5.3. Už duomenų saugojimą, atsargines kopijas ir šifravimo raktų (pvz., SMTP_ENCRYPTION_KEY) išsaugojimą atsakote jūs.
+
+6. OFICIALŪS ŠALTINIAI IR PLATFORMŲ TAISYKLĖS
+
+Programą galima gauti tik iš oficialių projekto šaltinių: projekto svetainės (kontas.download) ir jos oficialios saugyklos. Jei Programa paskelbta platformoje, kurios naudojimo sąlygos suteikia kitiems teisę matyti ar kopijuoti turinį (pvz., atšakų kūrimas tos platformos viduje), šios platformos funkcijos nelaikomos šios licencijos pažeidimu, tačiau tai nesuteikia teisės platinti Programos kitur ar kitaip, nei numato ši licencija.
+
+7. NEGARANTUOJAMA, ATSAKOMYBĖS RIBOJIMAS
+
+7.1. Programa teikiama „tokia, kokia yra“ („as is“), be jokių aiškių ar numanomų garantijų, įskaitant tinkamumo konkrečiam tikslui, tikslumo ar nepažeidimo garantijas, kiek tai leidžia imperatyvios teisės normos. Teisių turėtojas negarantuoja, kad jis yra visų Programos dalių autorius ar kad Programa nepažeidžia trečiųjų asmenų teisių.
+7.2. Programa tik rengia dokumentus, failus ir skaičiavimus (pvz., i.SAF, FR0600 projektą). Ji nėra mokesčių, apskaitos ar teisinė konsultacija ir automatiškai nieko nepateikia mokesčių administratoriui. Mokesčių ir apskaitos taisyklės Programoje atitinka Programos versijos išleidimo datą; teisės aktai keičiasi, todėl naudotojas privalo patikrinti rezultatus pagal oficialius šaltinius. Už deklaracijų, dokumentų ir skaičiavimų teisingumą bei jų pateikimą atsako naudotojas ir jo buhalteris.
+7.3. Teisių turėtojas neįsipareigoja kurti, taisyti, atnaujinti ar palaikyti Programos, išskyrus tai, ką jis aiškiai paskelbia raštu.
+7.4. Kiek leidžia imperatyvios teisės normos, teisių turėtojas neatsako už jokią tiesioginę ar netiesioginę žalą, prarastą pelną, duomenų praradimą ar baudas, atsiradusias naudojant Programą. Ši nuostata neriboja ir nepanaikina atsakomybės, kurios pagal įstatymus apriboti ar panaikinti negalima, įskaitant atsakomybę už tyčia ar dėl didelio neatsargumo padarytą žalą, žalą žmogaus gyvybei ar sveikatai ir atsakomybę pagal gaminių (programinės įrangos) atsakomybės teisės normas, jei jos taikomos. Vartotojų teisės, kurių negalima pakeisti sutartimi, nekeičiamos.
+
+8. ĮSIGALIOJIMAS IR NUTRAUKIMAS
+
+Licencija galioja, kol laikotės jos sąlygų. Jei pažeidžiate sąlygas, jūsų teisės pagal ją automatiškai pasibaigia. Pasibaigus teisėms privalote nustoti naudoti Programą ir ištrinti jos kopijas (savo apskaitos duomenų nešalinate). Teisių turėtojas gali reikalauti nutraukti pažeidimą ir atlyginti nuostolius. 4, 5, 7 ir 9 straipsniai galioja ir pasibaigus licencijai.
+
+9. KITA
+
+9.1. Teisių turėtojas gali skelbti naujas licencijos versijas. Nauja versija taikoma tik naujoms Programos versijoms, kurias gausite po jos paskelbimo; jau gautai versijai galioja licencijos versija, nurodyta jos pakete.
+9.2. Jei kuri nors šios licencijos nuostata pripažįstama negaliojančia, likusios lieka galioti.
+9.3. Ši licencija reglamentuojama Lietuvos Respublikos teisės, išskyrus kolizines normas. Ginčai sprendžiami Lietuvos Respublikos teismuose Vilniaus mieste, išskyrus atvejus, kai imperatyvios normos (pvz., vartotojų apsaugos normos pagal Reglamentus (EB) Nr. 593/2008 ir (ES) Nr. 1215/2012) numato kitaip.
+9.4. Kontaktai dėl leidimų ir klausimų: contact@kontas.download. Pranešimai apie pažeidžiamumus: security@kontas.download.
+
+PASTABA: tai nėra atvirojo kodo (angl. open source) licencija. Programos pirminis tekstas gali būti matomas viešai, tačiau teisės jį kopijuoti, keisti ir platinti apribotos aukščiau.

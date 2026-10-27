@@ -1,0 +1,23 @@
+name: kontas
+services:
+  erp-web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: kontas-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3200:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/prisma/dev.db
+      # Local HTTP only; set true with HTTPS and configure APP_ORIGIN behind a proxy.
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
+      - APP_ORIGIN=${APP_ORIGIN:-http://localhost:3200}
+      - SMTP_ENCRYPTION_KEY=${SMTP_ENCRYPTION_KEY:-}
+      # Used only the first time, when the database does not exist yet.
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+    volumes:
+      # Persist SQLite database on host machine
+      - ./web/prisma:/app/prisma

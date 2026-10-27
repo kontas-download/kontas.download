@@ -1,0 +1,48 @@
+# Production layout: the application is reachable only through Caddy, which obtains and renews the HTTPS certificate by itself.
+#   1. copy deploy/.env.example to deploy/.env and fill it in
+#   2. docker compose -f deploy/docker-compose.server.yml --env-file deploy/.env up -d --build
+services:
+  app:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    container_name: kontas-app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: file:/app/prisma/dev.db
+      COOKIE_SECURE: "true"
+      APP_ORIGIN: https://${DOMAIN:?set DOMAIN in deploy/.env}
+      SMTP_ENCRYPTION_KEY: ${SMTP_ENCRYPTION_KEY:?set SMTP_ENCRYPTION_KEY in deploy/.env}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    volumes:
+      # The only persistent data: the SQLite database. It must be writable for uid 1000 (chown -R 1000:1000 data).
+      - ./data:/app/prisma
+    expose:
+      - "3000"
+    networks: [internal]
+    mem_limit: 1g
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: kontas-caddy
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [internal]
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:
