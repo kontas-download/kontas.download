@@ -44,10 +44,10 @@
 
       <section class="card" aria-labelledby="file-title">
         <h2 id="file-title" class="visually-hidden" data-i18n="dl.fileTitle"></h2>
-        <p><span data-i18n="dl.fileLabel"></span> <span class="filename" data-config-text="fileName">kontas-download-0.1.0.zip</span></p>
-        <p><span data-i18n="dl.versionLabel"></span> <span data-config-text="version">0.1.0</span> · <a href="#notes" data-i18n="dl.notesLink"></a></p>
+        <p><span data-i18n="dl.fileLabel"></span> <span class="filename" data-config-text="fileName">kontas-download-0.2.0.zip</span></p>
+        <p><span data-i18n="dl.versionLabel"></span> <span data-config-text="version">0.2.0</span> · <a href="#notes" data-i18n="dl.notesLink"></a></p>
         <div class="actions">
-          <a class="button" data-config-href="downloadUrl" download hidden><span data-i18n="dl.button"></span> <span data-config-text="fileName">kontas-download-0.1.0.zip</span></a>
+          <a class="button" data-config-href="downloadUrl" download hidden><span data-i18n="dl.button"></span> <span data-config-text="fileName">kontas-download-0.2.0.zip</span></a>
           <a class="button secondary" data-config-href="sha256Url" hidden data-i18n="dl.shaButton"></a>
           <a class="button secondary" data-config-href="repoUrl" hidden data-i18n="dl.repoButton"></a>
         </div>
@@ -68,22 +68,22 @@
             <h3 class="os-title">Windows</h3>
             <p data-i18n-html="dl.verify.win"></p>
             <pre><code>cd $HOME\Downloads
-(Get-FileHash .\<span data-config-text="fileName">kontas-download-0.1.0.zip</span> -Algorithm SHA256).Hash
-Get-Content .\<span data-config-text="shaName">kontas-download-0.1.0.zip.sha256</span></code></pre>
+(Get-FileHash .\<span data-config-text="fileName">kontas-download-0.2.0.zip</span> -Algorithm SHA256).Hash
+Get-Content .\<span data-config-text="shaName">kontas-download-0.2.0.zip.sha256</span></code></pre>
             <p data-i18n-html="dl.verify.winCompare"></p>
-            <pre><code>(Get-FileHash .\<span data-config-text="fileName">kontas-download-0.1.0.zip</span> -Algorithm SHA256).Hash -eq (Get-Content .\<span data-config-text="shaName">kontas-download-0.1.0.zip.sha256</span>).Split(' ')[0]</code></pre>
+            <pre><code>(Get-FileHash .\<span data-config-text="fileName">kontas-download-0.2.0.zip</span> -Algorithm SHA256).Hash -eq (Get-Content .\<span data-config-text="shaName">kontas-download-0.2.0.zip.sha256</span>).Split(' ')[0]</code></pre>
           </div>
           <div data-os="macos">
             <h3 class="os-title">macOS</h3>
             <p data-i18n-html="dl.verify.mac"></p>
             <pre><code>cd ~/Downloads
-shasum -a 256 -c <span data-config-text="shaName">kontas-download-0.1.0.zip.sha256</span></code></pre>
+shasum -a 256 -c <span data-config-text="shaName">kontas-download-0.2.0.zip.sha256</span></code></pre>
           </div>
           <div data-os="linux">
             <h3 class="os-title">Linux</h3>
             <p data-i18n-html="dl.verify.linux"></p>
             <pre><code>cd ~/Downloads
-sha256sum -c <span data-config-text="shaName">kontas-download-0.1.0.zip.sha256</span></code></pre>
+sha256sum -c <span data-config-text="shaName">kontas-download-0.2.0.zip.sha256</span></code></pre>
           </div>
         </div>
         <div class="note" data-i18n-html="dl.verify.ok"></div>
@@ -105,6 +105,8 @@ sha256sum -c <span data-config-text="shaName">kontas-download-0.1.0.zip.sha256</
   <footer class="site-footer">
     <div class="wrap">
       <p data-i18n="footer.privacy">Ši svetainė nesikreipia į kitus serverius ir nenaudoja slapukų.</p>
+      <p><a href="legal.html" data-i18n="nav.legal">Teisinė informacija ir privatumas</a></p>
+      <p><a href="roadmap.html" data-i18n="nav.roadmap">Planas</a></p>
       <p data-i18n-html="footer.disclaimer">kontas.download teikiama „tokia, kokia yra“. Tai nėra mokesčių konsultacija.</p>
     </div>
   </footer>

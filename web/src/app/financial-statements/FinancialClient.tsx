@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALES } from '@/lib/i18n/config';
+import { computePnl, computeBalance, balanceNet } from '@/lib/financial-statements-calc';
 
 interface Entry {
   id: number;
@@ -76,219 +77,11 @@ export function FinancialClient({ companyName, companyCode, entries, accounts }:
     return entries.filter(e => e.date && e.date <= endOfYear);
   }, [entries, selectedYear]);
 
-  // Helper to compute account turnover
-  const pnlTurnover = useMemo(() => {
-    const debits = new Map<string, number>();
-    const credits = new Map<string, number>();
-
-    filteredEntries.forEach(e => {
-      debits.set(e.debitAccount, (debits.get(e.debitAccount) || 0) + e.amount);
-      credits.set(e.creditAccount, (credits.get(e.creditAccount) || 0) + e.amount);
-    });
-
-    return { debits, credits };
-  }, [filteredEntries]);
-
-  const balanceNet = useMemo(() => {
-    const net = new Map<string, number>();
-    cumulativeEntries.forEach(e => {
-      // Debit increases asset/expense, decreases liability/equity
-      net.set(e.debitAccount, (net.get(e.debitAccount) || 0) + e.amount);
-      net.set(e.creditAccount, (net.get(e.creditAccount) || 0) - e.amount);
-    });
-    return net;
-  }, [cumulativeEntries]);
-
-  // P&L Breakdown
-  // I. Pardavimo pajamos (Class 50)
-  const pnlData = useMemo(() => {
-    const getAccountSum = (codePrefix: string) => {
-      let sum = 0;
-      const list: { code: string; name: string; amount: number }[] = [];
-      pnlTurnover.credits.forEach((creditSum, code) => {
-        if (code.startsWith(codePrefix)) {
-          const debitSum = pnlTurnover.debits.get(code) || 0;
-          const net = creditSum - debitSum;
-          if (Math.abs(net) > 0.001) {
-            sum += net;
-            list.push({ code, name: accountMap.get(code) || t('statements.accountFallback', { code }), amount: net });
-          }
-        }
-      });
-      return { sum, list };
-    };
-
-    const getExpenseSum = (codePrefix: string) => {
-      let sum = 0;
-      const list: { code: string; name: string; amount: number }[] = [];
-      const checkedCodes = new Set<string>();
-      pnlTurnover.debits.forEach((debitSum, code) => {
-        if (code.startsWith(codePrefix)) {
-          checkedCodes.add(code);
-          const creditSum = pnlTurnover.credits.get(code) || 0;
-          const net = debitSum - creditSum;
-          if (Math.abs(net) > 0.001) {
-            sum += net;
-            list.push({ code, name: accountMap.get(code) || t('statements.accountFallback', { code }), amount: net });
-          }
-        }
-      });
-      // Also check if any accounts had only credits
-      pnlTurnover.credits.forEach((creditSum, code) => {
-        if (code.startsWith(codePrefix) && !checkedCodes.has(code)) {
-          const net = -creditSum;
-          if (Math.abs(net) > 0.001) {
-            sum += net;
-            list.push({ code, name: accountMap.get(code) || t('statements.accountFallback', { code }), amount: net });
-          }
-        }
-      });
-      return { sum, list };
-    };
-
-    // Revenue: Class 50
-    const salesRevenue = getAccountSum('50');
-    // Other operating income: Class 52
-    const otherRevenue = getAccountSum('52');
-    const totalRevenue = salesRevenue.sum + otherRevenue.sum;
-
-    // Cost of goods sold: Class 60
-    const cogs = getExpenseSum('60');
-    const grossProfit = totalRevenue - cogs.sum;
-
-    // Operating expenses: Class 61, 62, 63
-    const adminExpenses = getExpenseSum('61');
-    const sellingExpenses = getExpenseSum('62');
-    const payrollExpenses = getExpenseSum('63');
-    const otherExpenses = getExpenseSum('64');
-    const totalOperatingExpenses = adminExpenses.sum + sellingExpenses.sum + payrollExpenses.sum + otherExpenses.sum;
-
-    // Operating profit
-    const operatingProfit = grossProfit - totalOperatingExpenses;
-
-    // Financial & investment activity: Class 58 - 68
-    const finIncome = getAccountSum('58');
-    const finExpense = getExpenseSum('68');
-    const finResult = finIncome.sum - finExpense.sum;
-
-    const profitBeforeTax = operatingProfit + finResult;
-    // Estimated corporate tax (15% if profit > 0)
-    const estimatedTax = profitBeforeTax > 0 ? profitBeforeTax * 0.15 : 0;
-    const netProfit = profitBeforeTax - estimatedTax;
-
-    return {
-      salesRevenue,
-      otherRevenue,
-      totalRevenue,
-      cogs,
-      grossProfit,
-      adminExpenses,
-      sellingExpenses,
-      payrollExpenses,
-      otherExpenses,
-      totalOperatingExpenses,
-      operatingProfit,
-      finIncome,
-      finExpense,
-      finResult,
-      profitBeforeTax,
-      estimatedTax,
-      netProfit,
-    };
-  }, [pnlTurnover, accountMap, t]);
-
-  // Balance Sheet Breakdown
-  const balanceData = useMemo(() => {
-    const getAssetSum = (prefixes: string[]) => {
-      let sum = 0;
-      const list: { code: string; name: string; amount: number }[] = [];
-      balanceNet.forEach((net, code) => {
-        if (prefixes.some(p => code.startsWith(p))) {
-          if (Math.abs(net) > 0.001) {
-            sum += net;
-            list.push({ code, name: accountMap.get(code) || t('statements.accountFallback', { code }), amount: net });
-          }
-        }
-      });
-      return { sum, list };
-    };
-
-    const getLiabilityEquitySum = (prefixes: string[]) => {
-      let sum = 0;
-      const list: { code: string; name: string; amount: number }[] = [];
-      balanceNet.forEach((net, code) => {
-        if (prefixes.some(p => code.startsWith(p))) {
-          // Liabilities & Equity have credit natural sign (negative net debit)
-          const value = -net;
-          if (Math.abs(value) > 0.001) {
-            sum += value;
-            list.push({ code, name: accountMap.get(code) || t('statements.accountFallback', { code }), amount: value });
-          }
-        }
-      });
-      return { sum, list };
-    };
-
-    // Assets
-    const nonCurrentAssets = getAssetSum(['1']);
-    const inventory = getAssetSum(['20', '21']);
-    const receivables = getAssetSum(['24']);
-    const cash = getAssetSum(['27']);
-    const otherCurrent = getAssetSum(['22', '23', '25', '26', '28', '29']);
-    const totalCurrentAssets = inventory.sum + receivables.sum + cash.sum + otherCurrent.sum;
-    const totalAssets = nonCurrentAssets.sum + totalCurrentAssets;
-
-    // Equity (Class 3)
-    const paidCapital = getLiabilityEquitySum(['30']);
-    const reserves = getLiabilityEquitySum(['31', '32']);
-    const retainedEarningsPrev = getLiabilityEquitySum(['34']);
-    // Current period net profit comes from all class 5 credits - class 6 debits cumulative
-    let cumulativeNetProfit = 0;
-    balanceNet.forEach((net, code) => {
-      if (code.startsWith('5')) cumulativeNetProfit += (-net);
-      if (code.startsWith('6')) cumulativeNetProfit -= net;
-    });
-
-    const totalEquity = paidCapital.sum + reserves.sum + retainedEarningsPrev.sum + cumulativeNetProfit;
-
-    // Liabilities (Class 4)
-    const longTermLiabilities = getLiabilityEquitySum(['40', '41', '42']);
-    const tradePayables = getLiabilityEquitySum(['443']);
-    const payrollLiabilities = getLiabilityEquitySum(['448']);
-    const taxLiabilities = getLiabilityEquitySum(['449']);
-    const otherShortTerm = getLiabilityEquitySum(['43', '444', '445', '446', '447', '45', '46', '47', '48', '49']);
-    const totalShortTermLiabilities = tradePayables.sum + payrollLiabilities.sum + taxLiabilities.sum + otherShortTerm.sum;
-    const totalLiabilities = longTermLiabilities.sum + totalShortTermLiabilities;
-
-    const totalEquityAndLiabilities = totalEquity + totalLiabilities;
-    const balanceDiff = Math.abs(totalAssets - totalEquityAndLiabilities);
-    const isBalanced = balanceDiff < 1.0;
-
-    return {
-      nonCurrentAssets,
-      inventory,
-      receivables,
-      cash,
-      otherCurrent,
-      totalCurrentAssets,
-      totalAssets,
-      paidCapital,
-      reserves,
-      retainedEarningsPrev,
-      cumulativeNetProfit,
-      totalEquity,
-      longTermLiabilities,
-      tradePayables,
-      payrollLiabilities,
-      taxLiabilities,
-      otherShortTerm,
-      totalShortTermLiabilities,
-      totalLiabilities,
-      totalEquityAndLiabilities,
-      isBalanced,
-      balanceDiff,
-    };
-  }, [balanceNet, accountMap, t]);
+  const nameOf = (code: string) => accountMap.get(code) || t('statements.accountFallback', { code });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pnlData = useMemo(() => computePnl(filteredEntries, nameOf, selectedYear), [filteredEntries, selectedYear, accountMap, t]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const balanceData = useMemo(() => computeBalance(balanceNet(cumulativeEntries), nameOf), [cumulativeEntries, accountMap, t]);
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
@@ -526,7 +319,10 @@ export function FinancialClient({ companyName, companyCode, entries, accounts }:
                 {/* VIII. Pelno mokestis */}
                 <tr className="hover:bg-slate-800/30 transition-colors">
                   <td className="py-2 px-3 text-center text-slate-400">VIII.</td>
-                  <td className="py-2 px-3 text-slate-300">{t('statements.pnlTax')}</td>
+                  <td className="py-2 px-3 text-slate-300">
+                    {t('statements.pnlTax', { rate: `${+(pnlData.taxRate * 100).toFixed(2)}%` })}
+                    <div className="text-[10px] text-amber-400/80 no-print">{t('statements.pnlTaxNote')}</div>
+                  </td>
                   <td className="py-2 px-3 text-center font-mono text-[11px] text-slate-400 no-print">651</td>
                   <td className="py-2 px-4 text-right font-mono text-rose-400">
                     ({pnlData.estimatedTax.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
@@ -744,6 +540,17 @@ export function FinancialClient({ companyName, companyCode, entries, accounts }:
                       {balanceData.taxLiabilities.sum.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
+
+                  {balanceData.unclassified.list.length > 0 && (
+                    <tr className="text-slate-300">
+                      <td></td>
+                      <td className="py-1.5 px-6">{t('statements.bsUnclassified')}</td>
+                      <td className="py-1.5 px-3 text-center font-mono text-[11px] text-slate-400 no-print">{balanceData.unclassified.list.map(i => i.code).join(', ')}</td>
+                      <td className="py-1.5 px-4 text-right font-mono">
+                        {balanceData.unclassified.sum.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  )}
 
                   {/* IŠ VISO NUOSAVO KAPITALO IR ĮSIPAREIGOJIMŲ */}
                   <tr className="bg-slate-800 border-t-2 border-slate-700 font-extrabold text-white">

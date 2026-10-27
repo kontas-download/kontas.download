@@ -21,7 +21,7 @@ export function invoiceDocument(id: number, companyId: number, requestedLang?: u
     if (sale.clientId) clients = db.prepare('SELECT name,code,vatCode,address,email,isVatPayer,documentLang FROM Client WHERE id=? AND companyId=?').all(sale.clientId,companyId) as StoredClient[];
     else if (sale.clientCode) clients = db.prepare('SELECT name,code,vatCode,address,email,isVatPayer,documentLang FROM Client WHERE code=? AND companyId=? LIMIT 2').all(sale.clientCode,companyId) as StoredClient[];
     const client = clients.length === 1 ? clients[0] : undefined;
-    const buyer: Party = { name: sale.clientName || client?.name || '', code: sale.clientCode || client?.code || null, vatCode: sale.clientVatCode || null, address: client?.address || null, email: client?.email || null, isVatPayer: client?.isVatPayer ?? (sale.clientVatCode ? 1 : 0) };
+    const buyer: Party = { name: sale.clientName || client?.name || '', code: sale.clientCode || client?.code || null, vatCode: sale.clientVatCode || client?.vatCode || null, address: client?.address || null, email: client?.email || null, isVatPayer: client?.isVatPayer ?? (sale.clientVatCode ? 1 : 0) };
     const items = db.prepare('SELECT itemName,quantity,price,vatRate,sumWithoutVat,sumWithVat FROM SaleItem WHERE saleId=? ORDER BY id').all(id) as DocumentItem[];
     if (!items.length) throw new HttpError(409, 'Sąskaitoje nėra eilučių. Prieš siųsdami patikrinkite dokumentą.');
     let correction: InvoiceDocument['correction'];

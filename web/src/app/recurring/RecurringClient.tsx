@@ -7,6 +7,7 @@ interface Line { itemName: string; itemCode?: string; quantity: number; price: n
 interface Template { id: number; name: string; clientId: number; clientName: string; series: string; frequency: string; nextDate: string; endDate: string | null; payDays: number; notes: string | null; items: Line[]; active: boolean; due: boolean; runs: number; }
 interface Form { id: number | null; name: string; clientId: number; series: string; frequency: string; nextDate: string; endDate: string; payDays: number; notes: string; items: Line[]; }
 const FREQ = ['MONTH', 'QUARTER', 'YEAR'];
+// Form suggestion, not a legal parameter: the rate is chosen per line and stored on the document; i.SAF and FR0600 classify a stored rate through the rules registry (lib/rules).
 const emptyLine = (): Line => ({ itemName: '', itemCode: '', quantity: 1, price: 0, vatRate: 21 });
 const total = (items: Line[]) => items.reduce((n, l) => n + l.quantity * l.price * (1 + l.vatRate / 100), 0);
 

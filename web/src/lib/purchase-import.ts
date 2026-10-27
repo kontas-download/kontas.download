@@ -3,6 +3,7 @@ import { inheritCreditCodes } from './tax-line-codes';
 import type Database from 'better-sqlite3';
 import { getDb } from './db';
 import { HttpError } from './errors';
+import { findItem, inventorySettings } from './inventory';
 import { totalLines } from './money';
 import { createPurchase } from './purchases';
 import { insertPurchaseCredit, planPurchaseCredit } from './purchase-credit';
@@ -74,7 +75,7 @@ function resolveOriginal(db: Database.Database, companyId: number, inv: UblInvoi
 
 const creditReason = (inv: UblInvoice, original: CreditOriginal) => `Importuota iš XML: kreditinė sąskaita ${inv.number} prie ${original.series || ''}${original.number}`.slice(0, 500);
 
-export function previewXmlPurchase(db: Database.Database, companyId: number, xml: string, options: { originalPurchaseId?: number } = {}): ImportPreview {
+export function previewXmlPurchase(db: Database.Database, companyId: number, xml: string, options: { originalPurchaseId?: number; warehouseName?: string } = {}): ImportPreview {
   const sha256 = createHash('sha256').update(xml).digest('hex');
   const parsed = parseUblInvoice(xml);
   const issues = [...parsed.issues];
@@ -99,6 +100,13 @@ export function previewXmlPurchase(db: Database.Database, companyId: number, xml
     if (Math.round(totals.vat * 100) !== Math.round(inv.totals.tax * 100)) issues.push(`PVM po perskaičiavimo pagal eilutes (${totals.vat.toFixed(2)}) skiriasi nuo sąskaitos PVM (${inv.totals.tax.toFixed(2)}): įveskite sąskaitą rankiniu būdu`);
   } catch (error) {
     issues.push(error instanceof HttpError ? error.message : 'Nepavyko perskaičiuoti eilučių');
+  }
+  // Same stock-card / warehouse check as the inventory posting, so a warehouse mismatch is reported before the commit.
+  if (!isCredit) {
+    const settings = inventorySettings(db, companyId);
+    if (settings.method !== 'OFF' && !(settings.startDate && inv.issueDate < settings.startDate)) {
+      try { for (const l of inv.lines) findItem(db, companyId, l.code || null, options.warehouseName || null); } catch (error) { if (!(error instanceof HttpError)) throw error; issues.push(error.message); }
+    }
   }
   let credit: CreditPreview | null = null;
   if (isCredit) {
@@ -132,10 +140,10 @@ function buildItems(inv: UblInvoice) {
 }
 
 // Creates the purchase (and the supplier when explicitly allowed) and keeps the original XML. All or nothing.
-export function importXmlPurchase(companyId: number, xml: string, options: { filename?: string; createSupplier?: boolean; originalPurchaseId?: number; deductionPercent?: number; debitAccount?: string } = {}) {
+export function importXmlPurchase(companyId: number, xml: string, options: { filename?: string; createSupplier?: boolean; originalPurchaseId?: number; deductionPercent?: number; debitAccount?: string; warehouseName?: string } = {}) {
   const db = getDb();
   return db.transaction(() => {
-    const preview = previewXmlPurchase(db, companyId, xml, { originalPurchaseId: options.originalPurchaseId });
+    const preview = previewXmlPurchase(db, companyId, xml, { originalPurchaseId: options.originalPurchaseId, warehouseName: options.warehouseName });
     if (!preview.ok) throw Object.assign(new HttpError(422, 'Sąskaita neimportuota: ' + preview.issues[0]), { preview });
     const inv = parseUblInvoice(xml).invoice!;
     if (inv.kind === 'credit') {
@@ -154,7 +162,7 @@ export function importXmlPurchase(companyId: number, xml: string, options: { fil
     const { purchase, items, purchaseId } = createPurchase(companyId, {
       series: '', number: inv.number, purchaseDate: inv.issueDate, clientId, clientName: inv.supplier.name, clientCode: inv.supplier.regNumber || null,
       notes: `Importuota iš XML${inv.dueDate ? `; apmokėti iki ${inv.dueDate}` : ''}`, items: buildItems(inv),
-      ...(options.deductionPercent !== undefined ? { deductionPercent: options.deductionPercent } : {}), ...(options.debitAccount ? { debitAccount: options.debitAccount } : {}),
+      ...(options.deductionPercent !== undefined ? { deductionPercent: options.deductionPercent } : {}), ...(options.debitAccount ? { debitAccount: options.debitAccount } : {}), ...(options.warehouseName ? { warehouseName: options.warehouseName } : {}),
     });
     db.prepare('INSERT INTO PurchaseSource(companyId,purchaseId,sha256,filename,docNumber,supplierName,xml,importedAt) VALUES(?,?,?,?,?,?,?,?)')
       .run(companyId, purchaseId, preview.sha256, options.filename?.slice(0, 200) || null, inv.number, inv.supplier.name, xml, Date.now());

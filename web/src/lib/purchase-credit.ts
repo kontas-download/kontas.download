@@ -4,9 +4,10 @@ import { purchaseTax, taxMode } from './tax';
 import { calculateLine, totalLines } from './money';
 import { validateBody } from './validation';
 import { HttpError } from './errors';
-import { assertRatesMatch, originalRates } from './credit-rules';
+import { assertQuantitiesWithinOriginal, assertRatesMatch, originalRates } from './credit-rules';
+import { postDocumentInventory } from './inventory';
 
-interface Original { id: number; series: string | null; number: string; purchaseDate: string; docType: string | null; clientId: number | null; clientName: string | null; clientCode: string | null; sumWithoutVat: number; vat: number; sumWithVat: number; deductibleVat: number | null; buyerVatMode: string | null; deductionPercent: number | null; debitAccount: string | null; currencyCode: string; }
+interface Original { id: number; series: string | null; number: string; purchaseDate: string; docType: string | null; clientId: number | null; clientName: string | null; clientCode: string | null; sumWithoutVat: number; vat: number; sumWithVat: number; deductibleVat: number | null; buyerVatMode: string | null; deductionPercent: number | null; debitAccount: string | null; warehouseName: string | null; currencyCode: string; }
 export interface CreditInput { number: string; series?: string; purchaseDate: string; reason: string; items: any[]; }
 export interface CreditPlan {
   original: Original;
@@ -20,7 +21,7 @@ const cents = (value: number) => Math.round(value * 100);
 // Validates a supplier credit note against its original and works out what it will post. Writes nothing.
 // Shared by the manual credit route and the XML import so both apply exactly the same rules.
 export function planPurchaseCredit(db: Database.Database, companyId: number, originalId: number, input: CreditInput): CreditPlan {
-  const original = db.prepare('SELECT id,series,number,purchaseDate,docType,clientId,clientName,clientCode,sumWithoutVat,vat,sumWithVat,deductibleVat,buyerVatMode,deductionPercent,debitAccount,currencyCode FROM Purchase WHERE id=? AND companyId=?').get(originalId, companyId) as Original | undefined;
+  const original = db.prepare('SELECT id,series,number,purchaseDate,docType,clientId,clientName,clientCode,sumWithoutVat,vat,sumWithVat,deductibleVat,buyerVatMode,deductionPercent,debitAccount,warehouseName,currencyCode FROM Purchase WHERE id=? AND companyId=?').get(originalId, companyId) as Original | undefined;
   if (!original) throw new HttpError(404, 'Įrašas nerastas');
   if (original.docType === 'KS') throw new HttpError(400, 'Kreditinio dokumento pakartotinai koreguoti negalima');
   const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
@@ -33,6 +34,7 @@ export function planPurchaseCredit(db: Database.Database, companyId: number, ori
   const { sumWithoutVat, sumWithVat, vat } = totals;
   const prior = db.prepare('SELECT COALESCE(SUM(-sumWithoutVat),0) net, COALESCE(SUM(-vat),0) vat, COALESCE(SUM(-sumWithVat),0) gross, COALESCE(SUM(-deductibleVat),0) ded FROM Purchase WHERE originalPurchaseId=? AND companyId=?').get(originalId, companyId) as { net: number; vat: number; gross: number; ded: number };
   assertRatesMatch(originalRates(db, 'PurchaseItem', 'purchaseId', originalId), items);
+  assertQuantitiesWithinOriginal(db, companyId, 'PURCHASE', originalId, items);
   if (cents(prior.vat) + cents(vat) > cents(original.vat)) throw new HttpError(400, 'Kreditinių dokumentų PVM viršija pradinio dokumento PVM');
   if (cents(prior.net) + cents(sumWithoutVat) > cents(original.sumWithoutVat) || cents(prior.gross) + cents(sumWithVat) > cents(original.sumWithVat)) throw new HttpError(400, 'Kreditinių dokumentų suma viršija pradinio dokumento sumą');
 
@@ -57,10 +59,10 @@ export function insertPurchaseCredit(db: Database.Database, companyId: number, o
   return db.transaction(() => {
     const { original, totals, deductionPercent, deductibleVat } = planPurchaseCredit(db, companyId, originalId, input);
     const reason = input.reason.trim();
-    const res = db.prepare(`INSERT INTO Purchase (companyId, series, number, purchaseDate, clientId, clientName, clientCode, sumWithoutVat, vat, sumWithVat, currencyCode, notes, buyerVatMode, deductionPercent, deductibleVat, debitAccount, docType, originalPurchaseId, correctionReason, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'KS', ?, ?, datetime('now'))`).run(
+    const res = db.prepare(`INSERT INTO Purchase (companyId, series, number, purchaseDate, clientId, clientName, clientCode, sumWithoutVat, vat, sumWithVat, currencyCode, notes, buyerVatMode, deductionPercent, deductibleVat, debitAccount, warehouseName, docType, originalPurchaseId, correctionReason, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'KS', ?, ?, datetime('now'))`).run(
       companyId, (typeof input.series === 'string' && input.series.trim()) || '', String(input.number).trim(), input.purchaseDate, original.clientId, original.clientName, original.clientCode,
-      -totals.sumWithoutVat, -totals.vat, -totals.sumWithVat, original.currencyCode || 'EUR', reason, original.buyerVatMode, deductionPercent, deductibleVat, original.debitAccount, originalId, reason);
+      -totals.sumWithoutVat, -totals.vat, -totals.sumWithVat, original.currencyCode || 'EUR', reason, original.buyerVatMode, deductionPercent, deductibleVat, original.debitAccount, original.warehouseName, originalId, reason);
     const purchaseId = Number(res.lastInsertRowid);
     const insertItem = db.prepare('INSERT INTO PurchaseItem (purchaseId, itemName, itemCode, quantity, price, sumWithoutVat, sumWithVat, vatRate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
     for (const it of input.items) {
@@ -69,6 +71,8 @@ export function insertPurchaseCredit(db: Database.Database, companyId: number, o
     }
     // The credit note takes over the i.SAF codes of the original lines where they are unambiguous (callers report the rest).
     inheritCreditCodes(db, companyId, 'PURCHASE', originalId, purchaseId);
+    // Goods returned to the supplier leave the stock (inventory accounting only).
+    postDocumentInventory(db, companyId, 'PURCHASE', purchaseId);
     return purchaseId;
   })();
 }

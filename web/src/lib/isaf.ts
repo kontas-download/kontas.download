@@ -1,5 +1,6 @@
 import { codedLineProblem, droppedText, isLt, isoCountry, normalizedVat, PARTY_TEXT, partyFits, partyKind, taxCodeSide, type PartyRule, type TaxCodeSide } from './tax-codes';
 import { vatOnNetCents } from './money';
+import { rules } from './rules/registry';
 
 // i.SAF 1.2 (VMI) register builder. Domestic (LT) documents taxed at the standard/reduced rates are classified automatically;
 // other lines need a tax code assigned by the accountant (TaxLineCode, catalogue in tax-codes.ts). Anything doubtful is
@@ -34,13 +35,11 @@ export interface IsafInput {
 }
 export interface IsafResult { xml: string | null; issues: string[]; }
 
-// Codes from VMI table "Dažniausiai pasitaikančių sandorių deklaravimas FR0600 + i.SAF kodas" (2025-12-17).
-// The 12 % rate exists from 2026-01-01.
+// Codes from VMI table "Dažniausiai pasitaikančių sandorių deklaravimas FR0600 + i.SAF kodas" (2025-12-17). The rates and their
+// validity dates (12 % from 2026-01-01) come from the rules registry; the date is not validated here, as before.
+const DOMESTIC_CODES: [ruleId: string, code: string][] = [['vat.rate.standard', 'PVM1'], ['vat.rate.reduced9', 'PVM2'], ['vat.rate.reduced5', 'PVM3'], ['vat.rate.reduced12', 'PVM58']];
 export function domesticTaxCode(rate: number, date: string): string | null {
-  if (rate === 21) return 'PVM1';
-  if (rate === 9) return 'PVM2';
-  if (rate === 5) return 'PVM3';
-  if (rate === 12 && date >= '2026-01-01') return 'PVM58';
+  for (const [ruleId, code] of DOMESTIC_CODES) if (rules.find(ruleId, date)?.value === rate) return code;
   return null;
 }
 

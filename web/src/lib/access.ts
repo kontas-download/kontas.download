@@ -2,6 +2,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { NextResponse } from 'next/server';
 import { verifySessionToken } from './auth';
+import { getDb } from './db';
+import { withActor } from './audit-actor';
 // Roles: 'admin' can do everything; 'accountant' does the accounting work in every company but cannot manage users,
 // download the whole database, move company packages, read the audit history, close periods or create/delete companies.
 export const ROLES = ['admin', 'accountant'] as const;
@@ -9,6 +11,11 @@ export type Role = typeof ROLES[number];
 export const isRole = (value: unknown): value is Role => typeof value === 'string' && (ROLES as readonly string[]).includes(value);
 export async function currentUser() {
   return verifySessionToken((await cookies()).get('auth_session')?.value || '');
+}
+// Runs a synchronous database write so that its audit rows record the signed-in user.
+export async function withCurrentActor<T>(fn: () => T): Promise<T> {
+  const user = await currentUser();
+  return withActor(getDb(), user?.id, fn);
 }
 export async function requirePageAccess() {
   const user = await currentUser();

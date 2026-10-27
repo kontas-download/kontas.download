@@ -1,12 +1,12 @@
 # Trečiųjų šalių komponentai / Third-party components / Компоненты третьих лиц
 
-LT: kontas.download naudoja toliau išvardytus atvirojo kodo komponentus. Jie lieka savo autorių licencijų galioje; kontas.download licencija (LICENSE) jų nekeičia. Šis archyvas jų nesiūlo: jie įdiegiami per `npm ci` iš viešų registrų.
+LT: kontas.download naudoja toliau išvardytus atvirojo kodo komponentus. Jie lieka savo autorių licencijų galioje; kontas.download licencija (LICENSE) jų nekeičia. Ši programa/saugykla jų neturi: jie įdiegiami per `npm ci` iš viešų registrų.
 
-EN: kontas.download uses the open-source components listed below. They remain under their authors' licences; the kontas.download licence (LICENSE) does not change them. This archive does not contain them: they are installed with `npm ci` from public registries.
+EN: kontas.download uses the open-source components listed below. They remain under their authors' licences; the kontas.download licence (LICENSE) does not change them. This program/repository does not contain them: they are installed with `npm ci` from public registries.
 
-RU: kontas.download использует перечисленные ниже компоненты с открытым кодом. Они остаются под лицензиями своих авторов; лицензия kontas.download (LICENSE) их не меняет. В этом архиве их нет: они устанавливаются командой `npm ci` из публичных реестров.
+RU: kontas.download использует перечисленные ниже компоненты с открытым кодом. Они остаются под лицензиями своих авторов; лицензия kontas.download (LICENSE) их не меняет. В этой программе/репозитории их нет: они устанавливаются командой `npm ci` из публичных реестров.
 
-Sugeneruota / generated / сгенерировано: `node web/scripts/third-party-notices.cjs` (92 packages).
+Sugeneruota / generated / сгенерировано: `node web/scripts/third-party-notices.cjs` (91 packages).
 
 | Package | Version | Licence |
 |---|---|---|
@@ -56,7 +56,6 @@ Sugeneruota / generated / сгенерировано: `node web/scripts/third-pa
 | anynum | 1.0.1 | MIT |
 | base64-js | 0.0.8 | MIT |
 | base64-js | 1.5.1 | MIT |
-| base64-js | 1.5.1 | MIT |
 | baseline-browser-mapping | 2.11.33 | Apache-2.0 |
 | better-sqlite3 | 13.0.3 | MIT |
 | brotli | 1.3.3 | MIT |
@@ -103,4 +102,4 @@ Sugeneruota / generated / сгенерировано: `node web/scripts/third-pa
 | xml-naming | 0.3.0 | MIT |
 | xmldoc | 2.0.3 | MIT |
 
-Pastaba / Note / Примечание: `@img/sharp-*` ir `@img/sharp-libvips-*` (LGPL-3.0-or-later) naudoja Next.js vaizdų apdorojimui kaip atskirus, nekeistus dinaminius dvejetainius paketus; jų šaltinis ir licencijos tekstas yra tų paketų viduje. / are used by Next.js for image processing as separate, unmodified binary packages; their source and licence text are inside those packages. / используются Next.js для обработки изображений как отдельные неизменённые бинарные пакеты; их исходный код и текст лицензии находятся внутри этих пакетов.
+Pastaba / Note / Примечание: `@img/sharp-*` ir `@img/sharp-libvips-*` (LGPL-3.0-or-later) naudoja Next.js vaizdų apdorojimui kaip atskirus, nekeistus dvejetainius paketus; `@img/sharp-libvips-*` paketuose yra iš anksto sukompiliuoti libvips dvejetainiai failai, o jų šaltinio kodas ir licencijų tekstai pateikiami pirminiuose projektuose: https://github.com/lovell/sharp-libvips ir https://github.com/libvips/libvips. / are used by Next.js for image processing as separate, unmodified binary packages; the `@img/sharp-libvips-*` packages contain pre-built binaries of libvips, and the source code and licence texts are available from the upstream projects: https://github.com/lovell/sharp-libvips and https://github.com/libvips/libvips. / используются Next.js для обработки изображений как отдельные неизменённые бинарные пакеты; пакеты `@img/sharp-libvips-*` содержат заранее собранные двоичные файлы libvips, а их исходный код и тексты лицензий доступны в исходных проектах: https://github.com/lovell/sharp-libvips и https://github.com/libvips/libvips.

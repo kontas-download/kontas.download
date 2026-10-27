@@ -36,8 +36,14 @@ function rich(text: string, nodes: Record<string, React.ReactNode>) {
   });
 }
 
-export function PayrollsClient({ initialPayrolls }: { initialPayrolls: any[] }) {
+// Estimate rates in percent from the rules registry (provided by the server page).
+export interface PayrollRules { gpm: number; sodraEmployee: number; sodraEmployer: number }
+
+export function PayrollsClient({ initialPayrolls, payrollRules }: { initialPayrolls: any[]; payrollRules: PayrollRules }) {
   const { t, lang } = useI18n();
+  const gpmRate = payrollRules.gpm / 100;
+  const sodraEeRate = payrollRules.sodraEmployee / 100;
+  const sodraErRate = payrollRules.sodraEmployer / 100;
   const [payrolls, setPayrolls] = useState(initialPayrolls);
 
   // Filter state
@@ -147,8 +153,8 @@ export function PayrollsClient({ initialPayrolls }: { initialPayrolls: any[] }) 
     return filteredAndSorted.reduce((acc, p) => {
       const gross = Number(p.totalGross || p.sumWithVat || 0);
       const net = Number(p.totalNet || 0);
-      const gpm = gross * 0.20;
-      const sodra = gross * (0.195 + 0.0177);
+      const gpm = gross * gpmRate;
+      const sodra = gross * (sodraEeRate + sodraErRate);
       return {
         gross: acc.gross + gross,
         net: acc.net + net,
@@ -157,7 +163,7 @@ export function PayrollsClient({ initialPayrolls }: { initialPayrolls: any[] }) 
         employees: acc.employees + Number(p.empCount || 1),
       };
     }, { gross: 0, net: 0, gpm: 0, sodra: 0, employees: 0 });
-  }, [filteredAndSorted]);
+  }, [filteredAndSorted, gpmRate, sodraEeRate, sodraErRate]);
 
   const paginatedPayrolls = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -180,9 +186,9 @@ export function PayrollsClient({ initialPayrolls }: { initialPayrolls: any[] }) 
   const openEditModal = (p: any) => {
     setEditingPayroll(p);
     const grossVal = Number(p.totalGross || p.sumWithVat || 1500);
-    const gpm = Math.round(grossVal * 0.20 * 100) / 100;
-    const sodraEe = Math.round(grossVal * 0.195 * 100) / 100;
-    const sodraEr = Math.round(grossVal * 0.0177 * 100) / 100;
+    const gpm = Math.round(grossVal * gpmRate * 100) / 100;
+    const sodraEe = Math.round(grossVal * sodraEeRate * 100) / 100;
+    const sodraEr = Math.round(grossVal * sodraErRate * 100) / 100;
     const net = Math.round((grossVal - gpm - sodraEe) * 100) / 100;
 
     setFormData({
@@ -224,9 +230,9 @@ export function PayrollsClient({ initialPayrolls }: { initialPayrolls: any[] }) 
 
   const handleGrossChange = (idx: number, gross: number) => {
     const updated = [...formData.employees];
-    const gpm = Math.round(gross * 0.20 * 100) / 100;
-    const sodraEe = Math.round(gross * 0.195 * 100) / 100;
-    const sodraEr = Math.round(gross * 0.0177 * 100) / 100;
+    const gpm = Math.round(gross * gpmRate * 100) / 100;
+    const sodraEe = Math.round(gross * sodraEeRate * 100) / 100;
+    const sodraEr = Math.round(gross * sodraErRate * 100) / 100;
     const net = Math.round((gross - gpm - sodraEe) * 100) / 100;
 
     updated[idx] = {
@@ -624,13 +630,13 @@ export function PayrollsClient({ initialPayrolls }: { initialPayrolls: any[] }) 
                       {/* Tax Breakdown */}
                       <div className="grid grid-cols-4 gap-2 pt-1 border-t border-slate-900 text-[11px] font-mono">
                         <div>
-                          <span className="text-slate-500 font-sans">{t('payroll.gpm20')}</span> €{emp.gpm.toFixed(2)}
+                          <span className="text-slate-500 font-sans">{t('payroll.gpm20', { rate: payrollRules.gpm })}</span> €{emp.gpm.toFixed(2)}
                         </div>
                         <div>
-                          <span className="text-slate-500 font-sans">{t('payroll.sodra195')}</span> €{emp.sodraEmployee.toFixed(2)}
+                          <span className="text-slate-500 font-sans">{t('payroll.sodra195', { rate: payrollRules.sodraEmployee })}</span> €{emp.sodraEmployee.toFixed(2)}
                         </div>
                         <div>
-                          <span className="text-slate-500 font-sans">{t('payroll.employer177')}</span> €{emp.sodraEmployer.toFixed(2)}
+                          <span className="text-slate-500 font-sans">{t('payroll.employer177', { rate: payrollRules.sodraEmployer })}</span> €{emp.sodraEmployer.toFixed(2)}
                         </div>
                         <div className="text-right font-bold text-emerald-400">
                           <span className="text-slate-500 font-sans font-normal">{t('payroll.net')}</span> €{emp.netSalary.toFixed(2)}
@@ -647,7 +653,7 @@ export function PayrollsClient({ initialPayrolls }: { initialPayrolls: any[] }) 
                     <div className="font-bold text-slate-100 font-mono">€{formTotalGross.toFixed(2)}</div>
                   </div>
                   <div>
-                    <div className="text-slate-400">{t('payroll.totalGpm')}</div>
+                    <div className="text-slate-400">{t('payroll.totalGpm', { rate: payrollRules.gpm })}</div>
                     <div className="font-bold text-slate-300 font-mono">€{formTotalGpm.toFixed(2)}</div>
                   </div>
                   <div>

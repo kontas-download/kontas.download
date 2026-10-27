@@ -20,6 +20,8 @@ export async function PUT(
 
     const companyId = await getActiveCompanyId();
     if (!getDb().prepare('SELECT id FROM Payroll WHERE id = ? AND companyId = ?').get(id, companyId)) return NextResponse.json({ error: 'Įrašas nerastas' }, { status: 404 });
+    // A payroll posted from a payroll calculation (/payroll) is changed only there.
+    if (getDb().prepare('SELECT 1 FROM PayrollRun WHERE payrollId = ?').get(id)) return NextResponse.json({ error: 'Šis žiniaraštis užregistruotas iš DU skaičiavimo; keiskite jį skiltyje „DU skaičiavimas“' }, { status: 409 });
     const body = await request.json();
     validateBody(body, 'payrolls', companyId);
     const { year, month, employees = [] } = body;
@@ -102,6 +104,8 @@ export async function DELETE(
 
     const companyId = await getActiveCompanyId();
     if (!getDb().prepare('SELECT id FROM Payroll WHERE id = ? AND companyId = ?').get(id, companyId)) return NextResponse.json({ error: 'Įrašas nerastas' }, { status: 404 });
+    // A payroll posted from a payroll calculation (/payroll) is changed only there.
+    if (getDb().prepare('SELECT 1 FROM PayrollRun WHERE payrollId = ?').get(id)) return NextResponse.json({ error: 'Šis žiniaraštis užregistruotas iš DU skaičiavimo; keiskite jį skiltyje „DU skaičiavimas“' }, { status: 409 });
     const db = getDb();
 
     const deleteTx = db.transaction(() => {

@@ -1,0 +1,19 @@
+# Secrets and local settings: never commit them
+.env
+.env.*
+!.env.example
+deploy/.env
+deploy/data/
+
+# Database files (every installation creates its own)
+web/prisma/*.db
+web/prisma/*.db-wal
+web/prisma/*.db-shm
+web/prisma/*.db-journal
+
+# Dependencies, builds and logs
+node_modules/
+.next/
+dist/
+*.log
+.DS_Store

@@ -168,3 +168,10 @@ details[open] summary { margin-bottom: .5em; }
   .site-header nav, .lang-switch, .skip-link, pre > button.copy, .tablist { display: none !important; }
   .os-tabs > [data-os] { display: block !important; }
 }
+
+.roadmap-list { list-style: none; padding: 0; margin: 0 0 1em; }
+.roadmap-list li { border: 1px solid var(--line); border-radius: var(--radius); padding: .7em 1em; margin: 0 0 .6em; background: var(--bg-soft); }
+.roadmap-list p { margin: 0 0 .3em; }
+.roadmap-list p:last-child { margin-bottom: 0; color: var(--muted); }
+.chip { display: inline-block; font-size: .85em; padding: .1em .6em; border: 1px solid var(--line); border-radius: 999px; background: var(--accent-soft); }
+.chip-wait { background: var(--warn-bg); border-color: var(--warn-line); }

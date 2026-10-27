@@ -1,7 +1,7 @@
 import { migrateDocuments } from './document-schema';
 import { migratePurchaseCorrections } from './purchase-correction-schema';
-import { migrateTax, migratePurchaseAccount, migrateSaleCorrections, migrateInvoiceArchive } from './tax-schema';
-import { migrateControls, migrateAuditColumns } from './control-schema';
+import { migrateTax, migratePurchaseAccount, migrateSaleCorrections, migrateInvoiceArchive, migrateDeliveryArchiveStatus } from './tax-schema';
+import { migrateControls, migrateAuditColumns, migrateAuditActor } from './control-schema';
 import { extensions } from '../extensions/registry';
 import { migratePayments, migrateManualSettlements, migratePaymentGuards, migrateReminders, migrateTaxCalendar, migrateRecurring, migratePurchaseSources } from './payment-schema';
 import { migrateAccounting } from './accounting-schema';
@@ -9,6 +9,9 @@ import { migrateDocumentLanguage } from './document-language-schema';
 import { migratePaymentAudit } from './data-transfer-schema';
 import { migrateTaxCodes, migrateTaxCodeReview } from './tax-code-schema';
 import { migrateUsers } from './user-schema';
+import { migrateFixedAssets } from './assets-schema';
+import { migrateInventory, migrateInventoryGuards, migratePurchaseWarehouse } from './inventory-schema';
+import { migratePayroll } from './payroll-schema';
 import Database from 'better-sqlite3';
 import path from 'node:path';
 let dbInstance: Database.Database | null = null;
@@ -44,7 +47,14 @@ export function getDb() {
     migratePaymentAudit(db);
     migrateTaxCodes(db);
     migrateTaxCodeReview(db);
+    migrateFixedAssets(db);
+    migrateInventory(db);
+    migrateInventoryGuards(db);
+    migratePayroll(db);
     migrateUsers(db);
+    migrateAuditActor(db);
+    migrateDeliveryArchiveStatus(db);
+    migratePurchaseWarehouse(db);
     dbInstance = db;
   }
   return dbInstance;

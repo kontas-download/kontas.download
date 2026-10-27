@@ -58,3 +58,12 @@ export function migrateInvoiceArchive(db:Database.Database) {
     db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-10-invoice-archive-v1');
   }).immediate();
 }
+
+// Records whether the sent PDF was archived. NULL = delivery made before this column existed.
+export function migrateDeliveryArchiveStatus(db:Database.Database) {
+  db.transaction(()=>{
+    if(db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-10-delivery-archive-status-v1'))return;
+    db.exec("ALTER TABLE InvoiceDelivery ADD COLUMN archiveStatus TEXT CHECK(archiveStatus IN ('ok','failed'))");
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-10-delivery-archive-status-v1');
+  }).immediate();
+}

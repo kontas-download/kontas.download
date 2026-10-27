@@ -34,6 +34,7 @@ The program is not tax or legal advice; the user and their accountant are respon
 - There are no debit notes (DS).
 - The payroll module is simple: the suggested calculation is simplified (no NPD, progressive GPM rates or Sodra ceilings), and you enter the final amounts.
 - PLN204, GPM312/GPM313 and FR0564 returns are not prepared; the tax calendar only reminds you of deadlines.
+- Invoices carry no automatic reverse-charge wording for services supplied to an EU VAT payer. The program cannot yet print it on the customer PDF (internal notes do not reach the PDF), so the accountant handles that wording and FR0564.
 - There is no automatic depreciation of fixed assets or write-off of inventory cost.
 - There is no scheduled automatic sending of invoices: every send is a manual action.
 
@@ -72,7 +73,7 @@ You need Node.js 22 (the same version as in the Dockerfile).
 ```bash
 cd web
 npm install
-cp .env.example .env        # DATABASE_URL, APP_ORIGIN, PORT=3200
+cp .env.example .env        # DATABASE_URL, APP_ORIGIN
 node scripts/bootstrap.cjs  # creates an empty database and an administrator (the password is printed to the console)
 npm run dev
 npm test

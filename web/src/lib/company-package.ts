@@ -28,13 +28,18 @@ export const TABLES: Record<string, Spec & { table: string; where: string; order
   stockItems: { table: 'StockItem', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,name,code,barcode,warehouseName,stock:n,remainder:n,price:n,cost:n,purchaseDate,clientName') },
   sales: { table: 'Sale', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,series,number,saleDate,payUntil,statusName,warehouseName,clientId:i,clientName,clientCode,clientVatCode,sumWithoutVat:n,vat:n,sumWithVat:n,currencyCode,operationTypeName,notes,createdAt,sellerIsVatPayer:i,sellerVatMode,docType,originalSaleId:i,correctionReason') },
   saleItems: { table: 'SaleItem', where: 'saleId IN (SELECT id FROM Sale WHERE companyId=?)', order: 'id', columns: t('id:i,saleId:i,itemName,itemCode,quantity:n,price:n,priceWithVat:n,vatRate:n,sumWithoutVat:n,sumWithVat:n,warehouseName') },
-  purchases: { table: 'Purchase', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,series,number,purchaseDate,clientId:i,clientName,clientCode,sumWithoutVat:n,vat:n,sumWithVat:n,currencyCode,notes,createdAt,buyerVatMode,deductionPercent:n,deductibleVat:n,debitAccount,docType,originalPurchaseId:i,correctionReason') },
+  purchases: { table: 'Purchase', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,series,number,purchaseDate,clientId:i,clientName,clientCode,sumWithoutVat:n,vat:n,sumWithVat:n,currencyCode,notes,createdAt,buyerVatMode,deductionPercent:n,deductibleVat:n,debitAccount,warehouseName,docType,originalPurchaseId:i,correctionReason') },
   purchaseItems: { table: 'PurchaseItem', where: 'purchaseId IN (SELECT id FROM Purchase WHERE companyId=?)', order: 'id', columns: t('id:i,purchaseId:i,itemName,itemCode,quantity:n,price:n,sumWithoutVat:n,sumWithVat:n,vatRate:n') },
   bankTransactions: { table: 'BankTransaction', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,date,number,clientName,clientCode,sum:n,correspondenceAccountCode,accountingBankInternalName,notes,importHash,importBatch') },
   paymentAllocations: { table: 'PaymentAllocation', where: 'companyId=?', order: 'id', columns: t('id:i,bankTransactionId:i,saleId:i,purchaseId:i,amount:n,createdAt:i') },
   manualSettlements: { table: 'ManualSettlement', where: 'companyId=?', order: 'id', columns: t('id:i,saleId:i,purchaseId:i,amount:n,date,method,note,createdAt:i') },
   payrolls: { table: 'Payroll', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,year:i,month:i,sumWithVat:n,createdAt') },
   payrollEmployees: { table: 'PayrollEmployee', where: 'payrollId IN (SELECT id FROM Payroll WHERE companyId=?)', order: 'id', columns: t('id:i,payrollId:i,employeeName,employeeCode,grossSalary:n,netSalary:n,gpm:n,sodraEmployee:n,sodraEmployer:n') },
+  // Employees, monthly payroll runs (draft and posted), their lines and the append-only change log. All keys are optional on import.
+  employees: { table: 'Employee', where: 'companyId=?', order: 'id', columns: t('id:i,name,personalCode,position,baseSalary:n,contractType,applyNpd:i,pensionAccumulation:i,accidentRate:n,startDate,endDate,active:i,createdAt,updatedAt') },
+  payrollRuns: { table: 'PayrollRun', where: 'companyId=?', order: 'id', columns: t('id:i,year:i,month:i,status,paramsJson,rulesProvisional:i,verifiedAt,verifiedBy:i,payrollId:i,createdBy:i,createdAt,updatedAt') },
+  payrollRunLines: { table: 'PayrollRunLine', where: 'companyId=?', order: 'id', columns: t('id:i,runId:i,employeeId:i,employeeName,employeeCode,gross:n,ytdGrossBefore:n,ytdSodraBaseBefore:n,settingsJson,calcJson,overridesJson,resultJson,sodraBase:n,npd:n,gpm:n,employeeContributions:n,net:n,employerContributions:n') },
+  payrollLogs: { table: 'PayrollLog', where: 'companyId=?', order: 'id', columns: t('id:i,runId:i,lineId:i,employeeName,action,field,calculatedValue:n,oldValue:n,newValue:n,reason,actorId:i,createdAt') },
   generalEntries: { table: 'GeneralEntry', where: 'companyId=?', order: 'id', columns: t('id:i,date,docNumber,debitAccount,creditAccount,amount:n,clientId:i,clientName,description,sourceType,sourceId:i,createdAt,updatedAt') },
   recurringInvoices: { table: 'RecurringInvoice', where: 'companyId=?', order: 'id', columns: t('id:i,name,clientId:i,series,frequency,nextDate,anchorDay:i,endDate,payDays:i,notes,itemsJson,active:i,createdAt:i') },
   recurringRuns: { table: 'RecurringRun', where: 'recurringId IN (SELECT id FROM RecurringInvoice WHERE companyId=?)', order: 'recurringId,periodDate', columns: t('recurringId:i,periodDate,saleId:i,createdAt:i') },
@@ -45,6 +50,14 @@ export const TABLES: Record<string, Spec & { table: string; where: string; order
   taxLineCodes: { table: 'TaxLineCode', where: 'companyId=?', order: 'kind,itemId', columns: t('kind,itemId:i,taxCode,note,updatedAt:i') },
   // Documents whose codes were dropped by an edit and still wait for the accountant's review.
   taxCodeReviews: { table: 'TaxCodeReview', where: 'companyId=?', order: 'kind,docId', columns: t('kind,docId:i,dropped,createdAt:i') },
+  // Inventory (settings, append-only movements, FIFO layers) and the fixed asset register with its postings and change log.
+  inventorySettings: { table: 'InventorySettings', where: 'companyId=?', order: 'companyId', columns: t('method,inventoryAccount,cogsAccount,startDate,updatedAt,updatedBy:i') },
+  inventoryMovements: { table: 'InventoryMovement', where: 'companyId=?', order: 'id', columns: t('id:i,stockItemId:i,date,kind,method,quantity:n,amount:n,unitCost:n,balanceQty:n,balanceValue:n,debitAccount,creditAccount,sourceType,sourceId:i,sourceLineId:i,docNumber,reason,actorId:i,createdAt') },
+  inventoryLayers: { table: 'InventoryLayer', where: 'companyId=?', order: 'id', columns: t('id:i,stockItemId:i,movementId:i,date,quantity:n,remainingQty:n,remainingValue:n') },
+  fixedAssetSettings: { table: 'FixedAssetSettings', where: 'companyId=?', order: 'companyId', columns: t('defaultMethod,updatedAt,updatedBy:i') },
+  fixedAssets: { table: 'FixedAsset', where: 'companyId=?', order: 'id', columns: t('id:i,code,name,category,acquisitionDate,commissioningDate,cost:n,residualValue:n,usefulLifeMonths:i,method,decliningFactor:n,assetAccount,accumulatedAccount,expenseAccount,disposalAccount,disposedAt,disposalProceeds:n,disposalReason,notes,createdAt,updatedAt,updatedBy:i') },
+  fixedAssetPostings: { table: 'FixedAssetPosting', where: 'companyId=?', order: 'id', columns: t('id:i,assetId:i,period,date,kind,method,amount:n,bookValueAfter:n,debitAccount,creditAccount,docNumber,description,actorId:i,createdAt') },
+  fixedAssetChanges: { table: 'FixedAssetChange', where: 'companyId=?', order: 'id', columns: t('id:i,assetId:i,field,oldValue,newValue,reason,actorId:i,createdAt') },
   auditHistory: { table: 'AccountingAudit', where: 'companyId=?', order: 'id', columns: t('id:i,entity,recordId:i,action,beforeJson,afterJson,actorId:i,createdAt') },
 };
 
@@ -139,14 +152,23 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
   const ids = (key: string) => new Set(rows[key].map(r => r.id as number));
   const unique = (key: string) => { const s = ids(key); if (s.size !== rows[key].length || s.has(undefined as unknown as number) || s.has(null as unknown as number)) problems.push(problem('duplicateId', `Skyrius ${key}: identifikatorių nėra arba jie kartojasi`, { table: key })); return s; };
   const clientIds = unique('clients'), saleIds = unique('sales'), purchaseIds = unique('purchases'), bankIds = unique('bankTransactions'), payrollIds = unique('payrolls'), recurringIds = unique('recurringInvoices');
-  unique('saleItems'); unique('purchaseItems'); unique('payrollEmployees'); unique('generalEntries'); unique('paymentAllocations'); unique('manualSettlements'); unique('stockItems');
+  unique('saleItems'); unique('purchaseItems'); unique('payrollEmployees'); unique('generalEntries'); unique('paymentAllocations'); unique('manualSettlements'); unique('stockItems'); const stockIds = ids('stockItems'), movementIds = unique('inventoryMovements'), assetIds = unique('fixedAssets'); unique('inventoryLayers'); unique('fixedAssetPostings'); unique('fixedAssetChanges'); const employeeIds = unique('employees'), runIds = unique('payrollRuns'); unique('payrollRunLines'); unique('payrollLogs');
   const saleById = new Map(rows.sales.map(s => [s.id, s])), purchaseById = new Map(rows.purchases.map(p => [p.id, p]));
   const broken = (table: string, index: number, field: string) => problems.push(problem('brokenLink', `${table}[${index}].${field}: nuoroda į neegzistuojantį įrašą`, { table, index, field }));
   rows.sales.forEach((s, i) => { if (s.originalSaleId != null && (!saleById.has(s.originalSaleId) || (saleById.get(s.originalSaleId)!.docType ?? 'SF') !== 'SF' || s.docType !== 'KS')) broken('sales', i, 'originalSaleId'); });
   rows.purchases.forEach((p, i) => { if (p.originalPurchaseId != null && (!purchaseById.has(p.originalPurchaseId) || (purchaseById.get(p.originalPurchaseId)!.docType ?? 'SF') !== 'SF' || p.docType !== 'KS')) broken('purchases', i, 'originalPurchaseId'); });
+  rows.inventoryMovements.forEach((r, i) => {
+    if (!stockIds.has(r.stockItemId as number)) broken('inventoryMovements', i, 'stockItemId');
+    if (r.sourceId != null && r.sourceType === 'SALE' && !saleIds.has(r.sourceId as number)) broken('inventoryMovements', i, 'sourceId');
+    if (r.sourceId != null && r.sourceType === 'PURCHASE' && !purchaseIds.has(r.sourceId as number)) broken('inventoryMovements', i, 'sourceId');
+  });
+  rows.inventoryLayers.forEach((r, i) => { if (!stockIds.has(r.stockItemId as number)) broken('inventoryLayers', i, 'stockItemId'); if (!movementIds.has(r.movementId as number)) broken('inventoryLayers', i, 'movementId'); });
+  for (const key of ['fixedAssetPostings', 'fixedAssetChanges']) rows[key].forEach((r, i) => { if (!assetIds.has(r.assetId as number)) broken(key, i, 'assetId'); });
   rows.saleItems.forEach((r, i) => { if (!saleIds.has(r.saleId as number)) broken('saleItems', i, 'saleId'); });
   rows.purchaseItems.forEach((r, i) => { if (!purchaseIds.has(r.purchaseId as number)) broken('purchaseItems', i, 'purchaseId'); });
   rows.payrollEmployees.forEach((r, i) => { if (!payrollIds.has(r.payrollId as number)) broken('payrollEmployees', i, 'payrollId'); });
+  rows.payrollRuns.forEach((r, i) => { if (r.payrollId != null && !payrollIds.has(r.payrollId as number)) broken('payrollRuns', i, 'payrollId'); if (r.status === 'POSTED' && r.payrollId == null) broken('payrollRuns', i, 'payrollId'); });
+  rows.payrollRunLines.forEach((r, i) => { if (!runIds.has(r.runId as number)) broken('payrollRunLines', i, 'runId'); if (!employeeIds.has(r.employeeId as number)) broken('payrollRunLines', i, 'employeeId'); });
   for (const key of ['paymentAllocations', 'manualSettlements']) rows[key].forEach((r, i) => {
     if (key === 'paymentAllocations' && !bankIds.has(r.bankTransactionId as number)) broken(key, i, 'bankTransactionId');
     if ((r.saleId == null) === (r.purchaseId == null)) broken(key, i, 'saleId');
@@ -202,17 +224,23 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
       const addAccount = db.prepare('INSERT OR IGNORE INTO ChartOfAccount(code,name) VALUES(?,?)');
       for (const r of rows.chartOfAccounts) accountsAdded += addAccount.run(r.code, r.name).changes;
 
-      const map = { client: new Map<unknown, number>(), sale: new Map<unknown, number>(), purchase: new Map<unknown, number>(), bank: new Map<unknown, number>(), payroll: new Map<unknown, number>(), allocation: new Map<unknown, number>(), settlement: new Map<unknown, number>(), recurring: new Map<unknown, number>(), saleItem: new Map<unknown, number>(), purchaseItem: new Map<unknown, number>(), payrollEmployee: new Map<unknown, number>(), entry: new Map<unknown, number>() };
+      const map = { client: new Map<unknown, number>(), sale: new Map<unknown, number>(), purchase: new Map<unknown, number>(), bank: new Map<unknown, number>(), payroll: new Map<unknown, number>(), allocation: new Map<unknown, number>(), settlement: new Map<unknown, number>(), recurring: new Map<unknown, number>(), saleItem: new Map<unknown, number>(), purchaseItem: new Map<unknown, number>(), payrollEmployee: new Map<unknown, number>(), employee: new Map<unknown, number>(), run: new Map<unknown, number>(), runLine: new Map<unknown, number>(), entry: new Map<unknown, number>(), stock: new Map<unknown, number>(), movement: new Map<unknown, number>(), asset: new Map<unknown, number>(), assetPosting: new Map<unknown, number>() };
       const client = (id: unknown) => (id == null ? null : map.client.get(id) ?? null);
       // externalId is unique across the whole database (ids of the legacy source system), so the copy does not keep it.
       for (const r of rows.clients) map.client.set(r.id, insert('Client', { ...pick(r, ['id']), externalId: null, companyId }));
-      for (const r of rows.stockItems) insert('StockItem', { ...pick(r, ['id']), externalId: null, companyId });
+      for (const r of rows.stockItems) map.stock.set(r.id, insert('StockItem', { ...pick(r, ['id']), externalId: null, companyId }));
       const isCredit = (r: Row) => r.docType === 'KS';
       for (const r of rows.sales.filter(r => !isCredit(r))) map.sale.set(r.id, insert('Sale', { ...pick(r, ['id']), externalId: null, clientId: client(r.clientId), companyId }));
       for (const r of rows.purchases.filter(r => !isCredit(r))) map.purchase.set(r.id, insert('Purchase', { ...pick(r, ['id']), externalId: null, clientId: client(r.clientId), companyId }));
       for (const r of rows.bankTransactions) map.bank.set(r.id, insert('BankTransaction', { ...pick(r, ['id']), externalId: null, companyId }));
       for (const r of rows.payrolls) map.payroll.set(r.id, insert('Payroll', { ...pick(r, ['id']), externalId: null, companyId }));
       for (const r of rows.payrollEmployees) map.payrollEmployee.set(r.id, insert('PayrollEmployee', { ...pick(r, ['id']), payrollId: map.payroll.get(r.payrollId) }));
+      // Payroll runs: users are not in the package, so verifiedBy/createdBy/actorId are cleared; lines are inserted while the run is
+      // still unlocked by the POSTED triggers (they only guard updates and deletes). Log rows of deleted runs/lines keep a null link.
+      for (const r of rows.employees) map.employee.set(r.id, insert('Employee', { ...pick(r, ['id']), companyId }));
+      for (const r of rows.payrollRuns) map.run.set(r.id, insert('PayrollRun', { ...pick(r, ['id']), companyId, payrollId: r.payrollId == null ? null : map.payroll.get(r.payrollId), verifiedBy: null, createdBy: null }));
+      for (const r of rows.payrollRunLines) map.runLine.set(r.id, insert('PayrollRunLine', { ...pick(r, ['id']), companyId, runId: map.run.get(r.runId), employeeId: map.employee.get(r.employeeId) }));
+      for (const r of rows.payrollLogs) insert('PayrollLog', { ...pick(r, ['id']), companyId, runId: r.runId == null ? null : map.run.get(r.runId) ?? null, lineId: r.lineId == null ? null : map.runLine.get(r.lineId) ?? null, actorId: null });
       // Payments are restored before credit notes: the database caps payments by the balance (total + credit notes), and a credit
       // note issued after a payment (an overpayment) would otherwise make a historically valid payment look too large.
       for (const r of rows.paymentAllocations) map.allocation.set(r.id, insert('PaymentAllocation', { ...pick(r, ['id']), companyId, bankTransactionId: map.bank.get(r.bankTransactionId), saleId: r.saleId == null ? null : map.sale.get(r.saleId), purchaseId: r.purchaseId == null ? null : map.purchase.get(r.purchaseId) }));
@@ -221,6 +249,18 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
       for (const r of rows.purchases.filter(isCredit)) map.purchase.set(r.id, insert('Purchase', { ...pick(r, ['id']), externalId: null, clientId: client(r.clientId), originalPurchaseId: r.originalPurchaseId == null ? null : map.purchase.get(r.originalPurchaseId), companyId }));
       for (const r of rows.saleItems) map.saleItem.set(r.id, insert('SaleItem', { ...pick(r, ['id']), saleId: map.sale.get(r.saleId) }));
       for (const r of rows.purchaseItems) map.purchaseItem.set(r.id, insert('PurchaseItem', { ...pick(r, ['id']), purchaseId: map.purchase.get(r.purchaseId) }));
+      // Inventory goes in after the documents: posted documents are locked against new lines once their movements exist. Users are not
+      // part of the package, so the actor columns are cleared. The ledger rows posted by the triggers are replaced with the source journal below.
+      for (const r of rows.inventorySettings) insert('InventorySettings', { ...r, companyId, updatedBy: null });
+      for (const r of rows.inventoryMovements) {
+        const doc = r.sourceType === 'SALE' ? map.sale : r.sourceType === 'PURCHASE' ? map.purchase : null, line = r.sourceType === 'SALE' ? map.saleItem : r.sourceType === 'PURCHASE' ? map.purchaseItem : null;
+        map.movement.set(r.id, insert('InventoryMovement', { ...pick(r, ['id']), companyId, stockItemId: map.stock.get(r.stockItemId), sourceId: r.sourceId == null || !doc ? null : doc.get(r.sourceId) ?? null, sourceLineId: r.sourceLineId == null || !line ? null : line.get(r.sourceLineId) ?? null, actorId: null }));
+      }
+      for (const r of rows.inventoryLayers) insert('InventoryLayer', { ...pick(r, ['id']), companyId, stockItemId: map.stock.get(r.stockItemId), movementId: map.movement.get(r.movementId) });
+      for (const r of rows.fixedAssetSettings) insert('FixedAssetSettings', { ...r, companyId, updatedBy: null });
+      for (const r of rows.fixedAssets) map.asset.set(r.id, insert('FixedAsset', { ...pick(r, ['id']), companyId, updatedBy: null }));
+      for (const r of rows.fixedAssetPostings) map.assetPosting.set(r.id, insert('FixedAssetPosting', { ...pick(r, ['id']), companyId, assetId: map.asset.get(r.assetId), actorId: null }));
+      for (const r of rows.fixedAssetChanges) insert('FixedAssetChange', { ...pick(r, ['id']), companyId, assetId: map.asset.get(r.assetId), actorId: null });
       for (const r of rows.taxLineCodes) insert('TaxLineCode', { ...r, companyId, itemId: (r.kind === 'SALE' ? map.saleItem : map.purchaseItem).get(r.itemId) });
       for (const r of rows.taxCodeReviews) insert('TaxCodeReview', { ...r, companyId, docId: (r.kind === 'SALE' ? map.sale : map.purchase).get(r.docId) });
       for (const r of rows.recurringInvoices) map.recurring.set(r.id, insert('RecurringInvoice', { ...pick(r, ['id']), clientId: map.client.get(r.clientId), companyId }));
@@ -235,7 +275,7 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
 
       // Journal: the triggers have just posted every document by today's rules. The source journal is restored instead, row for
       // row, so historical postings (manual entries, legacy imports, rows posted under older rules) are identical in the copy.
-      const sourceMap: Record<string, Map<unknown, number>> = { SALE: map.sale, PURCHASE: map.purchase, BANK: map.bank, PAYROLL: map.payroll, SETTLEMENT: map.settlement };
+      const sourceMap: Record<string, Map<unknown, number>> = { SALE: map.sale, PURCHASE: map.purchase, BANK: map.bank, PAYROLL: map.payroll, SETTLEMENT: map.settlement, INVENTORY: map.movement, FIXED_ASSET: map.assetPosting };
       const key = (r: Row) => [r.sourceType, r.sourceId, r.debitAccount, r.creditAccount, Math.round(Number(r.amount) * 100)].join('|');
       const generated = (db.prepare("SELECT sourceType,sourceId,debitAccount,creditAccount,amount FROM GeneralEntry WHERE companyId=? AND sourceType IN ('SALE','PURCHASE','BANK','PAYROLL')").all(companyId) as Row[]).map(key).sort();
       db.prepare('DELETE FROM GeneralEntry WHERE companyId=?').run(companyId);
@@ -262,8 +302,8 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
       // History: the rows written by the triggers during this import are replaced by the source history (ids remapped where the
       // record exists in the copy) and one IMPORT record. JSON snapshots keep the source ids as they were.
       db.prepare('DELETE FROM AccountingAudit WHERE companyId=? AND id>?').run(companyId, auditStart);
-      const auditMap: Record<string, Map<unknown, number>> = { Sale: map.sale, Purchase: map.purchase, BankTransaction: map.bank, Payroll: map.payroll, GeneralEntry: map.entry, SaleItem: map.saleItem, PurchaseItem: map.purchaseItem, PayrollEmployee: map.payrollEmployee, PaymentAllocation: map.allocation, ManualSettlement: map.settlement, SaleTaxCode: map.saleItem, PurchaseTaxCode: map.purchaseItem, SaleTaxCodeReview: map.sale, PurchaseTaxCodeReview: map.purchase };
-      for (const r of rows.auditHistory) insert('AccountingAudit', { ...pick(r, ['id']), companyId, recordId: r.entity === 'AccountingLock' ? companyId : auditMap[String(r.entity)]?.get(r.recordId) ?? r.recordId, actorId: null });
+      const auditMap: Record<string, Map<unknown, number>> = { Sale: map.sale, Purchase: map.purchase, BankTransaction: map.bank, Payroll: map.payroll, GeneralEntry: map.entry, SaleItem: map.saleItem, PurchaseItem: map.purchaseItem, PayrollEmployee: map.payrollEmployee, PaymentAllocation: map.allocation, ManualSettlement: map.settlement, InventoryMovement: map.movement, FixedAsset: map.asset, FixedAssetPosting: map.assetPosting, SaleTaxCode: map.saleItem, PurchaseTaxCode: map.purchaseItem, SaleTaxCodeReview: map.sale, PurchaseTaxCodeReview: map.purchase };
+      for (const r of rows.auditHistory) insert('AccountingAudit', { ...pick(r, ['id']), companyId, recordId: r.entity === 'AccountingLock' || r.entity === 'InventorySettings' ? companyId : auditMap[String(r.entity)]?.get(r.recordId) ?? r.recordId, actorId: null });
       if (lock) db.prepare('INSERT INTO AccountingLock(companyId,lockedThrough,reason) VALUES(?,?,?)').run(companyId, lock.lockedThrough, lock.reason);
       db.prepare("INSERT INTO AccountingAudit(companyId,entity,recordId,action,beforeJson,afterJson,actorId) VALUES(?,'Company',?,'IMPORT',NULL,?,?)")
         .run(companyId, companyId, JSON.stringify({ sourceCompanyId: company.id, sourceName: company.name, exportedAt: String(pkg.exportedAt).slice(0, 40), appVersion: String(pkg.appVersion).slice(0, 40), checksum: String(pkg.checksum).slice(0, 64), counts }), options.actorId ?? null);

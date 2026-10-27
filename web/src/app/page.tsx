@@ -5,6 +5,9 @@ import { getDb } from '@/lib/db';
 import { getActiveCompany } from '@/lib/company';
 import { getT } from '@/lib/i18n/server';
 import { LOCALES } from '@/lib/i18n/config';
+import { formatDate } from '@/lib/i18n/translate';
+import { todayVilnius } from '@/lib/dates';
+import { rulesFreshness } from '@/lib/rules';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -14,7 +17,8 @@ import {
   ArrowUpRight,
   PlusCircle,
   FileSpreadsheet,
-  Building2
+  Building2,
+  Scale
 } from 'lucide-react';
 
 export default async function DashboardPage() {
@@ -93,6 +97,8 @@ export default async function DashboardPage() {
   `).all(companyId) as { bank: string; balance: number; ops: number }[];
 
   const statusLabel = (name: string) => name === 'Apmokėta' ? t('dashboard.statusPaid') : name === 'Neapmokėta' ? t('dashboard.statusUnpaid') : name;
+  // Freshness of the legislation rules registry (lib/rules): as-of date, overdue reviews, provisional entries.
+  const taxRules = rulesFreshness(todayVilnius());
   const formatEur = (v: number) => v.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
@@ -126,6 +132,20 @@ export default async function DashboardPage() {
             <span>{t('dashboard.switchCompany')}</span>
           </Link>
         </div>
+      </div>
+
+      {/* Tax rules registry freshness */}
+      <div className={`rounded-xl border p-4 text-sm ${taxRules.overdue.length || taxRules.stale ? 'border-amber-700 bg-amber-950/30 text-amber-200' : 'border-slate-800 bg-slate-900 text-slate-300'}`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Scale className="w-4 h-4 text-emerald-400" />
+            <span>{taxRules.asOf ? t('rules.asOf', { date: formatDate(lang, taxRules.asOf) }) : t('rules.asOfUnknown')}</span>
+          </div>
+          <Link href="/rules" className="text-emerald-400 hover:underline">{t('rules.open')}</Link>
+        </div>
+        {taxRules.overdue.length > 0 && <p role="alert" className="mt-2">{t('rules.overdue', { count: taxRules.overdue.length })}</p>}
+        {taxRules.stale && taxRules.asOf && <p role="alert" className="mt-2">{t('rules.stale', { days: taxRules.daysOld ?? 0 })}</p>}
+        {taxRules.provisional > 0 && <p className="mt-2 text-slate-400">{t('rules.provisionalNote', { count: taxRules.provisional })}</p>}
       </div>
 
       {/* Metric Cards */}
@@ -225,6 +245,7 @@ export default async function DashboardPage() {
             {recentSales.length === 0 ? (
               <div className="text-center py-8 text-sm text-slate-500">
                 {t('dashboard.noInvoices')}
+                <div className="mt-2 text-xs">{t('demo.dashboardHint')}</div>
               </div>
             ) : (
               <table className="w-full text-left text-sm">

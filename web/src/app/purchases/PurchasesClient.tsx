@@ -24,14 +24,18 @@ export function PurchasesClient({
   initialPurchases,
   companyMode,
   accounts,
+  warehouses,
   itemsByPurchaseId,
-  clientsList = []
+  clientsList = [],
+  companyId
 }: { 
   initialPurchases: any[];
   companyMode: string;
   accounts: { code: string; name: string }[];
+  warehouses: string[];
   itemsByPurchaseId: Record<number,any[]>;
   clientsList?: any[];
+  companyId: number;
 }) {
   const { t, lang } = useI18n();
   const num = (n: number) => n.toLocaleString(LOCALES[lang], { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -71,6 +75,9 @@ export function PurchasesClient({
     notes: '',
     deductionPercent: companyMode==='STANDARD_VAT'?100:0,
     debitAccount: '',
+    warehouseName: 'Pagrindinis',
+    // Default line rate here and in the new/added rows below: a form suggestion, not a legal parameter (the stored rate is
+    // classified for i.SAF and FR0600 through the rules registry, lib/rules).
     items: [
       { itemName: t('purchases.defaultItem'), itemCode: '', quantity: 1, price: 50, vatRate: 21 }
     ]
@@ -172,6 +179,7 @@ export function PurchasesClient({
       notes: '',
       deductionPercent: companyMode==='STANDARD_VAT'?100:0,
     debitAccount: '',
+      warehouseName: 'Pagrindinis',
       items: [
         { itemName: t('purchases.defaultItem'), itemCode: '', quantity: 1, price: 50, vatRate: 21 }
       ]
@@ -191,6 +199,7 @@ export function PurchasesClient({
       notes: p.notes || '',
       deductionPercent: p.deductionPercent ?? ((p.buyerVatMode || companyMode)==='STANDARD_VAT'?100:0),
       debitAccount: p.debitAccount || '',
+      warehouseName: p.warehouseName || 'Pagrindinis',
       items: (itemsMap[p.id] || []).map(it=>({...it,vatRate:it.vatRate ?? (it.sumWithoutVat ? Math.round((it.sumWithVat/it.sumWithoutVat-1)*10000)/100 : 0)}))
     });
     setErrorMsg('');
@@ -246,7 +255,7 @@ export function PurchasesClient({
         const res = await fetch('/api/purchases', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
+          body: JSON.stringify({ ...formData, companyId })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || t('purchases.errCreate'));
@@ -300,7 +309,7 @@ export function PurchasesClient({
         </button>
       </div>
 
-      <PurchaseXmlImport />
+      <PurchaseXmlImport companyId={companyId} warehouses={warehouses} />
 
       {/* Filter Bar */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
@@ -690,6 +699,7 @@ export function PurchasesClient({
                             onChange={(e) => handleItemChange(idx, 'vatRate', parseInt(e.target.value, 10))}
                             className="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
                           >
+                            {/* Rate choices of the line form (not a legal parameter, see lib/rules for how a stored rate is classified). */}
                             <option value={21}>21%</option>
                             <option value={9}>9%</option>
                             <option value={5}>5%</option>
@@ -715,6 +725,7 @@ export function PurchasesClient({
 
                 <label className="block text-xs text-slate-300">{t('purchases.deductionPercent')}<input type="number" min="0" max="100" step="0.01" value={formData.deductionPercent} disabled={(editingPurchase?.buyerVatMode || companyMode)!=='STANDARD_VAT'} onChange={e=>setFormData({...formData,deductionPercent:Number(e.target.value)})} className="block bg-slate-900 border border-slate-700 rounded p-2"/><span className="text-slate-400">{t('purchases.deductionHint')}</span></label>
                 <label className="block text-xs text-slate-300">{t('purchases.debitAccount')}<select value={formData.debitAccount} onChange={e=>setFormData({...formData,debitAccount:e.target.value})} className="block bg-slate-900 border border-slate-700 rounded p-2 max-w-full"><option value="">{t('purchases.defaultAccount')}</option>{accounts.map(a=><option key={a.code} value={a.code}>{a.code} — {a.name}</option>)}</select><span className="text-slate-400">{t('purchases.debitHint')}</span></label>
+                {warehouses.length > 0 && <label className="block text-xs text-slate-300">{t('purchases.warehouse')}<select value={formData.warehouseName} onChange={e=>setFormData({...formData,warehouseName:e.target.value})} className="block bg-slate-900 border border-slate-700 rounded p-2 max-w-full"><option value="Pagrindinis">Pagrindinis</option>{warehouses.filter(w=>w!=='Pagrindinis').map(w=><option key={w} value={w}>{w}</option>)}</select><span className="text-slate-400">{t('purchases.warehouseHint')}</span></label>}
                 {/* Totals */}
                 <div className="flex justify-end pt-2 text-right">
                   <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1 w-64">

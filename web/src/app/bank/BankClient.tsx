@@ -28,7 +28,7 @@ function rich(text: string, nodes: Record<string, React.ReactNode>) {
   });
 }
 
-export function BankClient({ initialTransactions, totalCount }: { initialTransactions: any[]; totalCount: number }) {
+export function BankClient({ initialTransactions, totalCount, companyId }: { initialTransactions: any[]; totalCount: number; companyId: number }) {
   const { t: tr, lang } = useI18n(); // `t` is used below for transaction rows
   const [transactions, setTransactions] = useState(initialTransactions);
 
@@ -63,7 +63,7 @@ export function BankClient({ initialTransactions, totalCount }: { initialTransac
     clientCode: '',
     sum: 100,
     type: 'IN', // IN or OUT
-    accountingBankInternalName: 'Swedbank',
+    accountingBankInternalName: '',
     correspondenceAccountCode: '2710',
     notes: ''
   });
@@ -174,7 +174,7 @@ export function BankClient({ initialTransactions, totalCount }: { initialTransac
       clientCode: '',
       sum: 100,
       type: 'IN',
-      accountingBankInternalName: 'Swedbank',
+      accountingBankInternalName: '',
       correspondenceAccountCode: '2710',
       notes: ''
     });
@@ -192,7 +192,7 @@ export function BankClient({ initialTransactions, totalCount }: { initialTransac
       clientCode: t.clientCode || '',
       sum: Math.abs(Number(t.sum || 0)),
       type: isOut ? 'OUT' : 'IN',
-      accountingBankInternalName: t.accountingBankInternalName || 'Swedbank',
+      accountingBankInternalName: t.accountingBankInternalName || '',
       correspondenceAccountCode: t.correspondenceAccountCode || '2710',
       notes: t.notes || ''
     });
@@ -230,7 +230,7 @@ export function BankClient({ initialTransactions, totalCount }: { initialTransac
         const res = await fetch('/api/bank', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ ...payload, companyId })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || tr('bank.createFailed'));
@@ -640,6 +640,7 @@ export function BankClient({ initialTransactions, totalCount }: { initialTransac
                   <input
                     type="text"
                     value={formData.accountingBankInternalName}
+                    placeholder="Bank"
                     onChange={(e) => setFormData({ ...formData, accountingBankInternalName: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
                   />

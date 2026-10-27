@@ -2,6 +2,7 @@ import { requireApiAccess, checkOrigin } from '@/lib/access';
 import { apiError } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { accountCodeUsage } from '@/lib/account-usage';
 
 export async function PUT(
   request: Request,
@@ -28,6 +29,12 @@ export async function PUT(
     const exists = db.prepare('SELECT id FROM ChartOfAccount WHERE code = ? AND id != ?').get(String(code).trim(), id);
     if (exists) {
       return NextResponse.json({ error: `Sąskaita su kodu ${code} jau egzistuoja` }, { status: 400 });
+    }
+
+    const current = db.prepare('SELECT code FROM ChartOfAccount WHERE id = ?').get(id) as { code: string } | undefined;
+    if (!current) return NextResponse.json({ error: 'Sąskaita nerasta' }, { status: 404 });
+    if (current.code !== String(code).trim() && accountCodeUsage(db, current.code)) {
+      return NextResponse.json({ error: `Sąskaitos kodo keisti negalima: kodas ${current.code} jau naudojamas įrašuose. Galima keisti tik pavadinimą.` }, { status: 409 });
     }
 
     db.prepare('UPDATE ChartOfAccount SET code = ?, name = ? WHERE id = ?').run(
@@ -57,6 +64,10 @@ export async function DELETE(
     if (isNaN(id)) return NextResponse.json({ error: 'Neteisingas ID' }, { status: 400 });
 
     const db = getDb();
+    const current = db.prepare('SELECT code FROM ChartOfAccount WHERE id = ?').get(id) as { code: string } | undefined;
+    if (current && accountCodeUsage(db, current.code)) {
+      return NextResponse.json({ error: `Sąskaitos ${current.code} ištrinti negalima: ji jau naudojama įrašuose.` }, { status: 409 });
+    }
     db.prepare('DELETE FROM ChartOfAccount WHERE id = ?').run(id);
     return NextResponse.json({ success: true });
   } catch (err: any) {

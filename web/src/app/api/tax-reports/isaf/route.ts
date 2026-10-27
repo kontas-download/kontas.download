@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     if (issues.length) return NextResponse.json({ error: 'i.SAF nesudarytas', code: 'ISAF_NOT_APPLICABLE', issues }, { status: 409, headers });
 
     const { sales, purchases } = loadTaxDocuments(db, companyId, start, end);
-    const result = buildIsaf({ company, period: { start, end }, sales, purchases, software: { company: 'kontas.download', name: 'kontas.download', version: '0.1.0' } });
+    const result = buildIsaf({ company, period: { start, end }, sales, purchases, software: { company: 'kontas.download', name: 'kontas.download', version: '0.2.0' } });
     if (!result.xml) return NextResponse.json({ error: 'i.SAF nesudarytas: reikalingas rankinis dokumentų patikrinimas', code: 'ISAF_NEEDS_REVIEW', issues: result.issues }, { status: 409, headers });
     return new NextResponse(result.xml, { headers: { ...headers, 'Content-Type': 'application/xml; charset=utf-8', 'Content-Disposition': `attachment; filename="iSAF_${start}_${end}.xml"` } });
   } catch (err) {

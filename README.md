@@ -34,6 +34,7 @@ Programa nėra mokesčių ar teisinė konsultacija; už deklaracijas, apskaitos 
 - Nėra debetinių sąskaitų (DS).
 - Darbo užmokesčio modulis paprastas: pasiūlytas skaičiavimas supaprastintas (be NPD, progresinių GPM tarifų, Sodros lubų), galutines sumas įvedate jūs.
 - Neruošiamos PLN204, GPM312/GPM313 ir FR0564 deklaracijos; mokesčių kalendorius tik primena terminus.
+- Sąskaitoje nėra automatinės atvirkštinio apmokestinimo (reverse charge) žymos paslaugoms ES PVM mokėtojui. Įrašyti jos į pirkėjo PDF programa dar neleidžia (vidinės pastabos į PDF nepatenka), todėl šį įrašą ir FR0564 tvarko buhalteris.
 - Nėra automatinio ilgalaikio turto nusidėvėjimo ir atsargų savikainos nurašymo.
 - Nėra automatinio sąskaitų siuntimo pagal tvarkaraštį: kiekvienas siuntimas yra rankinis veiksmas.
 
@@ -72,7 +73,7 @@ Reikia Node.js 22 (tokios pat versijos kaip Dockerfile).
 ```bash
 cd web
 npm install
-cp .env.example .env        # DATABASE_URL, APP_ORIGIN, PORT=3200
+cp .env.example .env        # DATABASE_URL, APP_ORIGIN
 node scripts/bootstrap.cjs  # sukuria tuščią duomenų bazę ir administratorių (slaptažodis išvedamas į konsolę)
 npm run dev
 npm test

@@ -1,4 +1,4 @@
-[Lietuvių](#lietuviškai) | [English](#english)
+[Lietuvių](#lietuviškai) | [Русский](#русский) | [English](#english)
 
 # kontas.download – versijos pastabos / release notes
 
@@ -6,7 +6,36 @@
 
 Pagrindinė dokumentacijos kalba – lietuvių. Jei lietuviškas ir angliškas tekstai skiriasi, viršesnis lietuviškas.
 
-### 0.1.0 – pirmasis viešas leidimas
+### 0.2.0 – darbo užmokestis, ilgalaikis turtas, atsargos ir VMI formų juodraščiai
+
+Archyvas: `kontas-download-0.2.0.zip`, šalia – kontrolinės sumos failas `kontas-download-0.2.0.zip.sha256`.
+
+**Kas nauja**
+
+- Darbo užmokestis: skaičiavimas (NPD, GPM, „Sodros“ įmokos) su laikinais 2026 m. parametrais, puslapis „Darbo užmokestis“, žurnalo įrašai.
+- Ilgalaikis turtas: kortelės, nusidėvėjimo skaičiavimas ir įrašymas (su atšaukimu), rankinis keitimas su audito pėdsaku.
+- Atsargos ir savikaina: svertinio vidurkio ir FIFO metodai (pagal nutylėjimą išjungta), judėjimai, rankinis koregavimas su priežastimi, pirkimų sandėlio pasirinkimas.
+- VMI formų juodraščiai: FR0564, GPM313 (iš užregistruotų darbo užmokesčio skaičiavimų) ir GPM312 (metinė suvestinė pagal darbuotojus); puslapiai, CSV/JSON, terminai registre.
+- Taisyklių registras: tarifai, terminai ir darbo užmokesčio parametrai su galiojimo datomis; puslapis „Taisyklės“ (`/rules`); pelno mokesčio tarifas imamas iš registro pagal metus.
+- Svetainėje – plano (roadmap) puslapis.
+- Įmonės paketas apima naujas lenteles (darbo užmokestis, ilgalaikis turtas, atsargos).
+- Pataisymai po peržiūrų: formos įmonės patikra (sąskaitos, pirkimai, XML importas), veiksmo vykdytojas audite, pakeitimų istorijos filtras, pelno (nuostolių) ataskaitos ir balanso skaičiavimas, mokesčių eksporto stabilumas, naudojamų sąskaitų plano apsauga, išleidimo įrankių saugikliai.
+
+**Svarbu**
+
+Darbo užmokesčio parametrai ir tarifai yra laikini, kol buhalteris jų nepatikrino pagal oficialius šaltinius; prieš naudodami skaičiavimus ir juodraščius pateikimui, patikrinkite juos.
+
+**Atnaujinimas**
+
+Padarykite atsarginę kopiją, senajame aplanke paleiskite `docker compose down`, išskleiskite naują archyvą į naują aplanką, nukopijuokite senojo `web/prisma` turinį ir `.env` (jei yra), tada naujajame aplanke `docker compose up -d --build`. Migracijos pritaikomos automatiškai. `SMTP_ENCRYPTION_KEY` turi likti tas pats.
+
+**Kontrolinė suma**
+
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.2.0.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.2.0.zip.sha256).Split(' ')[0]` – `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.2.0.zip.sha256` – `OK`.
+- Linux: `sha256sum -c kontas-download-0.2.0.zip.sha256` – `OK`.
+
+### 0.1.0 – pirmoji viešoji versija
 
 Archyvas: `kontas-download-0.1.0.zip`, šalia – kontrolinės sumos failas `kontas-download-0.1.0.zip.sha256`.
 
@@ -38,6 +67,8 @@ Archyvas: `kontas-download-0.1.0.zip`, šalia – kontrolinės sumos failas `kon
 - camt.053 ir MT940 – tik EUR.
 - Nėra automatinio ar suplanuoto sąskaitų ir priminimų siuntimo.
 - Duomenų bazės atkūrimas – operatoriaus veiksmas (programoje nėra mygtuko „atkurti“).
+
+Planuojami darbai ir nuo ko jie priklauso aprašyti svetainės puslapyje „Planas“ (`roadmap.html`); tai ne įsipareigojimas.
 - Programa veikia vienu egzemplioriumi (SQLite failas).
 - Kai kurie serverio pranešimai gali būti rodomi tik lietuvių kalba.
 
@@ -57,9 +88,71 @@ Tai pirmasis leidimas. Būsimiems atnaujinimams: padarykite atsarginę kopiją, 
 
 Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaracijas atsako naudotojas ir jo buhalteris. Naudojimo sąlygos – `LICENSE`.
 
+## Русский
+
+Основной язык документации – литовский; при расхождении текстов приоритет у литовского.
+
+### 0.2.0 – зарплата, основные средства, запасы и черновики форм VMI
+
+Архив: `kontas-download-0.2.0.zip`, рядом – файл контрольной суммы `kontas-download-0.2.0.zip.sha256`.
+
+**Что нового**
+
+- Зарплата: расчёт (НПД, GPM, взносы «Содры») с временными параметрами на 2026 год, страница «Зарплата», записи в журнале.
+- Основные средства: карточки, расчёт и проводка амортизации (с отменой), ручные изменения с журналом аудита.
+- Запасы и себестоимость: методы средневзвешенной и FIFO (по умолчанию выключено), движения, ручная корректировка с причиной, выбор склада в закупках.
+- Черновики форм VMI: FR0564, GPM313 (из зарегистрированных расчётов зарплаты) и GPM312 (годовая сводка по работникам); страницы, CSV/JSON, сроки в реестре.
+- Реестр правил: ставки, сроки и параметры зарплаты с датами действия; страница «Правила» (`/rules`); ставка налога на прибыль берётся из реестра по годам.
+- Страница плана (roadmap) на сайте.
+- Пакет компании теперь включает новые таблицы (зарплата, основные средства, запасы).
+- Исправления по результатам проверок: проверка компании формы (счета, закупки, XML-импорт), исполнитель действия в аудите, фильтр истории, расчёт отчёта о прибылях и убытках и баланса, стабильность экспорта налогов, защита используемого плана счетов, защитные проверки инструментов выпуска.
+
+**Важно**
+
+Параметры и ставки зарплаты временные, пока бухгалтер не проверил их по официальным источникам; проверьте их, прежде чем полагаться на расчёты и черновики при подаче.
+
+**Обновление**
+
+Сделайте резервную копию, в старой папке выполните `docker compose down`, распакуйте новый архив в новую папку, скопируйте содержимое старой `web/prisma` и файл `.env` (если есть), затем в новой папке выполните `docker compose up -d --build`. Миграции применяются автоматически. `SMTP_ENCRYPTION_KEY` должен остаться тем же.
+
+**Контрольная сумма**
+
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.2.0.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.2.0.zip.sha256).Split(' ')[0]` – должно быть `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.2.0.zip.sha256` – должно быть `OK`.
+- Linux: `sha256sum -c kontas-download-0.2.0.zip.sha256` – должно быть `OK`.
+
 ## English
 
 The main documentation language is Lithuanian; if the texts differ, the Lithuanian one prevails.
+
+### 0.2.0 – payroll, fixed assets, inventory and VMI form drafts
+
+Archive: `kontas-download-0.2.0.zip`, with the checksum file `kontas-download-0.2.0.zip.sha256` next to it.
+
+**What is new**
+
+- Payroll: calculation (NPD, GPM, Sodra contributions) with provisional 2026 parameters, a Payroll page, ledger entries.
+- Fixed assets: asset cards, depreciation calculation and posting (with reversal), manual changes with an audit trail.
+- Inventory and costing: weighted-average and FIFO methods (off by default), stock movements, manual adjustments with a reason, warehouse choice on purchases.
+- VMI form drafts: FR0564, GPM313 (from registered payroll calculations) and GPM312 (annual summary per employee); pages, CSV/JSON, deadlines in the registry.
+- Rules registry: rates, deadlines and payroll parameters with effective dates; a Rules page (`/rules`); the corporate income tax rate is taken from the registry by year.
+- A roadmap page on the website.
+- The company package now includes the new tables (payroll, fixed assets, inventory).
+- Review fixes: company-of-form check (invoices, purchases, XML import), action actor in the audit, history filter, profit and loss and balance sheet calculation, tax export stability, protection of the chart of accounts in use, release tooling safeguards.
+
+**Important**
+
+Payroll parameters and rates are provisional until the accountant has verified them against the official sources; check them before relying on the calculations and drafts for filing.
+
+**Upgrading**
+
+Make a backup, run `docker compose down` in the old folder, unpack the new archive into a new folder, copy the contents of the old `web/prisma` and the `.env` file (if present), then run `docker compose up -d --build` in the new folder. Migrations are applied automatically. `SMTP_ENCRYPTION_KEY` must stay the same.
+
+**Checksum**
+
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.2.0.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.2.0.zip.sha256).Split(' ')[0]` must print `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.2.0.zip.sha256` must print `OK`.
+- Linux: `sha256sum -c kontas-download-0.2.0.zip.sha256` must print `OK`.
 
 ### 0.1.0 – first public release
 
@@ -93,6 +186,8 @@ Archive: `kontas-download-0.1.0.zip`, with the checksum file `kontas-download-0.
 - camt.053 and MT940 in EUR only.
 - No automatic or scheduled sending of invoices or reminders.
 - Restoring a database is an operator procedure (there is no restore button).
+
+Planned work and what it depends on is described on the site page "Roadmap" (`roadmap.html`); it is not a commitment.
 - Single instance only (SQLite file).
 - Some server messages may be shown in Lithuanian only.
 

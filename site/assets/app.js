@@ -5,7 +5,6 @@
   var LANGS = ['lt', 'ru', 'en'];
   var FALLBACK = 'lt'; // main language of the project
   var LANG_KEY = 'pa-site-lang';
-  var OS_KEY = 'pa-site-os';
   var OSES = ['windows', 'macos', 'linux'];
   var dict = window.PA_I18N || {};
   var config = window.PA_CONFIG || {};
@@ -116,8 +115,6 @@
 
   // Operating system tabs (manual and download pages). All panels stay visible without JavaScript.
   function detectOs() {
-    var saved = store(OS_KEY);
-    if (OSES.indexOf(saved) >= 0) return saved;
     var p = String((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '');
     if (/win/i.test(p)) return 'windows';
     if (/mac|iphone|ipad/i.test(p)) return 'macos';
@@ -126,7 +123,6 @@
 
   var tabGroups = [];
   function selectOs(os, focus) {
-    store(OS_KEY, os);
     tabGroups.forEach(function (g) {
       g.tabs.forEach(function (tab, i) {
         var on = tab.getAttribute('data-os') === os;

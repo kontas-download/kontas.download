@@ -2,7 +2,7 @@ import { companyTaxMode, taxMode } from '@/lib/tax';
 import { calculateLine, totalLines } from '@/lib/money';
 import { restoreLineCodes, snapshotLineCodes } from '@/lib/tax-line-codes';
 import { validateBody } from '@/lib/validation';
-import { requireApiAccess, checkOrigin } from '@/lib/access';
+import { requireApiAccess, checkOrigin, withCurrentActor } from '@/lib/access';
 import { apiError } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
@@ -123,7 +123,7 @@ export async function PUT(
       droppedTaxCodes = restoreLineCodes(db, companyId, 'SALE', id, codesBefore);
     });
 
-    updateTx();
+    await withCurrentActor(updateTx);
     const updated = db.prepare('SELECT * FROM Sale WHERE id = ? AND companyId = ?').get(id, companyId);
     return NextResponse.json({ success: true, sale: updated, items: db.prepare('SELECT * FROM SaleItem WHERE saleId=? ORDER BY id').all(id), droppedTaxCodes });
   } catch (err: any) {
@@ -153,7 +153,7 @@ export async function DELETE(
       db.prepare('DELETE FROM Sale WHERE id = ? AND companyId = ?').run(id, companyId);
     });
 
-    deleteTx();
+    await withCurrentActor(deleteTx);
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return apiError(err);

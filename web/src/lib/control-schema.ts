@@ -64,3 +64,14 @@ export function migrateAuditColumns(db:Database.Database) {
     db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-10-audit-columns-v1');
   }).immediate();
 }
+
+// Fills AccountingAudit.actorId from AuditContext (see audit-actor.ts) for every audit trigger, present and future, without rewriting them.
+// Rows that already carry an explicit actorId are left alone.
+export function migrateAuditActor(db:Database.Database) {
+  db.transaction(()=>{
+    if(db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-10-audit-actor-v1'))return;
+    db.exec(`CREATE TABLE IF NOT EXISTS AuditContext(actorId INTEGER);
+      CREATE TRIGGER audit_actor_fill AFTER INSERT ON AccountingAudit WHEN NEW.actorId IS NULL AND EXISTS(SELECT 1 FROM AuditContext) BEGIN UPDATE AccountingAudit SET actorId=(SELECT actorId FROM AuditContext LIMIT 1) WHERE id=NEW.id; END;`);
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-10-audit-actor-v1');
+  }).immediate();
+}

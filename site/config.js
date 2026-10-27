@@ -2,10 +2,10 @@
 // Empty values hide the parts of the site that depend on them. The site never loads anything from other hosts.
 window.PA_CONFIG = {
   // Version of the release archive offered for download (file name: kontas-download-<version>.zip).
-  version: '0.1.0',
+  version: '0.2.0',
   // Direct link to the release archive, absolute (https://...) or relative to this site (e.g. 'files/kontas-download-0.1.0.zip').
   downloadUrl: '',
-  // Link to the checksum file kontas-download-<version>.zip.sha256 created next to the archive by scripts/make-release.py.
+  // Link to the checksum file kontas-download-<version>.zip.sha256, which sits next to the archive on the download page.
   sha256Url: '',
   // Repository page of the project (optional). When set, the About page links to the licence files in it.
   repoUrl: '',

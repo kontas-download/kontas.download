@@ -8,11 +8,11 @@ export function InvoiceDeliveryDialog({invoices,initialId,emailMode=false,onClos
   const [id,setId]=useState(initialId || invoices[0]?.id || 0);
   const [compose,setCompose]=useState(emailMode);
   const [to,setTo]=useState(''),[subject,setSubject]=useState(''),[text,setText]=useState('');
-  const [url,setUrl]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[sent,setSent]=useState(false),[configured,setConfigured]=useState(false);
+  const [url,setUrl]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[sent,setSent]=useState(false),[archiveWarning,setArchiveWarning]=useState(false),[configured,setConfigured]=useState(false);
   const [requestId,setRequestId]=useState('');
   const [lang,setLang]=useState(''),[draftLang,setDraftLang]=useState('');
-  function selectLanguage(value:string){if(value===lang)return;setLoading(true);setError('');setSent(false);setUrl('');setRequestId('');setLang(value);}
-  function selectInvoice(value:number){setLoading(true);setError('');setSent(false);setUrl('');setRequestId('');setId(value);}
+  function selectLanguage(value:string){if(value===lang)return;setLoading(true);setError('');setSent(false);setArchiveWarning(false);setUrl('');setRequestId('');setLang(value);}
+  function selectInvoice(value:number){setLoading(true);setError('');setSent(false);setArchiveWarning(false);setUrl('');setRequestId('');setId(value);}
   useEffect(()=>{
     let cancelled=false,objectUrl='';
     (async()=>{
@@ -29,7 +29,7 @@ export function InvoiceDeliveryDialog({invoices,initialId,emailMode=false,onClos
     return()=>{cancelled=true;if(objectUrl)URL.revokeObjectURL(objectUrl);};
   },[id,lang,t]);
   async function send(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{
-    const response=await fetch('/api/invoices/'+id+'/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,subject,text,requestId,lang:lang||draftLang})});const result=await response.json();if(!response.ok)throw new Error(result.error);setSent(true);
+    const response=await fetch('/api/invoices/'+id+'/email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to,subject,text,requestId,lang:lang||draftLang})});const result=await response.json();if(!response.ok)throw new Error(result.error);setSent(true);setArchiveWarning(result.archiveWarning===true);
   }catch(e){setError(e instanceof Error?e.message:t('delivery.sendFailed'));}finally{setBusy(false);}}
   return <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 no-print" role="dialog" aria-modal="true" aria-label={t('delivery.dialogLabel')}>
     <div className="bg-white text-slate-900 rounded-xl shadow-xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden">
@@ -41,6 +41,7 @@ export function InvoiceDeliveryDialog({invoices,initialId,emailMode=false,onClos
       </div>
       {error&&<p role="alert" className="bg-red-50 text-red-800 p-3">{error}</p>}
       {sent&&<p role="status" className="bg-emerald-50 text-emerald-800 p-3">{t('delivery.sent')}</p>}
+      {sent&&archiveWarning&&<p role="alert" className="bg-amber-50 text-amber-900 p-3">{t('delivery.archiveWarning')}</p>}
       <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-auto">
         <div className="flex-1 min-h-[400px] bg-slate-100">{loading?<p className="p-8">{t('delivery.generating')}</p>:url?<iframe src={url} title={t('delivery.pdfTitle')} className="w-full h-full min-h-[400px]"/>:<p className="p-8">{t('delivery.noPreview')}</p>}</div>
         {compose&&<form onSubmit={send} className="p-5 md:w-96 space-y-4 overflow-y-auto">

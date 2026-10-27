@@ -8,7 +8,7 @@ The application: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, 
 
 ```bash
 npm install
-cp .env.example .env         # DATABASE_URL, APP_ORIGIN, COOKIE_SECURE=false, PORT=3200, SMTP_ENCRYPTION_KEY
+cp .env.example .env         # DATABASE_URL, APP_ORIGIN, COOKIE_SECURE=false, SMTP_ENCRYPTION_KEY
 node scripts/bootstrap.cjs   # for an empty database: schema, chart of accounts, administrator
 npm run dev
 ```
@@ -19,9 +19,9 @@ The application is available at http://localhost:3200. `bootstrap.cjs` is safe t
 
 | Command | Purpose |
 |---|---|
-| `npm run dev` | development server (`next dev`) |
+| `npm run dev` | development server (`next dev -p 3200`) |
 | `npm run build` | production build (`next build`); the folder can be changed with `NEXT_BUILD_DIR` |
-| `npm start` | production server (`next start`) |
+| `npm start` | production server (`next start -p 3200`) |
 | `npm run lint` | ESLint |
 | `npm test` | `node --test tests/*.cjs` |
 

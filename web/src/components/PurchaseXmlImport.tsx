@@ -8,7 +8,7 @@ interface Credit { reference: { number: string; issueDate: string | null } | nul
 interface Preview { kind?: 'invoice' | 'credit'; credit?: Credit | null; committed?: boolean; ok?: boolean; error?: string; issues: string[]; warnings: string[]; needsSupplier: boolean; supplier: { name: string; code: string; vatCode: string } | null; invoice: { number: string; issueDate: string; dueDate: string | null; net: number; vat: number; gross: number; lines: number } | null; }
 
 // Supplier e-invoice (UBL XML) import: always previewed first; nothing is created until the user confirms.
-export function PurchaseXmlImport() {
+export function PurchaseXmlImport({ companyId, warehouses }: { companyId: number; warehouses: string[] }) {
   const t = useT();
   const router = useRouter();
   const [xml, setXml] = useState('');
@@ -16,13 +16,14 @@ export function PurchaseXmlImport() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [createSupplier, setCreateSupplier] = useState(false);
   const [originalId, setOriginalId] = useState('');
+  const [warehouseName, setWarehouseName] = useState('Pagrindinis');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
-  async function send(commit: boolean, text = xml, chosen = originalId) {
+  async function send(commit: boolean, text = xml, chosen = originalId, warehouse = warehouseName) {
     setBusy(true); setMessage('');
     try {
-      const res = await fetch('/api/purchases/import-xml', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ xml: text, filename, commit, createSupplier, ...(chosen ? { originalPurchaseId: Number(chosen) } : {}) }) });
+      const res = await fetch('/api/purchases/import-xml', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId, warehouseName: warehouse, xml: text, filename, commit, createSupplier, ...(chosen ? { originalPurchaseId: Number(chosen) } : {}) }) });
       const data = await res.json().catch(() => ({}));
       if (res.ok && commit) { setMessage(t('purchases.xmlImported', { number: data.purchase.number })); setXml(''); setFilename(''); setPreview(null); setCreateSupplier(false); setOriginalId(''); router.refresh(); return; }
       if (!res.ok && !data.issues) { setMessage(data.error || t('purchases.xmlErrImport')); return; }
@@ -43,6 +44,7 @@ export function PurchaseXmlImport() {
         <label className="text-xs text-slate-300">{t('purchases.xmlLabel')}
           <input type="file" accept=".xml,text/xml,application/xml" onChange={e => pick(e.target.files?.[0])} className="block mt-1 text-slate-300" />
         </label>
+        {warehouses.length > 0 && <label className="text-xs text-slate-300">{t('purchases.warehouse')}<select value={warehouseName} onChange={e => { setWarehouseName(e.target.value); if (xml) send(false, xml, originalId, e.target.value); }} className="block mt-1 rounded border border-slate-700 bg-slate-950 p-1 text-slate-200"><option value="Pagrindinis">Pagrindinis</option>{warehouses.filter(w => w !== 'Pagrindinis').map(w => <option key={w} value={w}>{w}</option>)}</select><span className="text-slate-400">{t('purchases.warehouseHint')}</span></label>}
         {preview && <button disabled={busy || blocked} onClick={() => send(true)} className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold">{t('purchases.xmlImport')}</button>}
       </div>
       {message && <div className="rounded border border-emerald-700 bg-emerald-950/30 p-2 text-emerald-200">{message}</div>}

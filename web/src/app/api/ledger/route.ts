@@ -1,5 +1,5 @@
 import { validateBody } from '@/lib/validation';
-import { requireApiAccess, checkOrigin } from '@/lib/access';
+import { requireApiAccess, checkOrigin, withCurrentActor } from '@/lib/access';
 import { apiError } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     }
 
     const db = getDb();
-    const res = db.prepare(`
+    const res = await withCurrentActor(() => db.prepare(`
       INSERT INTO GeneralEntry (
         companyId, date, docNumber, debitAccount, creditAccount,
         amount, clientId, clientName, description, sourceType,
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       clientId ? Number(clientId) : null,
       clientName ? String(clientName).trim() : null,
       description ? String(description).trim() : 'Rankinis bendrojo žurnalo įrašas'
-    );
+    ));
 
     const created = db.prepare('SELECT * FROM GeneralEntry WHERE id = ?').get(res.lastInsertRowid);
     return NextResponse.json({ success: true, entry: created });

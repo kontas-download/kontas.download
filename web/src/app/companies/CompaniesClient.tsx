@@ -69,6 +69,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
   const [importStatus, setImportStatus] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [creatingDemo, setCreatingDemo] = useState(false);
 
   const openCreateModal = () => {
     setFormData({
@@ -203,6 +204,36 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
     }
   };
 
+  // Fictional demonstration company; after creation it becomes the active company through the usual switch.
+  const handleCreateDemo = async () => {
+    if (!window.confirm(t('demo.confirm'))) return;
+    setCreatingDemo(true);
+    let companyId: number;
+    try {
+      const res = await fetch('/api/demo', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      companyId = data.companyId;
+    } catch (e) {
+      alert(t('demo.failed', { message: (e as Error).message }));
+      setCreatingDemo(false);
+      return;
+    }
+    // The company exists from here on: a failed switch must not be reported as a failed creation.
+    try {
+      const res = await fetch('/api/companies/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyId })
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
+      setActiveId(companyId);
+    } catch (e) {
+      alert(t('demo.createdNotSwitched', { message: (e as Error).message }));
+    }
+    window.location.reload();
+  };
+
   const handleImportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!importFile || !importingCompanyId) {
@@ -258,6 +289,13 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
           </p>
         </div>
 
+        {isAdmin && <button
+          onClick={handleCreateDemo}
+          disabled={creatingDemo}
+          className="inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-200 border border-slate-700 rounded-lg hover:bg-slate-800 disabled:opacity-50"
+        >
+          {creatingDemo ? t('demo.creating') : t('demo.create')}
+        </button>}
         {isAdmin && <a href="/api/admin/backup" download className="inline-flex items-center px-4 py-2 text-sm font-semibold text-slate-200 border border-slate-700 rounded-lg hover:bg-slate-800">{t('companies.backupFull')}</a>}
         {isAdmin && <button
           onClick={openCreateModal}
@@ -532,7 +570,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                     <label className="block text-xs text-slate-600 mb-1">{t('companies.bankName')}</label>
                     <input
                       type="text"
-                      placeholder="Swedbank, SEB, Paysera, Revolut..."
+                      placeholder={t('companies.bankName')}
                       value={formData.bankName}
                       onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -553,7 +591,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                       <label className="block text-xs text-slate-600 mb-1">SWIFT / BIC</label>
                       <input
                         type="text"
-                        placeholder="HABALT22"
+                        placeholder="AAAALT00"
                         value={formData.bankSwift}
                         onChange={(e) => setFormData({ ...formData, bankSwift: e.target.value })}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"

@@ -25,6 +25,7 @@ export default async function PurchasesPage() {
   const rows=db.prepare('SELECT i.* FROM PurchaseItem i JOIN Purchase p ON p.id=i.purchaseId WHERE p.companyId=? ORDER BY i.id').all(companyId) as any[];
   const itemsByPurchaseId:Record<number,any[]>={};for(const item of rows)(itemsByPurchaseId[item.purchaseId] ||= []).push(item);
   const accounts=db.prepare("SELECT code,name FROM ChartOfAccount WHERE code NOT LIKE '44%' AND code NOT IN ('2410','2444') ORDER BY code").all() as {code:string;name:string}[];
+  const warehouses=(db.prepare("SELECT DISTINCT COALESCE(warehouseName,'Pagrindinis') AS name FROM StockItem WHERE companyId=? ORDER BY name").all(companyId) as {name:string}[]).map(w=>w.name);
   const mode=companyTaxMode(companyId,new Date().toISOString().slice(0,10));
-  return <PurchasesClient accounts={accounts} companyMode={mode} itemsByPurchaseId={itemsByPurchaseId} initialPurchases={purchases} clientsList={clients} />;
+  return <PurchasesClient warehouses={warehouses} accounts={accounts} companyMode={mode} itemsByPurchaseId={itemsByPurchaseId} initialPurchases={purchases} clientsList={clients} companyId={companyId} />;
 }

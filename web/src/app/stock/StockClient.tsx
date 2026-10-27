@@ -13,6 +13,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { useI18n } from '@/lib/i18n/client';
+import { InventoryPanel } from './InventoryPanel';
 import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
 
@@ -243,6 +244,8 @@ export function StockClient({ initialStock }: { initialStock: any[] }) {
           <span>{t('stock.addNew')}</span>
         </button>
       </div>
+
+      <InventoryPanel />
 
       {/* Filter Bar */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">

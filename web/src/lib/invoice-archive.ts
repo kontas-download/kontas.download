@@ -10,6 +10,20 @@ export function archiveInvoicePdf(doc: InvoiceDocument, pdf: Buffer, delivery: {
   getDb().prepare('INSERT OR IGNORE INTO InvoiceArchive(companyId,saleId,requestId,docNumber,filename,sha256,size,pdf,snapshot,recipient,messageId,createdAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')
     .run(doc.companyId, doc.id, delivery.requestId, doc.number, invoiceFilename(doc), createHash('sha256').update(pdf).digest('hex'), pdf.length, pdf, JSON.stringify(doc), delivery.recipient, delivery.messageId, Date.now());
 }
+// Archives the sent PDF and stores the outcome on the delivery row. Never throws: a failed archive must not hide that the email was sent.
+export function archiveDeliveredPdf(doc: InvoiceDocument, pdf: Buffer, delivery: { requestId: string; recipient: string; messageId: string }): 'ok' | 'failed' {
+  let status: 'ok' | 'failed' = 'ok';
+  try { archiveInvoicePdf(doc, pdf, delivery); } catch (error) { console.error('Invoice archive failed', error); status = 'failed'; }
+  getDb().prepare('UPDATE InvoiceDelivery SET archiveStatus=? WHERE companyId=? AND requestId=?').run(status, doc.companyId, delivery.requestId);
+  return status;
+}
+// Repeated request of an already sent email: returns the stored archive status and, when it was 'failed', re-renders the PDF and archives it again.
+export async function settleDeliveryArchive(doc: InvoiceDocument, requestId: string, render: () => Promise<Buffer>): Promise<'ok' | 'failed' | null> {
+  const row = getDb().prepare("SELECT recipient,messageId,archiveStatus FROM InvoiceDelivery WHERE companyId=? AND requestId=? AND status='sent'").get(doc.companyId, requestId) as { recipient: string; messageId: string; archiveStatus: 'ok' | 'failed' | null } | undefined;
+  if (!row || row.archiveStatus !== 'failed') return row?.archiveStatus ?? null;
+  try { return archiveDeliveredPdf(doc, await render(), { requestId, recipient: row.recipient, messageId: row.messageId }); }
+  catch (error) { console.error('Invoice archive retry failed', error); return 'failed'; }
+}
 export function listInvoiceArchive(companyId: number, saleId: number): ArchiveEntry[] {
   return getDb().prepare('SELECT id,saleId,docNumber,filename,sha256,size,recipient,messageId,createdAt FROM InvoiceArchive WHERE companyId=? AND saleId=? ORDER BY id DESC').all(companyId, saleId) as ArchiveEntry[];
 }

@@ -1,8 +1,9 @@
+import { purchaseWarehouse } from '@/lib/purchases';
 import { companyTaxMode, purchaseDebitAccount, purchaseTax, taxMode } from '@/lib/tax';
 import { calculateLine, totalLines } from '@/lib/money';
 import { restoreLineCodes, snapshotLineCodes } from '@/lib/tax-line-codes';
 import { validateBody } from '@/lib/validation';
-import { requireApiAccess, checkOrigin } from '@/lib/access';
+import { requireApiAccess, checkOrigin, withCurrentActor } from '@/lib/access';
 import { apiError } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
@@ -42,10 +43,11 @@ export async function PUT(
     const db = getDb();
 
     const { sumWithoutVat, sumWithVat, vat } = totalLines(items);
-    const snapshot=db.prepare('SELECT buyerVatMode,deductionPercent,debitAccount FROM Purchase WHERE id=? AND companyId=?').get(id,companyId) as {buyerVatMode:string|null;deductionPercent:number|null;debitAccount:string|null};
+    const snapshot=db.prepare('SELECT buyerVatMode,deductionPercent,debitAccount,warehouseName FROM Purchase WHERE id=? AND companyId=?').get(id,companyId) as {buyerVatMode:string|null;deductionPercent:number|null;debitAccount:string|null;warehouseName:string|null};
     const mode=snapshot.buyerVatMode?taxMode(snapshot.buyerVatMode):companyTaxMode(companyId,purchaseDate);
     const {deductionPercent,deductibleVat}=purchaseTax(vat,mode,body.deductionPercent ?? snapshot.deductionPercent ?? undefined);
     const debitAccount=body.debitAccount===undefined?snapshot.debitAccount:purchaseDebitAccount(db,body.debitAccount);
+    const warehouseName=body.warehouseName===undefined?snapshot.warehouseName:purchaseWarehouse(db,companyId,body.warehouseName);
 
 
     let droppedTaxCodes: { itemName: string; taxCode: string }[] = [];
@@ -62,7 +64,7 @@ export async function PUT(
           vat = ?,
           sumWithVat = ?,
           notes = ?,
-          buyerVatMode = ?, deductionPercent = ?, deductibleVat = ?, debitAccount = ?
+          buyerVatMode = ?, deductionPercent = ?, deductibleVat = ?, debitAccount = ?, warehouseName = ?
         WHERE id = ? AND companyId = ?
       `).run(
         series || '',
@@ -75,7 +77,7 @@ export async function PUT(
         vat,
         sumWithVat,
         notes || null,
-        mode, deductionPercent, deductibleVat, debitAccount,
+        mode, deductionPercent, deductibleVat, debitAccount, warehouseName,
         id,
         companyId
       );
@@ -107,7 +109,7 @@ export async function PUT(
       droppedTaxCodes = restoreLineCodes(db, companyId, 'PURCHASE', id, codesBefore);
     });
 
-    updateTx();
+    await withCurrentActor(updateTx);
     const updated = db.prepare('SELECT * FROM Purchase WHERE id = ? AND companyId = ?').get(id, companyId);
     return NextResponse.json({ success: true, purchase: updated, items:db.prepare('SELECT * FROM PurchaseItem WHERE purchaseId=? ORDER BY id').all(id), droppedTaxCodes });
   } catch (err: any) {
@@ -137,7 +139,7 @@ export async function DELETE(
       db.prepare('DELETE FROM Purchase WHERE id = ? AND companyId = ?').run(id, companyId);
     });
 
-    deleteTx();
+    await withCurrentActor(deleteTx);
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return apiError(err);

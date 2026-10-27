@@ -1,4 +1,4 @@
-import { requireApiAccess, checkOrigin } from '@/lib/access';
+import { requireApiAccess, checkOrigin, withCurrentActor } from '@/lib/access';
 import { apiError } from '@/lib/errors';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     if (forbidden) return forbidden;
     const companyId = await getActiveCompanyId();
     const body = await request.json();
-    const id = allocatePayment(getDb(), companyId, { bankTransactionId: Number(body?.bankTransactionId), kind: body?.kind, documentId: Number(body?.documentId), amount: body?.amount });
+    const id = await withCurrentActor(() => allocatePayment(getDb(), companyId, { bankTransactionId: Number(body?.bankTransactionId), kind: body?.kind, documentId: Number(body?.documentId), amount: body?.amount }));
     return NextResponse.json({ success: true, id });
   } catch (err) {
     return apiError(err);

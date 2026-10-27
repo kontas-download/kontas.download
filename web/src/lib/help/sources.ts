@@ -80,6 +80,33 @@ export const helpSources: HelpSource[] = [
     url: ETAR, issuer: 'Valstybinė mokesčių inspekcija (VMI) / Teisės aktų registras', portal: true, verifiedOn: VERIFIED,
   },
   {
+    id: 'vmi-fr0564-rules',
+    title: {
+      lt: 'Prekių tiekimo ir paslaugų teikimo į kitas Europos Sąjungos valstybes nares ataskaitos FR0564 formos ir jos priedų užpildymo, teikimo ir tikslinimo taisyklės (VMI viršininko 2004-03-12 įsakymas Nr. VA-34, suvestinė redakcija nuo 2025-05-01, pakeitimas VA-40)',
+      ru: 'Правила заполнения, подачи и уточнения отчёта FR0564 о поставках товаров и услуг в другие государства-члены ЕС (приказ начальника VMI от 2004-03-12 № VA-34, сводная редакция с 2025-05-01, изменение VA-40)',
+      en: 'Rules for completing, submitting and correcting the report FR0564 on supplies of goods and services to other EU member states (VMI Head Order No. VA-34 of 2004-03-12, consolidated version from 2025-05-01, amendment VA-40)',
+    },
+    url: ETAR, issuer: 'Valstybinė mokesčių inspekcija (VMI) / Teisės aktų registras', portal: true, verifiedOn: VERIFIED,
+  },
+  {
+    id: 'vmi-gpm313-rules',
+    title: {
+      lt: 'Mėnesinės pajamų mokesčio deklaracijos GPM313 formos užpildymo ir pateikimo tvarkos aprašas (VMI viršininko 2017-12-20 įsakymas Nr. VA-121, paskutiniai pakeitimai 2025-11-20 įsakymu Nr. VA-105)',
+      ru: 'Порядок заполнения и подачи ежемесячной декларации подоходного налога GPM313 (приказ начальника VMI от 2017-12-20 № VA-121, последние изменения приказом от 2025-11-20 № VA-105)',
+      en: 'Procedure for completing and submitting the monthly personal income tax declaration GPM313 (VMI Head Order No. VA-121 of 2017-12-20, last amended by Order No. VA-105 of 2025-11-20)',
+    },
+    url: ETAR, issuer: 'Valstybinė mokesčių inspekcija (VMI) / Teisės aktų registras', portal: true, verifiedOn: VERIFIED,
+  },
+  {
+    id: 'vmi-gpm312-rules',
+    title: {
+      lt: 'Metinės gyventojams išmokėtų išmokų, priskiriamų A ir B klasių pajamoms, deklaracijos GPM312 formos, jos priedų GPM312L, GPM312U formų užpildymo ir pateikimo taisyklės (VMI viršininko 2018-02-06 įsakymas Nr. VA-9, redakcija 2026-03-26 įsakymu Nr. VA-24)',
+      ru: 'Правила заполнения и подачи годовой декларации GPM312 о выплатах физическим лицам, относимых к доходам классов A и B, и её приложений GPM312L, GPM312U (приказ начальника VMI от 2018-02-06 № VA-9, редакция приказа от 2026-03-26 № VA-24)',
+      en: 'Rules for completing and submitting the annual declaration GPM312 of payments to individuals attributed to class A and B income and its appendices GPM312L, GPM312U (VMI Head Order No. VA-9 of 2018-02-06, as amended by Order No. VA-24 of 2026-03-26)',
+    },
+    url: ETAR, issuer: 'Valstybinė mokesčių inspekcija (VMI) / Teisės aktų registras', portal: true, verifiedOn: VERIFIED,
+  },
+  {
     id: 'lt-business-accounting-standards',
     title: {
       lt: 'Verslo apskaitos standartai (VAS)',

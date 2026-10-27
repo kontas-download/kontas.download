@@ -8,7 +8,7 @@ Programa: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, SQLite 
 
 ```bash
 npm install
-cp .env.example .env         # DATABASE_URL, APP_ORIGIN, COOKIE_SECURE=false, PORT=3200, SMTP_ENCRYPTION_KEY
+cp .env.example .env         # DATABASE_URL, APP_ORIGIN, COOKIE_SECURE=false, SMTP_ENCRYPTION_KEY
 node scripts/bootstrap.cjs   # tuščiai duomenų bazei: schema, sąskaitų planas, administratorius
 npm run dev
 ```
@@ -19,9 +19,9 @@ Programa pasiekiama adresu http://localhost:3200. `bootstrap.cjs` saugu paleisti
 
 | Komanda | Paskirtis |
 |---|---|
-| `npm run dev` | kūrimo serveris (`next dev`) |
+| `npm run dev` | kūrimo serveris (`next dev -p 3200`) |
 | `npm run build` | gamybinis surinkimas (`next build`); aplanką galima pakeisti kintamuoju `NEXT_BUILD_DIR` |
-| `npm start` | gamybinis serveris (`next start`) |
+| `npm start` | gamybinis serveris (`next start -p 3200`) |
 | `npm run lint` | ESLint |
 | `npm test` | `node --test tests/*.cjs` |
 

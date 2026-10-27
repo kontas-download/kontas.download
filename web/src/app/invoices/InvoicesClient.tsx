@@ -50,6 +50,7 @@ export function InvoicesClient({
   const { t, lang } = useI18n();
   const statusLabel = (name: string) => name === 'Apmokėta' ? t('invoices.statusPaid') : name === 'Neapmokėta' ? t('invoices.statusUnpaid') : name;
   const companyChargesVat = (company?.effectiveTaxMode ?? company?.taxMode ?? (company?.isVatPayer ? 'STANDARD_VAT' : 'NON_VAT')) === 'STANDARD_VAT';
+  // Form suggestion, not a legal parameter: the rate is chosen per line and stored on the document; i.SAF and FR0600 classify a stored rate through the rules registry (lib/rules).
   const defaultVatRate = companyChargesVat ? 21 : 0;
   const [sales, setSales] = useState<any[]>(initialSales);
   const [itemsMap, setItemsMap] = useState<Record<number, any[]>>(itemsBySaleId);
@@ -301,6 +302,7 @@ export function InvoicesClient({
       ...formData,
       items: [
         ...formData.items,
+        // Same form suggestion as defaultVatRate.
         { itemName: '', itemCode: '', quantity: 1, price: 0, vatRate: formIsVatPayer ? 21 : 0 }
       ]
     });
@@ -348,7 +350,7 @@ export function InvoicesClient({
         const res = await fetch('/api/invoices', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
+          body: JSON.stringify({ ...formData, companyId: company?.id })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || t('invoices.errCreate'));
@@ -936,6 +938,7 @@ export function InvoicesClient({
                             onChange={(e) => handleItemChange(idx, 'vatRate', parseInt(e.target.value, 10))}
                             className="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
                           >
+                            {/* Rate choices of the line form (not a legal parameter, see lib/rules for how a stored rate is classified). */}
                             <option value={21}>21%</option>
                             <option value={9}>9%</option>
                             <option value={5}>5%</option>

@@ -1,6 +1,7 @@
 import { domesticTaxCode, totalsMismatch, type IsafDocument } from './isaf';
 import { BASE_UNKNOWN, codedLineProblem, droppedText, EU_VAT_PREFIXES, isLt, PARTY_TEXT, partyFits, partyKind, taxCodeSide, type FrField, type TaxCodeSide } from './tax-codes';
 import { vatOnNetCents } from './money';
+import { rules } from './rules/registry';
 
 // Draft of the FR0600 amounts that can be derived with confidence. Field numbers and rules: VMI guide KM1739 and the VMI table
 // "FR0600 + i.SAF kodas". Domestic taxed lines are classified automatically; other lines count only when the accountant assigned
@@ -144,12 +145,12 @@ export function fr0600Draft(sales: IsafDocument[], purchases: IsafDocument[]): F
   };
 }
 
-// Monthly period only: 25th day of the next month, without weekend/holiday carry-over.
+// Monthly period only: the due day of the next month (rules registry vat.return.dueDay, 25), without weekend/holiday carry-over.
 export function monthlyDueDate(start: string, end: string): string | null {
   const first = /^(\d{4})-(\d{2})-01$/.exec(start);
   if (!first) return null;
   const last = new Date(Date.UTC(Number(first[1]), Number(first[2]), 0)).toISOString().slice(0, 10);
   if (end !== last) return null;
-  const next = new Date(Date.UTC(Number(first[1]), Number(first[2]), 25));
+  const next = new Date(Date.UTC(Number(first[1]), Number(first[2]), rules.number('vat.return.dueDay', end)));
   return next.toISOString().slice(0, 10);
 }

@@ -21,7 +21,8 @@ import {
   UserCheck,
   UserCog,
   KeyRound,
-  CircleHelp
+  CircleHelp,
+  Scale
 } from 'lucide-react';
 import { CompanySwitcher } from './CompanySwitcher';
 import { LanguageSwitcher } from './LanguageSwitcher';
@@ -38,6 +39,8 @@ const operationItems = [
   { name: 'nav.bank', href: '/bank', icon: Landmark },
   { name: 'nav.receivables', href: '/receivables', icon: Wallet },
   { name: 'nav.payroll', href: '/payrolls', icon: Wallet },
+  { name: 'nav.payrollRuns', href: '/payroll', icon: Wallet },
+  { name: 'nav.assets', href: '/assets', icon: Package },
 ];
 
 const accountingItems = [
@@ -46,6 +49,9 @@ const accountingItems = [
   { name: 'nav.statements', href: '/financial-statements', icon: TrendingUp },
   { name: 'nav.taxReports', href: '/tax-reports', icon: FileCheck },
   { name: 'nav.taxCalendar', href: '/tax-calendar', icon: FileCheck2 },
+  { name: 'nav.fr0564', href: '/fr0564', icon: FileCheck },
+  { name: 'nav.gpm313', href: '/gpm313', icon: FileCheck },
+  { name: 'nav.gpm312', href: '/gpm312', icon: FileCheck },
   { name: 'nav.reconciliation', href: '/reconciliation', icon: FileCheck2 },
 ];
 
@@ -135,7 +141,7 @@ export function Sidebar() {
       <nav className="flex-1 p-3 overflow-y-auto">
         {renderNavGroup(t('nav.groupOperations'), [...operationItems, ...extraItems.map(item => ({ ...item, icon: Wallet }))])}
         {renderNavGroup(t('nav.groupAccounting'), accountingItems)}
-        {renderNavGroup(t('nav.groupSystem'), [...systemItems, ...(profile?.role === 'admin' ? [{ name: 'nav.users', href: '/users', icon: UserCog }] : []), { name: 'nav.help', href: '/help', icon: CircleHelp }])}
+        {renderNavGroup(t('nav.groupSystem'), [...systemItems, ...(profile?.role === 'admin' ? [{ name: 'nav.users', href: '/users', icon: UserCog }] : []), { name: 'nav.rules', href: '/rules', icon: Scale }, { name: 'nav.help', href: '/help', icon: CircleHelp }])}
       </nav>
 
       <LanguageSwitcher />

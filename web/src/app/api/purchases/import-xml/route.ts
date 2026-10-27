@@ -1,5 +1,5 @@
 import { requireApiAccess, checkOrigin } from '@/lib/access';
-import { apiError, HttpError } from '@/lib/errors';
+import { apiError, assertFormCompany, HttpError } from '@/lib/errors';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { importXmlPurchase, previewXmlPurchase } from '@/lib/purchase-import';
@@ -14,15 +14,16 @@ export async function POST(request: Request) {
     if (forbidden) return forbidden;
     const companyId = await getActiveCompanyId();
     const body = await request.json();
+    assertFormCompany(body?.companyId, companyId);
     if (typeof body?.xml !== 'string' || !body.xml.trim()) throw new HttpError(400, 'Pateikite XML tekstą');
     const originalPurchaseId = body.originalPurchaseId === undefined || body.originalPurchaseId === null ? undefined : Number(body.originalPurchaseId);
     if (originalPurchaseId !== undefined && !Number.isSafeInteger(originalPurchaseId)) throw new HttpError(400, 'Neteisingas originalPurchaseId');
     if (body.commit !== true) {
-      const preview = previewXmlPurchase(getDb(), companyId, body.xml, { originalPurchaseId });
+      const preview = previewXmlPurchase(getDb(), companyId, body.xml, { originalPurchaseId, warehouseName: typeof body.warehouseName === 'string' ? body.warehouseName : undefined });
       return NextResponse.json({ committed: false, ...preview });
     }
     try {
-      const result = importXmlPurchase(companyId, body.xml, { filename: typeof body.filename === 'string' ? body.filename : undefined, createSupplier: body.createSupplier === true, originalPurchaseId, deductionPercent: body.deductionPercent, debitAccount: typeof body.debitAccount === 'string' ? body.debitAccount : undefined });
+      const result = importXmlPurchase(companyId, body.xml, { filename: typeof body.filename === 'string' ? body.filename : undefined, createSupplier: body.createSupplier === true, originalPurchaseId, deductionPercent: body.deductionPercent, debitAccount: typeof body.debitAccount === 'string' ? body.debitAccount : undefined, warehouseName: typeof body.warehouseName === 'string' ? body.warehouseName : undefined });
       return NextResponse.json({ committed: true, ...result });
     } catch (error) {
       const preview = (error as { preview?: unknown }).preview;

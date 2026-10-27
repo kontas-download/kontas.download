@@ -22,14 +22,14 @@ export function describe(action: string, before: Record<string, unknown> | null,
   return { label, changes, summary };
 }
 
-// createdAt is stored in UTC, the user enters dates of the Vilnius calendar: a day starts at the UTC instant of Vilnius midnight (UTC+2 or UTC+3).
+// createdAt is stored as ISO 'YYYY-MM-DDTHH:MM:SS.sssZ' (UTC), so the bounds use the same format for string comparison; the user enters dates of the Vilnius calendar: a day starts at the UTC instant of Vilnius midnight (UTC+2 or UTC+3).
 function vilniusDayStartUtc(date: string): string {
   const [y, m, d] = date.split('-').map(Number);
   for (const offset of [2, 3]) {
     const start = Date.UTC(y, m - 1, d, -offset);
-    if (todayVilnius(new Date(start)) === date && todayVilnius(new Date(start - 1)) !== date) return new Date(start).toISOString().slice(0, 19).replace('T', ' ');
+    if (todayVilnius(new Date(start)) === date && todayVilnius(new Date(start - 1)) !== date) return new Date(start).toISOString();
   }
-  return `${date} 00:00:00`;
+  return `${date}T00:00:00.000Z`;
 }
 
 function where(companyId: number, filter: HistoryFilter) {

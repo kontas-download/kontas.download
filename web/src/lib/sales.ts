@@ -3,6 +3,7 @@ import { calculateLine, totalLines } from './money';
 import { validateBody } from './validation';
 import { HttpError } from './errors';
 import { getDb } from './db';
+import { postDocumentInventory } from './inventory';
 
 // Creates a sales invoice with its lines and posting in one transaction. Shared by the invoice API and recurring invoices.
 export function createInvoice(companyId: number, body: any) {
@@ -54,6 +55,8 @@ export function createInvoice(companyId: number, body: any) {
       const { qty, price, vatRate, lineNoVat, lineWithVat } = calculateLine(it);
       insertItem.run(saleId, it.itemName || 'Paslauga', it.itemCode || null, qty, price, lineWithVat / qty, vatRate, lineNoVat, lineWithVat, warehouseName || 'Pagrindinis');
     }
+    // Cost of goods sold, when the company keeps inventory accounting; an insufficient stock aborts the whole invoice.
+    postDocumentInventory(db, companyId, 'SALE', saleId);
     return saleId;
   });
   const saleId = create();

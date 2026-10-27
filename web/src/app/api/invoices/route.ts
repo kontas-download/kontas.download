@@ -1,6 +1,6 @@
 import { createInvoice } from '@/lib/sales';
-import { requireApiAccess, checkOrigin } from '@/lib/access';
-import { apiError } from '@/lib/errors';
+import { requireApiAccess, checkOrigin, withCurrentActor } from '@/lib/access';
+import { apiError, assertFormCompany } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
@@ -34,8 +34,9 @@ export async function POST(request: Request) {
     const forbidden = await checkOrigin(request);
     if (forbidden) return forbidden;
     const companyId = await getActiveCompanyId();
-    const body = await request.json();
-    const { sale, items } = createInvoice(companyId, body);
+    const { companyId: formCompanyId, ...body } = await request.json();
+    assertFormCompany(formCompanyId, companyId);
+    const { sale, items } = await withCurrentActor(() => createInvoice(companyId, body));
     return NextResponse.json({ success: true, sale, items });
   } catch (err: any) {
     return apiError(err);

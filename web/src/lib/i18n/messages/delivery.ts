@@ -22,6 +22,7 @@ const delivery: Namespace = {
     notConfigured: 'El. pašto siuntimas dar nesukonfigūruotas. PDF galima atsisiųsti.',
     sending: 'Siunčiama…',
     sentShort: 'Išsiųsta',
+    archiveWarning: 'Laiškas išsiųstas, bet PDF kopijos archyve išsaugoti nepavyko. Pakartokite siuntimo užklausą arba atsisiųskite PDF.',
     send: 'Siųsti laišką su PDF',
   },
   ru: {
@@ -45,6 +46,7 @@ const delivery: Namespace = {
     notConfigured: 'Отправка почты пока не настроена. PDF можно скачать.',
     sending: 'Отправляем…',
     sentShort: 'Отправлено',
+    archiveWarning: 'Письмо отправлено, но PDF-копию в архиве сохранить не удалось. Повторите запрос или скачайте PDF.',
     send: 'Отправить письмо с PDF',
   },
   en: {
@@ -68,6 +70,7 @@ const delivery: Namespace = {
     notConfigured: 'Email sending is not configured yet. You can still download the PDF.',
     sending: 'Sending…',
     sentShort: 'Sent',
+    archiveWarning: 'The email was sent, but the PDF copy could not be saved to the archive. Repeat the request or download the PDF.',
     send: 'Send email with PDF',
   },
 };

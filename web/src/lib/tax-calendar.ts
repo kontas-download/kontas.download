@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import { companyTaxMode } from './tax';
+import { rules } from './rules/registry';
 
 export type ObligationCode = 'FR0600' | 'FR0564' | 'GPM313' | 'GPM312' | 'PLN204';
 export type VatPeriod = 'MONTH' | 'QUARTER' | 'HALF';
@@ -40,12 +41,19 @@ export function nextWorkingDay(date: string) {
 
 function monthsAfter(y: number, m: number, add: number, day: number) { return iso(utc(y, m + add, Math.min(day, 28))); }
 
-function vatPeriods(period: VatPeriod, from: number, to: number) {
-  const out: { start: string; end: string; due: string }[] = [];
+// Deadlines come from the rules registry, as valid on the last day of the period.
+const dueDay = (ruleId: string, periodEnd: string) => rules.number(ruleId, periodEnd);
+const nextYearDue = (ruleId: string, year: number) => `${year + 1}-${rules.at(ruleId, `${year}-12-31`)}`;
+
+// Periods with the due day `dueRule` in the month after the period.
+function vatPeriods(period: VatPeriod, from: number, to: number, dueRule: string) {
+  const out: { start: string; end: string; due: string; day: number }[] = [];
   const step = period === 'MONTH' ? 1 : period === 'QUARTER' ? 3 : 6;
   for (let y = from; y <= to; y++) for (let m = 0; m < 12; m += step) {
     const endMonth = m + step - 1;
-    out.push({ start: iso(utc(y, m, 1)), end: iso(utc(y, endMonth, lastDay(y, endMonth))), due: monthsAfter(y, endMonth, 1, 25) });
+    const end = iso(utc(y, endMonth, lastDay(y, endMonth)));
+    const day = dueDay(dueRule, end);
+    out.push({ start: iso(utc(y, m, 1)), end, due: monthsAfter(y, endMonth, 1, day), day });
   }
   return out;
 }
@@ -72,11 +80,11 @@ export function calendarEvents(db: Database.Database, companyId: number, from: s
     events.push({ code, title, periodStart: start, periodEnd: end, dueNominal: due, dueWorkingDay: nextWorkingDay(due), source, done: doneAt !== null, doneAt });
   };
   for (const s of settings.filter(x => x.enabled)) {
-    if (s.code === 'FR0600') for (const p of vatPeriods(s.period || 'MONTH', y0, y1)) push('FR0600', 'PVM deklaracija FR0600', p.start, p.end, p.due, 'VMI KM1112: iki kito laikotarpio pirmo mėnesio 25 d.');
-    if (s.code === 'FR0564') for (const p of vatPeriods('MONTH', y0, y1)) push('FR0564', 'Prekių ir paslaugų tiekimo į ES ataskaita FR0564', p.start, p.end, p.due, 'VMI lentelė FR0600 + i.SAF: iki kito mėnesio 25 d.');
-    if (s.code === 'GPM313') for (const p of vatPeriods('MONTH', y0, y1)) push('GPM313', 'Mėnesinė pajamų deklaracija GPM313', p.start, p.end, monthsAfter(Number(p.end.slice(0, 4)), Number(p.end.slice(5, 7)) - 1, 1, 15), 'VMI: iki kito mėnesio 15 d.');
-    if (s.code === 'GPM312') for (let y = y0; y <= y1; y++) push('GPM312', 'Metinė pajamų deklaracija GPM312', `${y}-01-01`, `${y}-12-31`, `${y + 1}-02-15`, 'VMI: iki kitų metų vasario 15 d.');
-    if (s.code === 'PLN204') for (let y = y0; y <= y1; y++) push('PLN204', 'Metinė pelno mokesčio deklaracija PLN204', `${y}-01-01`, `${y}-12-31`, `${y + 1}-06-15`, 'VMI: kalendoriniams metams iki kitų metų birželio 15 d.');
+    if (s.code === 'FR0600') for (const p of vatPeriods(s.period || 'MONTH', y0, y1, 'vat.return.dueDay')) push('FR0600', 'PVM deklaracija FR0600', p.start, p.end, p.due, `VMI KM1112: iki kito laikotarpio pirmo mėnesio ${p.day} d.`);
+    if (s.code === 'FR0564') for (const p of vatPeriods('MONTH', y0, y1, 'calendar.fr0564.dueDay')) push('FR0564', 'Prekių ir paslaugų tiekimo į ES ataskaita FR0564', p.start, p.end, p.due, `VMI lentelė FR0600 + i.SAF: iki kito mėnesio ${p.day} d.`);
+    if (s.code === 'GPM313') for (const p of vatPeriods('MONTH', y0, y1, 'calendar.gpm313.dueDay')) push('GPM313', 'Mėnesinė pajamų deklaracija GPM313', p.start, p.end, p.due, `VMI: iki kito mėnesio ${p.day} d.`);
+    if (s.code === 'GPM312') for (let y = y0; y <= y1; y++) push('GPM312', 'Metinė pajamų deklaracija GPM312', `${y}-01-01`, `${y}-12-31`, nextYearDue('calendar.gpm312.due', y), 'VMI: iki kitų metų vasario 15 d.');
+    if (s.code === 'PLN204') for (let y = y0; y <= y1; y++) push('PLN204', 'Metinė pelno mokesčio deklaracija PLN204', `${y}-01-01`, `${y}-12-31`, nextYearDue('calendar.pln204.due', y), 'VMI: kalendoriniams metams iki kitų metų birželio 15 d.');
   }
   return events.sort((a, b) => a.dueNominal.localeCompare(b.dueNominal) || a.code.localeCompare(b.code));
 }

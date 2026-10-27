@@ -27,6 +27,8 @@ export async function PUT(
     }
 
     const db = getDb();
+    // Under inventory accounting the quantity and cost come from the movements; they are changed only by documents or adjustments.
+    const tracked = db.prepare('SELECT stock, remainder, cost FROM StockItem s WHERE id = ? AND EXISTS(SELECT 1 FROM InventoryMovement m WHERE m.stockItemId = s.id)').get(id) as { stock: number; remainder: number; cost: number } | undefined;
     db.prepare(`
       UPDATE StockItem SET
         name = ?,
@@ -44,10 +46,10 @@ export async function PUT(
       code ? code.trim() : null,
       barcode ? barcode.trim() : null,
       warehouseName || 'Pagrindinis',
-      Number(stock || remainder || 0),
-      Number(remainder !== undefined ? remainder : (stock || 0)),
+      tracked ? tracked.stock : Number(stock || remainder || 0),
+      tracked ? tracked.remainder : Number(remainder !== undefined ? remainder : (stock || 0)),
       Number(price || 0),
-      Number(cost || 0),
+      tracked ? tracked.cost : Number(cost || 0),
       clientName || null,
       id,
       companyId

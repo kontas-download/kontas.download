@@ -8,7 +8,7 @@
 
 ```bash
 npm install
-cp .env.example .env         # DATABASE_URL, APP_ORIGIN, COOKIE_SECURE=false, PORT=3200, SMTP_ENCRYPTION_KEY
+cp .env.example .env         # DATABASE_URL, APP_ORIGIN, COOKIE_SECURE=false, SMTP_ENCRYPTION_KEY
 node scripts/bootstrap.cjs   # для пустой базы: схема, план счетов, администратор
 npm run dev
 ```
@@ -19,9 +19,9 @@ npm run dev
 
 | Команда | Назначение |
 |---|---|
-| `npm run dev` | сервер разработки (`next dev`) |
+| `npm run dev` | сервер разработки (`next dev -p 3200`) |
 | `npm run build` | production-сборка (`next build`); каталог можно изменить переменной `NEXT_BUILD_DIR` |
-| `npm start` | production-сервер (`next start`) |
+| `npm start` | production-сервер (`next start -p 3200`) |
 | `npm run lint` | ESLint |
 | `npm test` | `node --test tests/*.cjs` |
 

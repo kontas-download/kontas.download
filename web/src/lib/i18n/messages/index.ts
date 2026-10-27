@@ -26,8 +26,12 @@ import table from './table';
 import help from './help';
 import dataTransfer from './dataTransfer';
 import users from './users';
+import demo from './demo';
+import rules from './rules';
+import assets from './assets';
+import inventory from './inventory';
 // Each page or feature owns one namespace file; register it here.
-export const namespaces: Record<string, Namespace> = { common, nav, docLang, invoices, recurring, receivables, creditNote, delivery, purchases, clients, stock, bank, reconciliation, payroll, tax, ledger, trialBalance, statements, accounts, companies, login, dashboard, table, help, dataTransfer, users };
+export const namespaces: Record<string, Namespace> = { assets, inventory, common, nav, docLang, invoices, recurring, receivables, creditNote, delivery, purchases, clients, stock, bank, reconciliation, payroll, tax, ledger, trialBalance, statements, accounts, companies, login, dashboard, table, help, dataTransfer, users, demo, rules };
 
 function flatten(lang: Lang): Record<string, string> {
   const out: Record<string, string> = {};

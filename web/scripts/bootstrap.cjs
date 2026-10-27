@@ -47,6 +47,7 @@ function ensureAdmin(db, env, log) {
     log('One-time password (shown only now, change it after the first sign-in or reset it with scripts/set-password.cjs):');
     log('    ' + password);
   }
+  log('To try the program with fictional data: Companies -> "Create demonstration company" (Įmonės -> „Sukurti demonstracinę įmonę“).');
   return { email, password: generated ? password : null };
 }
 

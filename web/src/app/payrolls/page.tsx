@@ -2,7 +2,9 @@ import { requirePageAccess } from '@/lib/access';
 import React from 'react';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
-import { PayrollsClient } from './PayrollsClient';
+import { todayVilnius } from '@/lib/dates';
+import { rules } from '@/lib/rules';
+import { PayrollsClient, type PayrollRules } from './PayrollsClient';
 
 export default async function PayrollsPage() {
   await requirePageAccess();
@@ -19,5 +21,9 @@ export default async function PayrollsPage() {
     ORDER BY p.year DESC, p.month DESC
   `).all(companyId) as any[];
 
-  return <PayrollsClient initialPayrolls={payrolls} />;
+  // Rates of the form estimate (percent), as valid today; provisional registry entries.
+  const today = todayVilnius();
+  const payrollRules: PayrollRules = { gpm: rules.number('payroll.gpm.rate', today), sodraEmployee: rules.number('payroll.sodra.employee', today), sodraEmployer: rules.number('payroll.sodra.employer', today) };
+
+  return <PayrollsClient initialPayrolls={payrolls} payrollRules={payrollRules} />;
 }

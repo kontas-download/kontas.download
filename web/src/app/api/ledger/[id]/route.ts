@@ -1,5 +1,5 @@
 import { validateBody } from '@/lib/validation';
-import { requireApiAccess, checkOrigin } from '@/lib/access';
+import { requireApiAccess, checkOrigin, withCurrentActor } from '@/lib/access';
 import { apiError } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
@@ -27,7 +27,7 @@ export async function PUT(
     const db = getDb();
     const entry = db.prepare('SELECT sourceType FROM GeneralEntry WHERE id = ? AND companyId = ?').get(id, companyId) as { sourceType: string };
     if (entry.sourceType !== 'MANUAL') return NextResponse.json({ error: 'Pakeiskite pirminį dokumentą vietoj automatinio įrašo' }, { status: 409 });
-    db.prepare(`
+    await withCurrentActor(() => db.prepare(`
       UPDATE GeneralEntry SET
         date = ?,
         docNumber = ?,
@@ -48,7 +48,7 @@ export async function PUT(
       description ? String(description).trim() : null,
       id,
       companyId
-    );
+    ));
 
     const updated = db.prepare('SELECT * FROM GeneralEntry WHERE id = ? AND companyId = ?').get(id, companyId);
     return NextResponse.json({ success: true, entry: updated });
@@ -75,7 +75,7 @@ export async function DELETE(
     const db = getDb();
     const entry = db.prepare('SELECT sourceType FROM GeneralEntry WHERE id = ? AND companyId = ?').get(id, companyId) as { sourceType: string };
     if (entry.sourceType !== 'MANUAL') return NextResponse.json({ error: 'Pakeiskite pirminį dokumentą vietoj automatinio įrašo' }, { status: 409 });
-    db.prepare('DELETE FROM GeneralEntry WHERE id = ? AND companyId = ?').run(id, companyId);
+    await withCurrentActor(() => db.prepare('DELETE FROM GeneralEntry WHERE id = ? AND companyId = ?').run(id, companyId));
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return apiError(err);

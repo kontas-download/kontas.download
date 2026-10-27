@@ -1,6 +1,6 @@
 import { validateBody } from '@/lib/validation';
 import { requireApiAccess, checkOrigin } from '@/lib/access';
-import { apiError } from '@/lib/errors';
+import { apiError, assertFormCompany } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
@@ -25,7 +25,8 @@ export async function POST(request: Request) {
     const forbidden = await checkOrigin(request);
     if (forbidden) return forbidden;
     const companyId = await getActiveCompanyId();
-    const body = await request.json();
+    const { companyId: formCompanyId, ...body } = await request.json();
+    assertFormCompany(formCompanyId, companyId);
     validateBody(body, 'bank', companyId);
     const { 
       date, 

@@ -119,6 +119,9 @@ export async function DELETE(
     const deleteRelated = db.transaction(() => {
       // Payments, recurring templates and credit notes reference other rows and must go first.
       // Append-only evidence tables (invoice archive, supplier XML, reminder log) are deliberately kept.
+      // Inventory settings go first: without them the protected inventory movements may be removed with their stock cards.
+      db.prepare('DELETE FROM InventorySettings WHERE companyId = ?').run(id);
+      db.prepare('DELETE FROM InventoryMovement WHERE companyId = ?').run(id);
       db.prepare('DELETE FROM PaymentAllocation WHERE companyId = ?').run(id);
       db.prepare('DELETE FROM ManualSettlement WHERE companyId = ?').run(id);
       db.prepare('DELETE FROM RecurringRun WHERE recurringId IN (SELECT id FROM RecurringInvoice WHERE companyId = ?)').run(id);

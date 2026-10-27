@@ -7,7 +7,8 @@ import { apiError, HttpError } from '@/lib/errors';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
-import { assertRatesMatch, originalRates } from '@/lib/credit-rules';
+import { assertQuantitiesWithinOriginal, assertRatesMatch, originalRates } from '@/lib/credit-rules';
+import { postDocumentInventory } from '@/lib/inventory';
 
 interface Original { id: number; series: string | null; number: string; saleDate: string; docType: string | null; clientId: number | null; clientName: string | null; clientCode: string | null; clientVatCode: string | null; sumWithoutVat: number; vat: number; sumWithVat: number; sellerVatMode: string | null; sellerIsVatPayer: number | null; currencyCode: string; warehouseName: string | null; }
 const cents = (value: number) => Math.round(value * 100);
@@ -43,6 +44,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { sumWithoutVat, sumWithVat, vat } = totalLines(items);
     const prior = db.prepare("SELECT COALESCE(SUM(-sumWithoutVat),0) net, COALESCE(SUM(-vat),0) vat, COALESCE(SUM(-sumWithVat),0) gross FROM Sale WHERE originalSaleId=? AND companyId=?").get(id, companyId) as { net: number; vat: number; gross: number };
     assertRatesMatch(originalRates(db, 'SaleItem', 'saleId', id), items);
+    assertQuantitiesWithinOriginal(db, companyId, 'SALE', id, items);
     if (cents(prior.vat) + cents(vat) > cents(original.vat)) throw new HttpError(400, 'Kreditinių dokumentų PVM viršija pirminės sąskaitos PVM');
     if (cents(prior.net) + cents(sumWithoutVat) > cents(original.sumWithoutVat) || cents(prior.gross) + cents(sumWithVat) > cents(original.sumWithVat)) throw new HttpError(400, 'Kreditinių dokumentų suma viršija pirminės sąskaitos sumą');
 
@@ -58,6 +60,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         const line = calculateLine(it);
         insertItem.run(saleId, it.itemName || 'Paslauga', it.itemCode || null, line.qty, line.price, line.lineWithVat / line.qty, line.vatRate, -line.lineNoVat, -line.lineWithVat, original.warehouseName || 'Pagrindinis');
       }
+      // Returned goods come back into stock at their original cost (inventory accounting only).
+      postDocumentInventory(db, companyId, 'SALE', saleId);
       // The credit note takes over the i.SAF codes of the original lines where they are unambiguous; the rest is reported.
       return { saleId, missingTaxCodes: inheritCreditCodes(db, companyId, 'SALE', id, saleId) };
     });

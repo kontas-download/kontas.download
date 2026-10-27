@@ -1,17 +1,18 @@
 {
   "name": "kontas-download",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "postinstall": "node -e \"try{require('./scripts/ensure-local-extensions.cjs')}catch(e){}\"",
     "predev": "node scripts/ensure-local-extensions.cjs",
-    "dev": "next dev",
+    "dev": "next dev -p 3200",
     "prebuild": "node scripts/ensure-local-extensions.cjs",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3200",
     "lint": "eslint",
     "pretest": "node scripts/ensure-local-extensions.cjs",
-    "test": "node --test tests/*.cjs"
+    "test": "node --test tests/*.cjs",
+    "rules:audit": "node scripts/rules-audit.cjs"
   },
   "dependencies": {
     "@prisma/client": "^7.10.1",
