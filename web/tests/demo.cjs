@@ -181,7 +181,7 @@ test('demonstration company', async t => {
       const docs = loadTaxDocuments(db, id, start, today);
       assert.equal(docs.sales.length, 14); assert.equal(docs.purchases.length, 8);
       for (const doc of [...docs.sales, ...docs.purchases]) assert.equal(totalsMismatch(doc), false);
-      const result = buildIsaf({ company, period: { start, end: today }, sales: docs.sales, purchases: docs.purchases, software: { company: 'kontas.download', name: 'kontas.download', version: '0.2.1' }, now: new Date() });
+      const result = buildIsaf({ company, period: { start, end: today }, sales: docs.sales, purchases: docs.purchases, software: { company: 'kontas.download', name: 'kontas.download', version: '0.2.2' }, now: new Date() });
       assert.deepEqual(result.issues, []);
       const xsdResult = await validateIsaf(result.xml);
       assert.equal(xsdResult.valid, true, JSON.stringify(xsdResult.errors));
