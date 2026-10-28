@@ -119,7 +119,7 @@ export function PayrollClient({ initialEmployees, initialRuns, companyId }: { in
           </div>
         )}
         {employees.length === 0 ? <p className="text-sm text-slate-400">{t('payroll.rNoEmployees')}</p> : (
-          <div className="overflow-x-auto"><table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm text-slate-300">
             <thead className="text-left text-xs uppercase tracking-wider text-slate-400"><tr><th className="py-2 px-2">{t('payroll.rName')}</th><th className="py-2 px-2">{t('payroll.rPosition')}</th><th className="py-2 px-2 text-right">{t('payroll.rBaseSalary')}</th><th className="py-2 px-2">{t('payroll.rContract')}</th><th className="py-2 px-2">{t('payroll.rActive')}</th><th /></tr></thead>
             <tbody>{employees.map(e => (
               <tr key={e.id} className="border-t border-slate-800">
@@ -141,7 +141,7 @@ export function PayrollClient({ initialEmployees, initialRuns, companyId }: { in
           <button className={btn} disabled={busy} onClick={createRun}>{t('payroll.rNewRun')}</button>
         </div>
         {runs.length === 0 ? <p className="text-sm text-slate-400">{t('payroll.rNoRuns')}</p> : (
-          <div className="overflow-x-auto"><table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm text-slate-300">
             <tbody>{runs.map(r => (
               <tr key={r.id} className="border-t border-slate-800">
                 <td className="py-2 px-2 font-mono">{r.year}-{String(r.month).padStart(2, '0')}</td>
@@ -179,7 +179,7 @@ export function PayrollClient({ initialEmployees, initialRuns, companyId }: { in
                 <div className="text-sm text-slate-300 font-mono">{t('payroll.rGross')}: {money(l.gross)} · {t('payroll.rNet')}: {money(l.result.net)} · {t('payroll.rEmployerCost')}: {money(l.result.totalCost)}</div>
                 {draft && <button className="text-emerald-400 hover:underline text-sm" onClick={() => editGross(l)}>{t('payroll.rGrossEdit')}</button>}
               </div>
-              <div className="overflow-x-auto"><table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm text-slate-300">
                 <thead className="text-left text-xs uppercase tracking-wider text-slate-400"><tr><th className="py-1 px-2">{t('payroll.rOverrideField')}</th><th className="py-1 px-2 text-right">{t('payroll.rComputed')}</th><th className="py-1 px-2 text-right">{t('payroll.rFinal')}</th><th /></tr></thead>
                 <tbody>{FIELDS.map(f => {
                   const changed = l.result.overridden.includes(f);

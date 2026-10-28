@@ -86,7 +86,6 @@ More about development: [web/README.en.md](web/README.en.md).
 - `web/` - the application (Next.js, SQLite, Dockerfile, tests, helper scripts in `web/scripts`).
 - `deploy/` - server deployment with HTTPS (Caddy): [deploy/README.en.md](deploy/README.en.md).
 - `docs/` - documentation, for example [notes on VMI / EDS automation](docs/VMI-EDS-AUTOMATION.en.md).
-- `site/` - the project website.
 - `docker-compose.yml` - local run (container `kontas-app`, port 3200).
 - `README.md`, `README.ru.md`, `README.en.md` - this description.
 

@@ -86,7 +86,6 @@ Daugiau apie kūrimą: [web/README.md](web/README.md).
 - `web/` – programa (Next.js, SQLite, Dockerfile, bandymai, paleidimo scenarijai `web/scripts`).
 - `deploy/` – diegimas serveryje su HTTPS (Caddy): [deploy/README.md](deploy/README.md).
 - `docs/` – dokumentacija, pvz. [VMI / EDS automatizavimo pastabos](docs/VMI-EDS-AUTOMATION.md).
-- `site/` – projekto svetainė.
 - `docker-compose.yml` – vietinis paleidimas (konteineris `kontas-app`, prievadas 3200).
 - `README.md`, `README.ru.md`, `README.en.md` – šis aprašas.
 

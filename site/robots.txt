@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://kontas.download/sitemap.xml

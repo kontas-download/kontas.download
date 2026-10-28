@@ -86,7 +86,6 @@ npm test
 - `web/` — приложение (Next.js, SQLite, Dockerfile, тесты, служебные скрипты `web/scripts`).
 - `deploy/` — развёртывание на сервере с HTTPS (Caddy): [deploy/README.ru.md](deploy/README.ru.md).
 - `docs/` — документация, например [заметки по автоматизации VMI / EDS](docs/VMI-EDS-AUTOMATION.ru.md).
-- `site/` — сайт проекта.
 - `docker-compose.yml` — локальный запуск (контейнер `kontas-app`, порт 3200).
 - `README.md`, `README.ru.md`, `README.en.md` — это описание.
 

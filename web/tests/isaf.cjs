@@ -32,7 +32,7 @@ const db = getDb();
 
 const valid = validateIsaf;
 const doc = (over = {}) => ({ id: 1, number: 'SF 1', date: '2026-09-10', clientId: 5, name: 'Klientas UAB', code: '300000001', vatCode: 'LT100000000011', country: '', lines: [{ rate: 21, net: 100, gross: 121 }], ...over });
-const input = (over = {}) => ({ company: { name: 'A', code: '111111111', vatCode: 'LT111111119' }, period: { start: '2026-09-01', end: '2026-09-30' }, sales: [doc()], purchases: [], software: { company: 'kontas.download', name: 'kontas.download', version: '0.2.0' }, now: new Date('2026-10-01T10:00:00Z'), ...over });
+const input = (over = {}) => ({ company: { name: 'A', code: '111111111', vatCode: 'LT111111119' }, period: { start: '2026-09-01', end: '2026-09-30' }, sales: [doc()], purchases: [], software: { company: 'kontas.download', name: 'kontas.download', version: '0.2.1' }, now: new Date('2026-10-01T10:00:00Z'), ...over });
 
 test('generated i.SAF files satisfy the official XSD 1.2', async t => {
   await t.test('validator rejects a broken file', async st => {

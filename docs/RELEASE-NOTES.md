@@ -6,6 +6,20 @@
 
 Pagrindinė dokumentacijos kalba – lietuvių. Jei lietuviškas ir angliškas tekstai skiriasi, viršesnis lietuviškas.
 
+### 0.2.1 – archyve tik programa
+
+Archyvas: `kontas-download-0.2.1.zip`, šalia – kontrolinės sumos failas `kontas-download-0.2.1.zip.sha256`.
+
+- Archyve dabar yra tik buhalterinė programa: projekto svetainės failai (`site/`) į jį nebeįtraukiami.
+- Darbo užmokesčio skaičiavimo lentelių tekstas tamsioje temoje vėl gerai matomas.
+- Atnaujinimas iš 0.2.0: padarykite atsarginę kopiją ir atnaujinkite kaip aprašyta 0.2.0 skyriuje; duomenų bazės pakeitimų nėra.
+
+Kontrolinė suma:
+
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.2.1.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.2.1.zip.sha256).Split(' ')[0]` – `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.2.1.zip.sha256` – `OK`.
+- Linux: `sha256sum -c kontas-download-0.2.1.zip.sha256` – `OK`.
+
 ### 0.2.0 – darbo užmokestis, ilgalaikis turtas, atsargos ir VMI formų juodraščiai
 
 Archyvas: `kontas-download-0.2.0.zip`, šalia – kontrolinės sumos failas `kontas-download-0.2.0.zip.sha256`.
@@ -68,7 +82,7 @@ Archyvas: `kontas-download-0.1.0.zip`, šalia – kontrolinės sumos failas `kon
 - Nėra automatinio ar suplanuoto sąskaitų ir priminimų siuntimo.
 - Duomenų bazės atkūrimas – operatoriaus veiksmas (programoje nėra mygtuko „atkurti“).
 
-Planuojami darbai ir nuo ko jie priklauso aprašyti svetainės puslapyje „Planas“ (`roadmap.html`); tai ne įsipareigojimas.
+Planuojami darbai ir nuo ko jie priklauso aprašyti svetainės kontas.download puslapyje „Planas“; tai ne įsipareigojimas.
 - Programa veikia vienu egzemplioriumi (SQLite failas).
 - Kai kurie serverio pranešimai gali būti rodomi tik lietuvių kalba.
 
@@ -91,6 +105,20 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 ## Русский
 
 Основной язык документации – литовский; при расхождении текстов приоритет у литовского.
+
+### 0.2.1 – в архиве только программа
+
+Архив: `kontas-download-0.2.1.zip`, рядом – файл контрольной суммы `kontas-download-0.2.1.zip.sha256`.
+
+- В архиве теперь только бухгалтерская программа: файлы сайта проекта (`site/`) в него больше не входят.
+- Текст в таблицах расчёта зарплаты снова хорошо виден в тёмной теме.
+- Обновление с 0.2.0: сделайте резервную копию и обновите, как описано в разделе 0.2.0; изменений базы данных нет.
+
+Контрольная сумма:
+
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.2.1.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.2.1.zip.sha256).Split(' ')[0]` – должно быть `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.2.1.zip.sha256` – должно быть `OK`.
+- Linux: `sha256sum -c kontas-download-0.2.1.zip.sha256` – должно быть `OK`.
 
 ### 0.2.0 – зарплата, основные средства, запасы и черновики форм VMI
 
@@ -124,6 +152,20 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 ## English
 
 The main documentation language is Lithuanian; if the texts differ, the Lithuanian one prevails.
+
+### 0.2.1 – program-only archive
+
+Archive: `kontas-download-0.2.1.zip`, with the checksum file `kontas-download-0.2.1.zip.sha256` next to it.
+
+- The archive now contains only the accounting program: the project website files (`site/`) are no longer included.
+- Text in the payroll calculation tables is readable again in the dark theme.
+- Upgrading from 0.2.0: make a backup and upgrade as described in the 0.2.0 section; there are no database changes.
+
+Checksum:
+
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.2.1.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.2.1.zip.sha256).Split(' ')[0]` must print `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.2.1.zip.sha256` must print `OK`.
+- Linux: `sha256sum -c kontas-download-0.2.1.zip.sha256` must print `OK`.
 
 ### 0.2.0 – payroll, fixed assets, inventory and VMI form drafts
 
@@ -187,7 +229,7 @@ Archive: `kontas-download-0.1.0.zip`, with the checksum file `kontas-download-0.
 - No automatic or scheduled sending of invoices or reminders.
 - Restoring a database is an operator procedure (there is no restore button).
 
-Planned work and what it depends on is described on the site page "Roadmap" (`roadmap.html`); it is not a commitment.
+Planned work and what it depends on is described on the kontas.download site page "Roadmap"; it is not a commitment.
 - Single instance only (SQLite file).
 - Some server messages may be shown in Lithuanian only.
 
