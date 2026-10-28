@@ -14,7 +14,7 @@ export interface EmployeeRow {
   startDate: string | null; endDate: string | null; active: number;
 }
 interface RunRow {
-  id: number; companyId: number; year: number; month: number; status: 'DRAFT' | 'POSTED'; paramsJson: string; rulesProvisional: number;
+  id: number; companyId: number; year: number; month: number; status: 'DRAFT' | 'POSTED'; payoutDate: string | null; paramsJson: string; rulesProvisional: number;
   verifiedAt: string | null; verifiedBy: number | null; payrollId: number | null; createdAt: string; updatedAt: string;
 }
 interface LineRow {
@@ -262,6 +262,16 @@ export function verifyRun(db: Database.Database, companyId: number, runId: numbe
   })();
 }
 
+// Sets or clears the actual payout date of the monthly payroll run (used to split GPM313 field 6 <= 15th vs field 7 > 15th).
+export function setRunPayoutDate(db: Database.Database, companyId: number, runId: number, payoutDateValue: unknown, actorId: number | null) {
+  const payoutDate = payoutDateValue === '' ? null : date(payoutDateValue);
+  db.transaction(() => {
+    run(db, companyId, runId);
+    db.prepare("UPDATE PayrollRun SET payoutDate=?,updatedAt=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?").run(payoutDate, runId);
+    log(db, companyId, { runId, action: 'PAYOUT_DATE', field: 'payoutDate', reason: payoutDate, actorId });
+  })();
+}
+
 // Posts the run to the ledger: one Payroll document with one PayrollEmployee row per line; the existing ledger triggers create
 // the entries (6304 against 4480 net pay, 4481 income tax, 4482 employee and employer contributions) on the last day of the month.
 export function postRun(db: Database.Database, companyId: number, runId: number, actorId: number | null) {
@@ -311,7 +321,7 @@ export function deleteRun(db: Database.Database, companyId: number, runId: numbe
 }
 
 export function listRuns(db: Database.Database, companyId: number) {
-  return db.prepare(`SELECT r.id,r.year,r.month,r.status,r.rulesProvisional,r.verifiedAt,r.payrollId,
+  return db.prepare(`SELECT r.id,r.year,r.month,r.status,r.payoutDate,r.rulesProvisional,r.verifiedAt,r.payrollId,
       (SELECT COUNT(*) FROM PayrollRunLine WHERE runId=r.id) AS lineCount,
       (SELECT ROUND(COALESCE(SUM(gross),0),2) FROM PayrollRunLine WHERE runId=r.id) AS totalGross,
       (SELECT ROUND(COALESCE(SUM(net),0),2) FROM PayrollRunLine WHERE runId=r.id) AS totalNet
@@ -327,7 +337,7 @@ export function getRun(db: Database.Database, companyId: number, runId: number) 
   const log = db.prepare('SELECT l.*, u.name AS actorName FROM PayrollLog l LEFT JOIN User u ON u.id=l.actorId WHERE l.companyId=? AND l.runId=? ORDER BY l.id DESC').all(companyId, runId);
   const verifiedByName = r.verifiedBy ? (db.prepare('SELECT name FROM User WHERE id=?').get(r.verifiedBy) as { name: string } | undefined)?.name ?? null : null;
   return {
-    run: { id: r.id, year: r.year, month: r.month, status: r.status, rulesProvisional: r.rulesProvisional === 1, verifiedAt: r.verifiedAt, verifiedByName, payrollId: r.payrollId, params: JSON.parse(r.paramsJson) as PayrollParams, date: payrollDate(r.year, r.month) },
+    run: { id: r.id, year: r.year, month: r.month, status: r.status, payoutDate: r.payoutDate ?? null, rulesProvisional: r.rulesProvisional === 1, verifiedAt: r.verifiedAt, verifiedByName, payrollId: r.payrollId, params: JSON.parse(r.paramsJson) as PayrollParams, date: payrollDate(r.year, r.month) },
     lines,
     log,
   };

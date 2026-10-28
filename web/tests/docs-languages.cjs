@@ -48,3 +48,19 @@ for (const { base, required } of sets) {
     assert.match(read(ru), /[Ѐ-ӿ]/, `${ru} has no Cyrillic`);
   });
 }
+
+test('README and ACCOUNTING files reflect current capabilities and limitations across lt, ru and en', () => {
+  for (const file of ['README.md', 'README.ru.md', 'README.en.md']) {
+    const text = read(file);
+    for (const token of ['FR0564', 'GPM313', 'GPM312', 'PLN204', 'FIFO', 'NPD', 'PVM15', '1-SD']) {
+      assert.ok(text.includes(token), `${file} must mention ${token}`);
+    }
+    assert.doesNotMatch(text, /be NPD|без NPD|no NPD/i, `${file} must not claim NPD is not calculated`);
+  }
+  for (const file of ['web/ACCOUNTING.md', 'web/ACCOUNTING.ru.md', 'web/ACCOUNTING.en.md']) {
+    const text = read(file);
+    assert.ok(text.includes('translateServerError'), `${file} must document translateServerError`);
+    assert.ok(text.includes('2026-10-payroll-payout-v1'), `${file} must document payroll payoutDate migration`);
+    assert.ok(text.includes('ffdata.ts'), `${file} must document ffdata export`);
+  }
+});

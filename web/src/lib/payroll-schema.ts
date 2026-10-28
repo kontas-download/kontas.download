@@ -89,3 +89,14 @@ export function migratePayroll(db: Database.Database) {
     db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-10-payroll-v1');
   })();
 }
+
+export function migratePayrollPayoutDate(db: Database.Database) {
+  db.transaction(() => {
+    if (db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-10-payroll-payout-v1')) return;
+    const cols = db.prepare('PRAGMA table_info(PayrollRun)').all() as { name: string }[];
+    if (!cols.some(c => c.name === 'payoutDate')) {
+      db.exec('ALTER TABLE PayrollRun ADD COLUMN payoutDate TEXT;');
+    }
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-10-payroll-payout-v1');
+  })();
+}

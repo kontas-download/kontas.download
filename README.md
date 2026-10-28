@@ -16,9 +16,9 @@ Programa paruošta veikti Docker konteineryje (Next.js 16, React 19, TypeScript,
 - **PDF ir el. paštas:** sąskaitos PDF pirkėjo kalba (lietuvių, rusų ar anglų); siuntimas el. paštu per pardavėjo įmonės SMTP; išsiųstos sąskaitos PDF archyvas. Kliento PDF neturi vidinių apmokėjimo statusų ir pastabų.
 - **Bankas:** banko išrašų importas (CSV, camt.053, MT940), mokėjimų susiejimas su dokumentais, atsiskaitymai ne per banką.
 - **Skolos:** gautinų sumų apžvalga ir priminimai.
-- **Mokesčiai:** i.SAF 1.2 XML eksportas, FR0600 juodraštis, mokesčių kodai, mokesčių kalendorius.
+- **Mokesčiai:** i.SAF 1.2 XML eksportas, FR0600, FR0564, GPM313, GPM312 ir PLN204 juodraščiai bei EDS `.ffdata` failų eksportas, mokesčių ir tarifų taisyklės pagal metus, mokesčių kodai, mokesčių kalendorius.
 - **Apskaita:** didžioji knyga (žurnalas), apyvartos žiniaraštis, pelno (nuostolių) ataskaita ir balansas, sąskaitų planas, tarpusavio skolų suderinimo aktai, uždaryti laikotarpiai ir pakeitimų istorija.
-- **Kita:** kontrahentai, sandėlis ir atsargos, darbo užmokesčio skaičiuoklė.
+- **Kita:** kontrahentai, sandėlis ir atsargų savikaina (FIFO arba svertinis vidurkis), ilgalaikio turto registras ir mėnesinis nusidėvėjimas, darbo užmokesčio skaičiavimai (NPD, progresiniai GPM tarifai, „Sodros“ lubos, DU žiniaraščiai).
 - **Kelios įmonės:** neribotas įmonių skaičius vienoje programoje, kiekvienos duomenys atskirti.
 - **Duomenys:** įmonės paketo eksportas ir importas, visos duomenų bazės kopija (administratoriui).
 - **Naudotojai:** keli naudotojai, rolės „administratorius“ ir „buhalteris“, paskyros išjungimas, bandymų prisijungti ribojimas.
@@ -29,14 +29,15 @@ Išsami instrukcija yra pačios programos žinyne (meniu „Žinynas“).
 
 Programa nėra mokesčių ar teisinė konsultacija; už deklaracijas, apskaitos politiką ir duomenų teisingumą atsako naudotojas ir jo buhalteris.
 
-- Niekas **automatiškai nepateikiama VMI**: nėra ryšio su EDS ar i.MAS. Programa tik paruošia i.SAF XML failą ir FR0600 juodraštį, o pateikti juos reikia patiems.
+- Niekas **automatiškai nepateikiama VMI ar „Sodrai“**: nėra ryšio su EDS, i.MAS ar „Sodra“. Programa paruošia failus ir juodraščius, o pateikti juos reikia patiems.
 - Nėra ryšio su Sodra.
 - Nėra debetinių sąskaitų (DS).
-- Darbo užmokesčio modulis paprastas: pasiūlytas skaičiavimas supaprastintas (be NPD, progresinių GPM tarifų, Sodros lubų), galutines sumas įvedate jūs.
-- Neruošiamos PLN204, GPM312/GPM313 ir FR0564 deklaracijos; mokesčių kalendorius tik primena terminus.
-- Sąskaitoje nėra automatinės atvirkštinio apmokestinimo (reverse charge) žymos paslaugoms ES PVM mokėtojui. Įrašyti jos į pirkėjo PDF programa dar neleidžia (vidinės pastabos į PDF nepatenka), todėl šį įrašą ir FR0564 tvarko buhalteris.
-- Nėra automatinio ilgalaikio turto nusidėvėjimo ir atsargų savikainos nurašymo.
-- Nėra automatinio sąskaitų siuntimo pagal tvarkaraštį: kiekvienas siuntimas yra rankinis veiksmas.
+- Darbo užmokesčio rezultatai yra preliminarūs, kol juos patikrina buhalteris; „Sodros“ SAM ir 1-SD formos nerengiamos.
+- GPM313, GPM312, FR0564 ir PLN204 rengiami kaip juodraščiai ir EDS `.ffdata` failai su neužpildomų laukų sąrašu (GPM313 6 ir 7 laukai paskirstomi pagal išmokėjimo datą; GPM312 `.ffdata` palaiko L9/U9 tarifą ir nerezidentų priedą GPM312U; FR0564 `.ffdata` palaiko priedus FR0564P/R/T/TP; PLN204 `.ffdata` palaiko priedus PLN204S ir PLN204Z, o specialios modifikacijos PLN204A/N/U nerengiamos). Mokesčių kalendorius primena terminus.
+- FR0600 skydelyje ir `.ffdata` faile galima rankiniu būdu įvesti 26–28 laukus (importo PVM ir atskaitos %); maržos schema ir kai kurie specialūs i.SAF kodai pildomi rankiniu būdu EDS. Atvirkštinio apmokestinimo nuoroda pirkėjo PDF sąskaitoje pridedama priskyrus eilutei PVM15, PVM34 ar PVM25–PVM27 kodą.
+- Parduotų prekių savikainos nurašymas pagal nutylėjimą išjungtas (`NONE`); atsargų savikainą (FIFO arba svertinį vidurkį) ir ilgalaikio turto nusidėvėjimą turi patikrinti buhalteris.
+- Tiekėjų PDF sąskaitos neskaitomos (nėra OCR); importuojamas tik XML (UBL / Peppol).
+- Nėra automatinio ar suplanuoto sąskaitų ir priminimų siuntimo: kiekvienas siuntimas yra rankinis veiksmas.
 
 Daugiau: žinyno puslapis „Ribojimai: ko programa nedaro“ ir [docs/VMI-EDS-AUTOMATION.md](docs/VMI-EDS-AUTOMATION.md).
 

@@ -1,9 +1,10 @@
 'use client';
 import { useState } from 'react';
 import { useT } from '@/lib/i18n/client';
+import { buildGpm313Ffdata } from '@/lib/ffdata';
 
 interface Row { employee: string; code: string | null; gross: number; npd: number | null; gpm: number; }
-interface Draft { year: number; month: number; rows: Row[]; totals: { f5: number; gpmTotal: number; npd: number | null }; source: string; provisional: boolean; notes: string[]; notFilled: string[]; }
+interface Draft { year: number; month: number; rows: Row[]; totals: { f5: number; gpmTotal: number; npd: number | null }; payoutDate: string | null; f6: number | null; f7: number | null; source: string; provisional: boolean; notes: string[]; notFilled: string[]; }
 interface Result { period: { start: string; end: string }; dueDate: string; header: { name: string; code: string; year: number; month: number }; draft: Draft; notice: string; }
 
 const previousMonth = (today: string) => new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 2, 1)).toISOString().slice(0, 7);
@@ -34,13 +35,14 @@ export function Gpm313Client({ today }: { today: string }) {
       setResult(data);
     } catch { setError(t('tax.gpm313.calcFailed')); } finally { setBusy(false); }
   }
+  const exportFfdata = () => result && download(`GPM313_${month}.ffdata`, 'application/xml', buildGpm313Ffdata({ header: result.header, f5: result.draft.totals.f5, f6: result.draft.f6, f7: result.draft.f7, createdOn: today }));
   const exportCsv = () => {
     if (!result) return;
     const npd = (v: number | null) => v === null ? '' : v.toFixed(2);
     const lines = ['employee;code;gross;npd;gpm', ...result.draft.rows.map(r => [r.employee.replace(/;/g, ','), r.code ?? '', r.gross.toFixed(2), npd(r.npd), r.gpm.toFixed(2)].join(';')), ['TOTAL', '', result.draft.totals.f5.toFixed(2), npd(result.draft.totals.npd), result.draft.totals.gpmTotal.toFixed(2)].join(';')];
     download(`GPM313_${month}_juodrastis.csv`, 'text/csv', lines.join('\r\n') + '\r\n');
   };
-  const exportJson = () => result && download(`GPM313_${month}_juodrastis.json`, 'application/json', JSON.stringify({ draft: true, notice: result.notice, header: result.header, period: result.period, dueDate: result.dueDate, fields: { f5: result.draft.totals.f5, f6plus7: result.draft.totals.gpmTotal }, rows: result.draft.rows, provisional: result.draft.provisional, notes: result.draft.notes, notFilled: result.draft.notFilled }, null, 2));
+  const exportJson = () => result && download(`GPM313_${month}_juodrastis.json`, 'application/json', JSON.stringify({ draft: true, notice: result.notice, header: result.header, period: result.period, dueDate: result.dueDate, fields: { f5: result.draft.totals.f5, f6: result.draft.f6, f7: result.draft.f7, f6plus7: result.draft.totals.gpmTotal, payoutDate: result.draft.payoutDate }, rows: result.draft.rows, provisional: result.draft.provisional, notes: result.draft.notes, notFilled: result.draft.notFilled }, null, 2));
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-5 text-slate-200">
@@ -54,6 +56,7 @@ export function Gpm313Client({ today }: { today: string }) {
         <label className="text-sm">{t('tax.gpm313.month')}<input type="month" value={month} onChange={e => setMonth(e.target.value)} className="block mt-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5" /></label>
         <button onClick={calculate} disabled={busy} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold">{busy ? t('tax.fr.calculating') : t('tax.fr.calculate')}</button>
         {result && <>
+          <button onClick={exportFfdata} className="px-3 py-2 rounded-lg border border-slate-700 text-sm">{t('tax.fr564.exportFfdata')}</button>
           <button onClick={exportCsv} className="px-3 py-2 rounded-lg border border-slate-700 text-sm">{t('tax.fr564.exportCsv')}</button>
           <button onClick={exportJson} className="px-3 py-2 rounded-lg border border-slate-700 text-sm">{t('tax.fr564.exportJson')}</button>
           <button onClick={() => window.print()} className="px-3 py-2 rounded-lg border border-slate-700 text-sm">{t('tax.fr564.print')}</button>
@@ -65,6 +68,9 @@ export function Gpm313Client({ today }: { today: string }) {
           <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
             <div className="font-semibold text-white">{t('tax.gpm313.header')}</div>
             <p className="mt-1 text-slate-300">{t('tax.gpm313.headerLine', { name: result.header.name, code: result.header.code || '—', year: result.header.year, month: result.header.month })}</p>
+            {result.draft.payoutDate && result.draft.f6 !== null && result.draft.f7 !== null && (
+              <p className="mt-1 text-emerald-300 font-mono text-xs">{t('tax.gpm313.splitLine', { date: result.draft.payoutDate, f6: result.draft.f6.toFixed(2), f7: result.draft.f7.toFixed(2) })}</p>
+            )}
             <p className="text-slate-400">{t('tax.fr.due', { date: result.dueDate })}</p>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-x-auto">

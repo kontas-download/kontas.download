@@ -11,7 +11,7 @@ import { migrateTaxCodes, migrateTaxCodeReview } from './tax-code-schema';
 import { migrateUsers } from './user-schema';
 import { migrateFixedAssets } from './assets-schema';
 import { migrateInventory, migrateInventoryGuards, migratePurchaseWarehouse } from './inventory-schema';
-import { migratePayroll } from './payroll-schema';
+import { migratePayroll, migratePayrollPayoutDate } from './payroll-schema';
 import Database from 'better-sqlite3';
 import path from 'node:path';
 let dbInstance: Database.Database | null = null;
@@ -51,6 +51,7 @@ export function getDb() {
     migrateInventory(db);
     migrateInventoryGuards(db);
     migratePayroll(db);
+    migratePayrollPayoutDate(db);
     migrateUsers(db);
     migrateAuditActor(db);
     migrateDeliveryArchiveStatus(db);

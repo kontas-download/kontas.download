@@ -22,8 +22,16 @@ export async function GET(request: Request) {
     const db = getDb();
     const issues = standardVatIssues(db, companyId, start, end);
     if (issues.length) return NextResponse.json({ error: 'FR0600 neskaičiuojama', code: 'FR0600_NOT_APPLICABLE', issues }, { status: 409, headers });
+    const company = db.prepare('SELECT name, code, vatCode FROM Company WHERE id = ?').get(companyId) as { name: string; code: string | null; vatCode: string | null } | undefined;
+    const vatCode = (company?.vatCode || '').replace(/\s+/g, '').toUpperCase();
     const { sales, purchases } = loadTaxDocuments(db, companyId, start, end);
-    return NextResponse.json({ period: { start, end }, dueDate: monthlyDueDate(start, end), draft: fr0600Draft(sales, purchases), notice: 'Projektas patikrai. Deklaracija teikiama tik per EDS. 12–24 ir 32–34 laukai skaičiuojami tik pagal eilutes su priskirtu i.SAF kodu; 26–28 laukai čia neskaičiuojami.' }, { headers });
+    return NextResponse.json({
+      period: { start, end },
+      dueDate: monthlyDueDate(start, end),
+      header: { name: company?.name || '', code: company?.code || '', vatCode: vatCode.startsWith('LT') ? vatCode.slice(2) : vatCode },
+      draft: fr0600Draft(sales, purchases),
+      notice: 'Projektas patikrai. Deklaracija teikiama tik per EDS. 12–24 ir 32–34 laukai skaičiuojami tik pagal eilutes su priskirtu i.SAF kodu; 26–28 laukai čia neskaičiuojami.',
+    }, { headers });
   } catch (err) {
     return apiError(err);
   }

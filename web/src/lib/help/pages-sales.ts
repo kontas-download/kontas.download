@@ -27,7 +27,7 @@ export const salesPages: HelpPage[] = [
           'Eilutės suma ir PVM apvalinami iki centų; sąskaitos suma – suapvalintų eilučių suma.',
           'Sąskaitos su kreditinėmis sąskaitomis taisyti negalima – pirmiausia ištrinkite KS. Sąskaitos su susietais mokėjimais ištrinti negalima.',
           'Uždaryto laikotarpio sąskaitos negalima kurti, keisti ar trinti.',
-          'Programos formoje galimi 21 %, 9 %, 5 % ir 0 % tarifai. i.SAF ir FR0600 klasifikuoja 21 % (PVM1), 9 % (PVM2), 5 % (PVM3) ir 12 % (PVM58, tik nuo 2026-01-01); kitus atvejus reikia tvarkyti rankiniu būdu.',
+          'Programos formoje galimi 21 %, 9 %, 5 % ir 0 % tarifai. i.SAF ir FR0600 klasifikuoja 21 % (PVM1), 9 % (PVM2), 5 % (PVM3) ir 12 % (PVM58, tik nuo 2026-01-01); priskyrus eilutei PVM15, PVM34 ar PVM25–PVM27 kodą, pirkėjo PDF pridedama atvirkštinio apmokestinimo nuoroda.',
         ],
         mistakes: [
           'Pasirenkamas 0 % tarifas ten, kur reikalingas neapmokestinimo pagrindas: programa neįrašo atleidimo pagrindo, todėl tokius atvejus reikia įvertinti ir deklaruoti rankiniu būdu.',
@@ -55,7 +55,7 @@ export const salesPages: HelpPage[] = [
           'Сумма строки и PVM округляются до центов; итог счёта — сумма округлённых строк.',
           'Счёт с кредитовыми счетами нельзя редактировать — сначала удалите KS. Счёт со связанными оплатами нельзя удалить.',
           'Счёт закрытого периода нельзя создать, изменить или удалить.',
-          'В форме доступны ставки 21 %, 9 %, 5 % и 0 %. i.SAF и FR0600 классифицируют 21 % (PVM1), 9 % (PVM2), 5 % (PVM3) и 12 % (PVM58, только с 2026-01-01); прочие случаи обрабатываются вручную.',
+          'В форме доступны ставки 21 %, 9 %, 5 % и 0 %. i.SAF и FR0600 классифицируют 21 % (PVM1), 9 % (PVM2), 5 % (PVM3) и 12 % (PVM58, только с 2026-01-01); при назначении строке кода PVM15, PVM34 или PVM25–PVM27 в PDF покупателя добавляется отметка об обратном начислении.',
         ],
         mistakes: [
           'Выбор ставки 0 % там, где нужно основание освобождения: программа не хранит основание, поэтому такие случаи нужно оценить и задекларировать вручную.',
@@ -83,7 +83,7 @@ export const salesPages: HelpPage[] = [
           'Line net and VAT are rounded to cents; the invoice total is the sum of rounded lines.',
           'An invoice with credit notes cannot be edited (delete the credit notes first). An invoice with linked payments cannot be deleted.',
           'An invoice in a locked period cannot be created, changed or deleted.',
-          'The form offers 21 %, 9 %, 5 % and 0 %. i.SAF and FR0600 classify 21 % (PVM1), 9 % (PVM2), 5 % (PVM3) and 12 % (PVM58, only from 2026-01-01); other cases need manual handling.',
+          'The form offers 21 %, 9 %, 5 % and 0 %. i.SAF and FR0600 classify 21 % (PVM1), 9 % (PVM2), 5 % (PVM3) and 12 % (PVM58, only from 2026-01-01); when a line is assigned code PVM15, PVM34 or PVM25–PVM27, the customer PDF includes the reverse-charge notice.',
         ],
         mistakes: [
           'Choosing 0 % where an exemption basis is required: the application stores no exemption basis, so such cases must be assessed and declared by hand.',

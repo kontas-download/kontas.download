@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useT } from '@/lib/i18n/client';
+import { buildFr0564Ffdata } from '@/lib/ffdata';
 
 interface Row { country: string; vatCode: string; r13: number; r14: number; r18: number; f13: number; f14: number; f18: number; customers: string[]; documents: string[]; }
 interface Draft { rows: Row[]; totals: { r13: number; r14: number; r18: number }; complete: boolean; manual: string[]; notes: string[]; notFilled: string[]; }
@@ -33,6 +34,7 @@ export function Fr0564Client({ today }: { today: string }) {
       setResult(data);
     } catch { setError({ message: t('tax.fr564.calcFailed'), issues: [] }); } finally { setBusy(false); }
   }
+  const exportFfdata = () => result && download(`FR0564_${month}.ffdata`, 'application/xml', buildFr0564Ffdata({ header: result.header, rows: result.draft.rows, totals: result.draft.totals, createdOn: today }));
   const exportCsv = () => {
     if (!result) return;
     const lines = ['11;12;13;14;18', ...result.draft.rows.map(r => [r.country, r.vatCode, r.r13, r.r14, r.r18].join(';'))];
@@ -51,6 +53,7 @@ export function Fr0564Client({ today }: { today: string }) {
         <label className="text-sm">{t('tax.fr564.month')}<input type="month" value={month} onChange={e => setMonth(e.target.value)} className="block mt-1 bg-slate-950 border border-slate-700 rounded px-2 py-1.5" /></label>
         <button onClick={calculate} disabled={busy} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold">{busy ? t('tax.fr.calculating') : t('tax.fr.calculate')}</button>
         {result && <>
+          <button onClick={exportFfdata} className="px-3 py-2 rounded-lg border border-slate-700 text-sm">{t('tax.fr564.exportFfdata')}</button>
           <button onClick={exportCsv} className="px-3 py-2 rounded-lg border border-slate-700 text-sm">{t('tax.fr564.exportCsv')}</button>
           <button onClick={exportJson} className="px-3 py-2 rounded-lg border border-slate-700 text-sm">{t('tax.fr564.exportJson')}</button>
           <button onClick={() => window.print()} className="px-3 py-2 rounded-lg border border-slate-700 text-sm">{t('tax.fr564.print')}</button>

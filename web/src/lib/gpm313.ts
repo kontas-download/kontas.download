@@ -17,8 +17,11 @@ export interface Gpm313Draft {
   year: number;
   month: number;
   rows: Gpm313Row[];
-  // f5 = gross; gpmTotal = sum of fields 6 and 7 (the split by payment date is not known to the application)
+  // f5 = gross; gpmTotal = sum of fields 6 and 7; when payoutDate is set on the run, f6 (<= 15th) and f7 (> 15th) are also populated
   totals: { f5: number; gpmTotal: number; npd: number | null };
+  payoutDate: string | null;
+  f6: number | null;
+  f7: number | null;
   source: 'RUN' | 'LEGACY' | 'NONE';
   provisional: boolean;
   notes: string[];
@@ -38,7 +41,7 @@ const euro = (c: number) => c / 100;
 
 export function gpm313Draft(db: Database.Database, companyId: number, year: number, month: number): Gpm313Draft {
   const notes: string[] = [];
-  const runs = db.prepare("SELECT id, payrollId, rulesProvisional FROM PayrollRun WHERE companyId=? AND year=? AND month=? AND status='POSTED'").all(companyId, year, month) as { id: number; payrollId: number | null; rulesProvisional: number }[];
+  const runs = db.prepare("SELECT id, payrollId, rulesProvisional, payoutDate FROM PayrollRun WHERE companyId=? AND year=? AND month=? AND status='POSTED'").all(companyId, year, month) as { id: number; payrollId: number | null; rulesProvisional: number; payoutDate: string | null }[];
   let rows: Gpm313Row[] = [];
   let source: Gpm313Draft['source'] = 'NONE';
   let provisional = false;
@@ -61,11 +64,22 @@ export function gpm313Draft(db: Database.Database, companyId: number, year: numb
   if (!rows.length) notes.push('Šį mėnesį užregistruoto darbo užmokesčio nėra. Jei buvo dirbančių pagal darbo sutartis, deklaracija vis tiek teikiama su nuliais ar tuščiais laukais (4 p.)');
   if (provisional) notes.push('Bent vieno skaičiavimo parametrai (VDU, NPD, tarifai) laikini — patikrinkite GPM sumas');
   const totalGpm = rows.reduce((s, r) => s + cents(r.gpm), 0);
+  const gpmEuro = euro(totalGpm);
+  const payoutDate = runs.length === 1 && !legacy.length ? (runs[0].payoutDate ?? null) : null;
+  let f6: number | null = null;
+  let f7: number | null = null;
+  if (payoutDate) {
+    const day = Number(payoutDate.slice(8, 10));
+    f6 = day <= 15 ? gpmEuro : 0;
+    f7 = day > 15 ? gpmEuro : 0;
+    notes.push(`Išmokėjimo data ${payoutDate}: išskaičiuotas GPM (${gpmEuro.toFixed(2)} EUR) priskirtas ${day <= 15 ? '6 laukeliui (iki 15 d. imtinai)' : '7 laukeliui (po 15 d.)'}.`);
+  }
   const npdKnown = rows.length > 0 && rows.every(r => r.npd !== null);
   return {
     year, month, rows,
-    totals: { f5: euro(rows.reduce((s, r) => s + cents(r.gross), 0)), gpmTotal: euro(totalGpm), npd: npdKnown ? euro(rows.reduce((s, r) => s + cents(r.npd as number), 0)) : null },
-    source, provisional, notes, notFilled: GPM313_NOT_FILLED,
+    totals: { f5: euro(rows.reduce((s, r) => s + cents(r.gross), 0)), gpmTotal: gpmEuro, npd: npdKnown ? euro(rows.reduce((s, r) => s + cents(r.npd as number), 0)) : null },
+    payoutDate, f6, f7,
+    source, provisional, notes, notFilled: payoutDate ? GPM313_NOT_FILLED.slice(1) : GPM313_NOT_FILLED,
   };
 }
 

@@ -13,7 +13,7 @@ export interface DocTexts {
   number: string; issueDate: string; corrects: string; reason: string;
   seller: string; buyer: string; companyCode: string; vatCode: string; currency: string;
   colNo: string; colItem: string; colQty: string; colPriceNet: string; colPrice: string; colVatPct: string; colSumVat: string; colSum: string;
-  sumNet: string; vat: string; total: string; noVatSvs: string; noVatSeller: string;
+  sumNet: string; vat: string; total: string; noVatSvs: string; noVatSeller: string; reverseChargeEu: string; reverseChargeLt96: string;
   dueDate: string; iban: string; bank: string; swift: string;
   invoiceWord: string; greeting: string; sendingInvoice: string; amount: string; payBy: string; regards: string;
   reminderSubject: string; reminderBody: string; reminderDue: string; reminderAttached: string;
@@ -25,6 +25,8 @@ const lt: DocTexts = {
   seller: 'PARDAVĖJAS', buyer: 'PIRKĖJAS', companyCode: 'Įmonės kodas', vatCode: 'PVM kodas', currency: 'Valiuta',
   colNo: 'Nr.', colItem: 'Prekė / Paslauga', colQty: 'Kiekis', colPriceNet: 'Kaina be PVM', colPrice: 'Kaina', colVatPct: 'PVM %', colSumVat: 'Suma su PVM', colSum: 'Suma',
   sumNet: 'Suma be PVM', vat: 'PVM', total: 'IŠ VISO', noVatSvs: 'PVM neskaičiuojamas. Taikoma SVS Lietuvoje.', noVatSeller: 'PVM neskaičiuojamas. Pardavėjas ne PVM mokėtojas.',
+  reverseChargeEu: 'Atvirkštinis apmokestinimas — PVM skaičiuoja pirkėjas (PVMĮ 13 str. 2 d., Direktyvos 2006/112/EB 196 str.).',
+  reverseChargeLt96: 'Atvirkštinis apmokestinimas — PVM išskaičiuoja ir sumoka pirkėjas (LR PVMĮ 96 str. 1 d.).',
   dueDate: 'Apmokėti iki', iban: 'IBAN', bank: 'Bankas', swift: 'SWIFT',
   invoiceWord: 'Sąskaita faktūra', greeting: 'Laba diena,', sendingInvoice: 'Siunčiame sąskaitą faktūrą {number}.', amount: 'Suma', payBy: 'Apmokėti iki', regards: 'Pagarbiai,',
   reminderSubject: 'Priminimas apie neapmokėtą sąskaitą {number}', reminderBody: 'primename, kad sąskaita faktūra {number} ({date}) nėra pilnai apmokėta. Neapmokėta suma: {balance} {currency}.', reminderDue: 'Apmokėjimo terminas buvo {date}.', reminderAttached: 'Sąskaitą pridedame. Jei apmokėjote, prašome šio laiško nepaisyti.',
@@ -35,6 +37,8 @@ const ru: DocTexts = {
   seller: 'ПРОДАВЕЦ', buyer: 'ПОКУПАТЕЛЬ', companyCode: 'Код компании', vatCode: 'Код PVM', currency: 'Валюта',
   colNo: '№', colItem: 'Товар / Услуга', colQty: 'Кол-во', colPriceNet: 'Цена без PVM', colPrice: 'Цена', colVatPct: 'PVM %', colSumVat: 'Сумма с PVM', colSum: 'Сумма',
   sumNet: 'Сумма без PVM', vat: 'PVM', total: 'ИТОГО', noVatSvs: 'PVM не начисляется. Применяется SVS в Литве.', noVatSeller: 'PVM не начисляется. Продавец не является плательщиком PVM.',
+  reverseChargeEu: 'Обратное начисление PVM — налог исчисляет покупатель (ч. 2 ст. 13 Закона о PVM ЛР, ст. 196 Директивы 2006/112/ЕС).',
+  reverseChargeLt96: 'Обратное начисление PVM — налог удерживает и уплачивает покупатель (ч. 1 ст. 96 Закона о PVM ЛР).',
   dueDate: 'Оплатить до', iban: 'IBAN', bank: 'Банк', swift: 'SWIFT',
   invoiceWord: 'Счёт-фактура', greeting: 'Добрый день,', sendingInvoice: 'Направляем счёт-фактуру {number}.', amount: 'Сумма', payBy: 'Оплатить до', regards: 'С уважением,',
   reminderSubject: 'Напоминание о неоплаченном счёте {number}', reminderBody: 'напоминаем, что счёт-фактура {number} ({date}) оплачена не полностью. Неоплаченная сумма: {balance} {currency}.', reminderDue: 'Срок оплаты был {date}.', reminderAttached: 'Счёт прилагаем. Если вы уже оплатили, просим не учитывать это письмо.',
@@ -45,6 +49,8 @@ const en: DocTexts = {
   seller: 'SELLER', buyer: 'BUYER', companyCode: 'Company code', vatCode: 'VAT code', currency: 'Currency',
   colNo: 'No.', colItem: 'Goods / Services', colQty: 'Qty', colPriceNet: 'Price excl. VAT', colPrice: 'Price', colVatPct: 'VAT %', colSumVat: 'Amount incl. VAT', colSum: 'Amount',
   sumNet: 'Total excl. VAT', vat: 'VAT', total: 'TOTAL', noVatSvs: 'VAT is not charged. Simplified VAT scheme (SVS) in Lithuania applies.', noVatSeller: 'VAT is not charged. The seller is not a VAT payer.',
+  reverseChargeEu: 'Reverse charge — VAT to be accounted for by the recipient (Art. 13(2) LT VAT Act, Art. 196 Directive 2006/112/EC).',
+  reverseChargeLt96: 'Domestic reverse charge — VAT to be withheld and paid by the buyer (Art. 96(1) LT VAT Act).',
   dueDate: 'Pay by', iban: 'IBAN', bank: 'Bank', swift: 'SWIFT',
   invoiceWord: 'Invoice', greeting: 'Hello,', sendingInvoice: 'Please find attached invoice {number}.', amount: 'Amount', payBy: 'Pay by', regards: 'Kind regards,',
   reminderSubject: 'Reminder: unpaid invoice {number}', reminderBody: 'this is a reminder that invoice {number} ({date}) has not been paid in full. Outstanding amount: {balance} {currency}.', reminderDue: 'The payment due date was {date}.', reminderAttached: 'The invoice is attached. If you have already paid, please disregard this message.',

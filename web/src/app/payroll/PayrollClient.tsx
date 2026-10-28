@@ -9,11 +9,11 @@ export interface EmployeeDto {
   id: number; name: string; personalCode: string | null; position: string | null; baseSalary: number; contractType: 'OPEN' | 'FIXED';
   applyNpd: number; pensionAccumulation: number; accidentRate: number | null; startDate: string | null; endDate: string | null; active: number;
 }
-export interface RunSummary { id: number; year: number; month: number; status: 'DRAFT' | 'POSTED'; rulesProvisional: number; verifiedAt: string | null; lineCount: number; totalGross: number; totalNet: number }
+export interface RunSummary { id: number; year: number; month: number; status: 'DRAFT' | 'POSTED'; payoutDate?: string | null; rulesProvisional: number; verifiedAt: string | null; lineCount: number; totalGross: number; totalNet: number }
 interface Payslip { gross: number; net: number; totalCost: number; overridden: string[]; [key: string]: unknown }
 interface Line { id: number; employeeName: string; gross: number; calc: Payslip; result: Payslip; overrides: Record<string, number> }
 interface LogRow { id: number; createdAt?: string; action: string; employeeName: string | null; field: string | null; oldValue: number | null; newValue: number | null; reason: string | null; actorName: string | null }
-interface RunDetail { run: { id: number; year: number; month: number; status: 'DRAFT' | 'POSTED'; rulesProvisional: boolean; verifiedAt: string | null; verifiedByName: string | null }; lines: Line[]; log: LogRow[] }
+interface RunDetail { run: { id: number; year: number; month: number; status: 'DRAFT' | 'POSTED'; payoutDate?: string | null; rulesProvisional: boolean; verifiedAt: string | null; verifiedByName: string | null }; lines: Line[]; log: LogRow[] }
 
 const FIELDS = ['npd', 'gpm', 'vsd', 'psd', 'pension', 'unemployment', 'accident', 'guarantee', 'longTerm'] as const;
 const FIELD_KEY: Record<string, string> = { npd: 'rFieldNpd', gpm: 'rFieldGpm', vsd: 'rFieldVsd', psd: 'rFieldPsd', pension: 'rFieldPension', unemployment: 'rFieldUnemployment', accident: 'rFieldAccident', guarantee: 'rFieldGuarantee', longTerm: 'rFieldLongTerm' };
@@ -163,7 +163,10 @@ export function PayrollClient({ initialEmployees, initialRuns, companyId }: { in
             {detail.run.verifiedAt ? t('payroll.rVerified', { date: date(detail.run.verifiedAt.slice(0, 10)) }) + (detail.run.verifiedByName ? ` · ${detail.run.verifiedByName}` : '') : t('payroll.rNotVerified')}
             {detail.run.rulesProvisional && <span className="ml-3 text-amber-300">{t('payroll.rRulesProvisional')}</span>}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 text-xs text-slate-300">{t('payroll.rPayoutDate')}:
+              <input className={input} type="date" value={detail.run.payoutDate ?? ''} onChange={e => void action({ action: 'payoutDate', payoutDate: e.target.value || null })} />
+            </label>
             {draft && <><button className={btn} disabled={busy} onClick={() => action({ action: 'recalculate' })}>{t('payroll.rRecalculate')}</button>
               <button className={btn} disabled={busy} onClick={() => action({ action: 'verify' })}>{t('payroll.rVerify')}</button>
               <button className={btn} disabled={busy} onClick={() => action({ action: 'post' })}>{t('payroll.rPost')}</button>

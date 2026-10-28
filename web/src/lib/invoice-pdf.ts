@@ -15,7 +15,9 @@ export function invoiceDefinition(doc: InvoiceDocument): TDocumentDefinitions {
   const headers = [x.colNo,x.colItem,x.colQty,doc.isVatPayer?x.colPriceNet:x.colPrice,...(doc.isVatPayer?[x.colVatPct]:[]),doc.isVatPayer?x.colSumVat:x.colSum];
   const rows: TableCell[][] = [headers.map(text=>({text,bold:true,color:'#ffffff',fillColor:'#1e293b',margin:[0,5,0,5]}))];
   doc.items.forEach((item,i)=>rows.push([String(i+1),item.itemName,{text:String(item.quantity),alignment:'right'},{text:formatDocNumber(doc.lang,item.price,2,6),alignment:'right'},...(doc.isVatPayer?[{text:String(item.vatRate ?? 0),alignment:'right' as const}]:[]),{text:amount(item.sumWithVat),alignment:'right'}]));
-  const summary: Content[] = doc.isVatPayer ? [{text:x.sumNet+': '+amount(doc.net)+' '+doc.currency},{text:x.vat+': '+amount(doc.vat)+' '+doc.currency}] : [{text:doc.vatMode==='SVS_LT'?x.noVatSvs:x.noVatSeller,fontSize:9,color:'#475569'}];
+  const summary: Content[] = doc.isVatPayer
+    ? [{text:x.sumNet+': '+amount(doc.net)+' '+doc.currency},{text:x.vat+': '+amount(doc.vat)+' '+doc.currency},...(doc.reverseCharge?[{text:doc.reverseCharge==='LT_96'?x.reverseChargeLt96:x.reverseChargeEu,fontSize:9,color:'#475569'}]:[])]
+    : [{text:doc.vatMode==='SVS_LT'?x.noVatSvs:x.noVatSeller,fontSize:9,color:'#475569'}];
   return { pageSize:'A4',pageMargins:[40,42,40,48],defaultStyle:{font:'Roboto',fontSize:10,lineHeight:1.2},info:{title:doc.number,author:doc.seller.name},footer:(page,pages)=>({text:page+' / '+pages,alignment:'center',fontSize:8,color:'#64748b',margin:[0,15,0,0]}),content:[
     {text:(doc.correction?x.creditPrefix:'')+(doc.vatMode==='SVS_LT'?x.titleSvs:doc.isVatPayer?x.titleVat:x.titleNoVat),fontSize:20,bold:true,color:'#0f172a'},
     {text:x.number+' '+doc.number,margin:[0,6,0,4],fontSize:12,bold:true},

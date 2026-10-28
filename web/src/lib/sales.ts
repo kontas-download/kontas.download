@@ -4,6 +4,7 @@ import { validateBody } from './validation';
 import { HttpError } from './errors';
 import { getDb } from './db';
 import { postDocumentInventory } from './inventory';
+import { codedLineProblem, taxCodeSide } from './tax-codes';
 
 // Creates a sales invoice with its lines and posting in one transaction. Shared by the invoice API and recurring invoices.
 export function createInvoice(companyId: number, body: any) {
@@ -51,9 +52,19 @@ export function createInvoice(companyId: number, body: any) {
         vatRate, sumWithoutVat, sumWithVat, warehouseName
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
+    const insertCode = db.prepare('INSERT INTO TaxLineCode(companyId,kind,itemId,taxCode,note,updatedAt) VALUES(?,\'SALE\',?,?,?,?)');
+    const now = Date.now();
     for (const it of items) {
       const { qty, price, vatRate, lineNoVat, lineWithVat } = calculateLine(it);
-      insertItem.run(saleId, it.itemName || 'Paslauga', it.itemCode || null, qty, price, lineWithVat / qty, vatRate, lineNoVat, lineWithVat, warehouseName || 'Pagrindinis');
+      const itemRes = insertItem.run(saleId, it.itemName || 'Paslauga', it.itemCode || null, qty, price, lineWithVat / qty, vatRate, lineNoVat, lineWithVat, warehouseName || 'Pagrindinis');
+      if (mode === 'STANDARD_VAT' && typeof it.taxCode === 'string' && it.taxCode.trim()) {
+        const code = it.taxCode.trim().toUpperCase();
+        const side = taxCodeSide(code, 'SALE');
+        if (!side) throw new HttpError(400, `Kodas ${code} netaikomas pardavimams`);
+        const problem = codedLineProblem(code, side, { rate: vatRate, net: Math.round(lineNoVat * 100), vat: Math.round((lineWithVat - lineNoVat) * 100) }, saleDate, false);
+        if (problem) throw new HttpError(400, problem);
+        insertCode.run(companyId, Number(itemRes.lastInsertRowid), code, '', now);
+      }
     }
     // Cost of goods sold, when the company keeps inventory accounting; an insufficient stock aborts the whole invoice.
     postDocumentInventory(db, companyId, 'SALE', saleId);

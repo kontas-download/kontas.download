@@ -106,6 +106,7 @@ const rows: [string, string, string, string][] = [
   ['rRulesProvisional', 'Naudotos laikinos taisyklės', 'Использованы временные правила', 'Provisional rules were used'],
   ['rRecalculate', 'Perskaičiuoti', 'Пересчитать', 'Recalculate'],
   ['rVerify', 'Pažymėti patikrintu', 'Отметить проверенным', 'Mark as verified'],
+  ['rPayoutDate', 'Išmokėjimo data (GPM313 6/7 laukams)', 'Дата выплаты (для полей 6/7 GPM313)', 'Payout date (for GPM313 fields 6/7)'],
   ['rPost', 'Užregistruoti apskaitoje', 'Провести в учёте', 'Post to ledger'],
   ['rUnpost', 'Atšaukti registravimą', 'Отменить проведение', 'Unpost'],
   ['rUnpostReason', 'Atšaukimo priežastis', 'Причина отмены', 'Reason for unposting'],

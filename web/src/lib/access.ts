@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { verifySessionToken } from './auth';
 import { getDb } from './db';
 import { withActor } from './audit-actor';
+import { currentErrorLang, translateServerError } from './errors';
 // Roles: 'admin' can do everything; 'accountant' does the accounting work in every company but cannot manage users,
 // download the whole database, move company packages, read the audit history, close periods or create/delete companies.
 export const ROLES = ['admin', 'accountant'] as const;
@@ -29,15 +30,15 @@ export async function requireAdminPage() {
 }
 export async function requireApiAccess() {
   const user = await currentUser();
-  if (!user) return NextResponse.json({ error: 'Reikia prisijungti' }, { status: 401 });
+  if (!user) return NextResponse.json({ error: translateServerError('Reikia prisijungti', await currentErrorLang()) }, { status: 401 });
   // This installation has shared companies, not tenant memberships: every signed-in role sees every company.
-  if (!isRole(user.role)) return NextResponse.json({ error: 'Prieiga uždrausta' }, { status: 403 });
+  if (!isRole(user.role)) return NextResponse.json({ error: translateServerError('Prieiga uždrausta', await currentErrorLang()) }, { status: 403 });
   return null;
 }
 export async function requireAdminApi() {
   const user = await currentUser();
-  if (!user) return NextResponse.json({ error: 'Reikia prisijungti' }, { status: 401 });
-  if (user.role !== 'admin') return NextResponse.json({ error: 'Prieinama tik administratoriui' }, { status: 403 });
+  if (!user) return NextResponse.json({ error: translateServerError('Reikia prisijungti', await currentErrorLang()) }, { status: 401 });
+  if (user.role !== 'admin') return NextResponse.json({ error: translateServerError('Prieinama tik administratoriui', await currentErrorLang()) }, { status: 403 });
   return null;
 }
 export async function checkOrigin(request: Request) {
@@ -49,7 +50,7 @@ export async function checkOrigin(request: Request) {
   const port = loopback(expected);
   const allowed = origin === expected || (origin !== null && port !== null && loopback(origin) === port);
   if (request.headers.get('sec-fetch-site') === 'cross-site' || (origin && !allowed)) {
-    return NextResponse.json({ error: 'Netinkamas užklausos šaltinis' }, { status: 403 });
+    return NextResponse.json({ error: translateServerError('Netinkamas užklausos šaltinis', await currentErrorLang()) }, { status: 403 });
   }
   return null;
 }

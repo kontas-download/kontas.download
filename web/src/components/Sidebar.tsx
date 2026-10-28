@@ -52,6 +52,7 @@ const accountingItems = [
   { name: 'nav.fr0564', href: '/fr0564', icon: FileCheck },
   { name: 'nav.gpm313', href: '/gpm313', icon: FileCheck },
   { name: 'nav.gpm312', href: '/gpm312', icon: FileCheck },
+  { name: 'nav.pln204', href: '/pln204', icon: FileCheck },
   { name: 'nav.reconciliation', href: '/reconciliation', icon: FileCheck2 },
 ];
 

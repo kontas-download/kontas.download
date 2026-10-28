@@ -94,8 +94,20 @@ test('customer documents are issued in the customer language or the language cho
       }
       const credit = text(invoiceDefinition({ ...doc, lang: 'en', correction: { originalNumber: 'SF 1', originalDate: '2026-10-01', reason: 'Error' } }));
       assert(credit.includes('CREDIT VAT INVOICE') && credit.includes('Corrected invoice: SF 1 (2026-10-01). Reason: Error'));
+      const rcEuSale = (await (await invoices.POST(request('POST', { series: 'SF', number: 'RC-EU', saleDate: '2026-10-15', clientId: ruClient.id, clientName: ruClient.name, notes: 'INTERNAL_SECRET', items: [{ itemName: 'EU consulting', quantity: 1, price: 500, vatRate: 0, taxCode: 'PVM15' }] }))).json()).sale;
+      const rcEuDoc = invoiceDocument(rcEuSale.id, 1, 'en');
+      assert.equal(rcEuDoc.reverseCharge, 'EU');
+      assert(text(invoiceDefinition(rcEuDoc)).includes('Reverse charge — VAT to be accounted for by the recipient (Art. 13(2) LT VAT Act, Art. 196 Directive 2006/112/EC).'));
+      assert(text(invoiceDefinition({ ...rcEuDoc, lang: 'lt' })).includes('Atvirkštinis apmokestinimas — PVM skaičiuoja pirkėjas (PVMĮ 13 str. 2 d., Direktyvos 2006/112/EB 196 str.).'));
+      assert(text(invoiceDefinition({ ...rcEuDoc, lang: 'ru' })).includes('Обратное начисление PVM — налог исчисляет покупатель (ч. 2 ст. 13 Закона о PVM ЛР, ст. 196 Директивы 2006/112/ЕС).'));
+      assert(!text(invoiceDefinition(rcEuDoc)).includes('INTERNAL_SECRET'));
+      const rcLtSale = (await (await invoices.POST(request('POST', { series: 'SF', number: 'RC-LT', saleDate: '2026-10-15', clientId: plainClient.id, clientName: plainClient.name, items: [{ itemName: 'Construction work', quantity: 1, price: 800, vatRate: 0, taxCode: 'PVM25' }] }))).json()).sale;
+      const rcLtDoc = invoiceDocument(rcLtSale.id, 1, 'lt');
+      assert.equal(rcLtDoc.reverseCharge, 'LT_96');
+      assert(text(invoiceDefinition(rcLtDoc)).includes('Atvirkštinis apmokestinimas — PVM išskaičiuoja ir sumoka pirkėjas (LR PVMĮ 96 str. 1 d.).'));
       const output = path.resolve('../output/pdf'); fs.mkdirSync(output, { recursive: true });
       for (const lang of DOC_LANGS) { const bytes = await renderInvoicePdf({ ...doc, lang }); assert.equal(bytes.subarray(0, 5).toString(), '%PDF-'); fs.writeFileSync(path.join(output, `invoice-${lang}.pdf`), bytes); }
+      const rcBytes = await renderInvoicePdf(rcEuDoc); assert.equal(rcBytes.subarray(0, 5).toString(), '%PDF-'); fs.writeFileSync(path.join(output, 'invoice-rc-eu-en.pdf'), rcBytes);
       const viaRoute = await pdfRoute.GET(request('GET', null, '?lang=en'), context(sale.id)); assert.equal(viaRoute.status, 200);
     });
 

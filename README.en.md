@@ -16,9 +16,9 @@ The program is packaged to run in a Docker container (Next.js 16, React 19, Type
 - **PDF and e-mail:** invoice PDF in the customer's language (Lithuanian, Russian or English); e-mail delivery through the seller company's own SMTP; archive of sent PDFs. The customer PDF contains no internal payment statuses or notes.
 - **Bank:** bank statement import (CSV, camt.053, MT940), matching payments to documents, settlements outside the bank.
 - **Receivables:** an overview of outstanding amounts and reminders.
-- **Taxes:** i.SAF 1.2 XML export, FR0600 draft, tax codes, tax calendar.
+- **Taxes:** i.SAF 1.2 XML export, FR0600, FR0564, GPM313, GPM312 and PLN204 drafts and EDS `.ffdata` file export, year-versioned tax and rate rules, tax codes, tax calendar.
 - **Accounting:** general ledger (journal), trial balance, income statement and balance sheet, chart of accounts, counterparty reconciliation statements, locked periods and change history.
-- **Other:** counterparties, stock and inventory, payroll calculator.
+- **Other:** counterparties, stock and inventory costing (FIFO or weighted average), fixed assets register and monthly depreciation, payroll runs (NPD, progressive GPM rates, Sodra ceilings).
 - **Multi-company:** an unlimited number of companies in one installation, with the data of each kept separate.
 - **Data:** company package export and import, a copy of the whole database (for the administrator).
 - **Users:** several users, the "administrator" and "accountant" roles, disabling an account, limiting sign-in attempts.
@@ -29,14 +29,15 @@ Detailed instructions are in the program's own help (the "Help" menu).
 
 The program is not tax or legal advice; the user and their accountant are responsible for declarations, accounting policy and the correctness of the data.
 
-- Nothing is **submitted to VMI automatically**: there is no connection to EDS or i.MAS. The program only prepares the i.SAF XML file and an FR0600 draft; you must submit them yourself.
+- Nothing is **submitted to VMI or Sodra automatically**: there is no connection to EDS, i.MAS or Sodra. The program prepares files and drafts; you submit them yourself.
 - There is no connection to Sodra.
 - There are no debit notes (DS).
-- The payroll module is simple: the suggested calculation is simplified (no NPD, progressive GPM rates or Sodra ceilings), and you enter the final amounts.
-- PLN204, GPM312/GPM313 and FR0564 returns are not prepared; the tax calendar only reminds you of deadlines.
-- Invoices carry no automatic reverse-charge wording for services supplied to an EU VAT payer. The program cannot yet print it on the customer PDF (internal notes do not reach the PDF), so the accountant handles that wording and FR0564.
-- There is no automatic depreciation of fixed assets or write-off of inventory cost.
-- There is no scheduled automatic sending of invoices: every send is a manual action.
+- Payroll results are provisional until verified by an accountant; Sodra SAM and 1-SD forms are not prepared.
+- GPM313, GPM312, FR0564 and PLN204 are prepared as drafts and EDS `.ffdata` files with a list of unfilled fields (GPM313 fields 6 and 7 are split by payout date; GPM312 `.ffdata` supports the L9/U9 rate and the non-resident appendix GPM312U; FR0564 `.ffdata` supports appendices FR0564P/R/T/TP; PLN204 `.ffdata` supports appendices PLN204S and PLN204Z, while special variants PLN204A/N/U are not prepared). The tax calendar reminds you of deadlines.
+- In the FR0600 panel and `.ffdata` file, fields 26–28 (import VAT and deduction %) can be entered manually; the margin scheme and some special i.SAF codes are filled manually in EDS. A reverse-charge notice is printed on the customer PDF when an invoice line is assigned code PVM15, PVM34 or PVM25–PVM27.
+- Cost of goods sold write-off is disabled by default (`NONE`); inventory costing (FIFO or weighted average) and fixed asset depreciation must be checked by an accountant.
+- Supplier PDF invoices are not read (no OCR); only XML (UBL / Peppol) is imported.
+- There is no automatic or scheduled sending of invoices and reminders: every send is a manual action.
 
 More: the help page "Limitations: what the application does not do" and [docs/VMI-EDS-AUTOMATION.en.md](docs/VMI-EDS-AUTOMATION.en.md).
 

@@ -109,7 +109,7 @@ export const taxPages: HelpPage[] = [
         steps: [
           'Atidarykite „FR0564 (ES tiekimai)“ ir pasirinkite ataskaitinį mėnesį.',
           'Peržiūrėkite eilutes ir sąrašą „rankiniam tvarkymui“ – juose esantys dokumentai į ataskaitą neįtraukti.',
-          'Prireikus atsisiųskite CSV / JSON arba atspausdinkite juodraštį.',
+          'Prireikus atsisiųskite EDS .ffdata failą, CSV / JSON arba atspausdinkite juodraštį.',
           'Prisijunkite prie EDS, užpildykite FR0564 formą (taip pat 1–3, 7, 8 laukus) ir pateikite iki kito mėnesio 25 d.',
         ],
         rules: [
@@ -135,7 +135,7 @@ export const taxPages: HelpPage[] = [
         steps: [
           'Откройте «FR0564 (поставки в ЕС)» и выберите отчётный месяц.',
           'Просмотрите строки и список «для ручной обработки» — документы из него в отчёт не включены.',
-          'При необходимости скачайте CSV / JSON или распечатайте черновик.',
+          'При необходимости скачайте файл .ffdata для EDS, CSV / JSON или распечатайте черновик.',
           'Войдите в EDS, заполните форму FR0564 (в том числе поля 1–3, 7, 8) и подайте до 25-го следующего месяца.',
         ],
         rules: [
@@ -161,7 +161,7 @@ export const taxPages: HelpPage[] = [
         steps: [
           'Open "FR0564 (EU supplies)" and choose the reporting month.',
           'Review the rows and the "manual handling" list; documents in it are not included in the report.',
-          'Download CSV / JSON or print the draft if needed.',
+          'Download the EDS .ffdata file, CSV / JSON or print the draft if needed.',
           'Sign in to EDS, complete the FR0564 form (including fields 1–3, 7, 8) and submit it by the 25th of the next month.',
         ],
         rules: [
@@ -195,12 +195,12 @@ export const taxPages: HelpPage[] = [
         steps: [
           'Atidarykite „GPM313 (pajamų mokestis)“ ir pasirinkite ataskaitinį mėnesį.',
           'Peržiūrėkite lentelę ir sąrašą „Ko programa neužpildo“.',
-          'Prireikus atsisiųskite CSV / JSON arba atspausdinkite juodraštį.',
+          'Prireikus atsisiųskite EDS .ffdata failą, CSV / JSON arba atspausdinkite juodraštį.',
           'Prisijunkite prie EDS, užpildykite GPM313 formą (1–4 laukus, 6 ir 7 laukų skirstymą, 8–12 laukus) ir pateikite iki kito mėnesio 15 d.',
         ],
         rules: [
           'Terminas – kito mėnesio 15 d. (Aprašo 12 punktas; taisyklių registro įrašas calendar.gpm313.dueDay, laikinas). Pailginimo dėl savaitgalio ar šventės programa neskaičiuoja.',
-          '5 laukas – per mėnesį išmokėtos su darbo santykiais susijusios išmokos be NPD, GPM ir įmokų atėmimo; 6 laukas – GPM nuo išmokų, išmokėtų iki mėnesio 15 d. (imtinai); 7 laukas – po 15 d. Programa žino tik priskaičiuotą mėnesį, o ne išmokėjimo datą, todėl 6 ir 7 laukų neskirsto.',
+          '5 laukas – per mėnesį išmokėtos su darbo santykiais susijusios išmokos be NPD, GPM ir įmokų atėmimo; 6 laukas – GPM nuo išmokų, išmokėtų iki mėnesio 15 d. (imtinai); 7 laukas – po 15 d. Kai DU žiniaraštyje nurodyta išmokėjimo data, programa paskirsto GPM į 6 arba 7 lauką; be išmokėjimo datos rodoma bendra 6 + 7 laukų suma.',
           'Deklaracija teikiama ir tada, kai per mėnesį išmokų nebuvo, bet dirbo darbuotojai pagal darbo sutartis (4 punktas).',
           'Programa nevaldo 8–12 laukų (nesusijusios su darbo santykiais A klasės išmokos, B klasės išmokos), neapmokestinamų ir užsienyje apmokestintų išmokų, ligos ir kitų socialinių išmokų, progresinių tarifų pagal prašymą.',
         ],
@@ -220,12 +220,12 @@ export const taxPages: HelpPage[] = [
         steps: [
           'Откройте «GPM313 (подоходный налог)» и выберите отчётный месяц.',
           'Просмотрите таблицу и список «Что программа не заполняет».',
-          'При необходимости скачайте CSV / JSON или распечатайте черновик.',
+          'При необходимости скачайте файл .ffdata для EDS, CSV / JSON или распечатайте черновик.',
           'Войдите в EDS, заполните форму GPM313 (поля 1–4, разбивку полей 6 и 7, поля 8–12) и подайте до 15-го следующего месяца.',
         ],
         rules: [
           'Срок — 15-е следующего месяца (п. 12 Порядка; запись реестра правил calendar.gpm313.dueDay, временная). Перенос из-за выходных или праздников программа не считает.',
-          'Поле 5 — выплаты, связанные с трудовыми отношениями, выплаченные за месяц, без вычета NPD, GPM и взносов; поле 6 — GPM с выплат до 15-го числа месяца включительно; поле 7 — после 15-го. Программа знает только начисленный месяц, а не дату выплаты, поэтому поля 6 и 7 не разделяет.',
+          'Поле 5 — выплаты, связанные с трудовыми отношениями, выплаченные за месяц, без вычета NPD, GPM и взносов; поле 6 — GPM с выплат до 15-го числа месяца включительно; поле 7 — после 15-го. Если в зарплатной ведомости указана дата выплаты, программа распределяет GPM в поле 6 или 7; без даты выплаты показывается общая сумма полей 6 + 7.',
           'Декларация подаётся и тогда, когда выплат за месяц не было, но работали сотрудники по трудовым договорам (п. 4).',
           'Программа не ведёт поля 8–12 (выплаты класса A, не связанные с трудовыми отношениями, выплаты класса B), необлагаемые и облагаемые за рубежом выплаты, больничные и другие социальные выплаты, прогрессивные ставки по просьбе.',
         ],
@@ -245,12 +245,12 @@ export const taxPages: HelpPage[] = [
         steps: [
           'Open "GPM313 (income tax)" and choose the reporting month.',
           'Review the table and the list "What the application does not fill".',
-          'Download CSV / JSON or print the draft if needed.',
+          'Download the EDS .ffdata file, CSV / JSON or print the draft if needed.',
           'Sign in to EDS, complete the GPM313 form (fields 1–4, the split of fields 6 and 7, fields 8–12) and submit it by the 15th of the next month.',
         ],
         rules: [
           'The due date is the 15th of the next month (item 12 of the Procedure; rules registry entry calendar.gpm313.dueDay, provisional). The application does not carry a weekend or holiday over.',
-          'Field 5 is the employment-related payments made in the month without deducting NPD, GPM and contributions; field 6 is the GPM on payments made up to the 15th of the month (inclusive); field 7 after the 15th. The application knows only the accrual month, not the payment date, so it does not split fields 6 and 7.',
+          'Field 5 is the employment-related payments made in the month without deducting NPD, GPM and contributions; field 6 is the GPM on payments made up to the 15th of the month (inclusive); field 7 after the 15th. When a payout date is set on the payroll run, the application splits GPM into field 6 or 7; without a payout date it shows the combined sum of fields 6 + 7.',
           'The declaration is filed even when nothing was paid in the month but employees worked under employment contracts (item 4).',
           'The application does not handle fields 8–12 (class A payments unrelated to employment, class B payments), tax-exempt and foreign-taxed payments, sick pay and other social benefits, or progressive rates on request.',
         ],
@@ -278,7 +278,7 @@ export const taxPages: HelpPage[] = [
         steps: [
           'Atidarykite „GPM312 (metinė pajamų)“ ir pasirinkite mokestinius metus.',
           'Peržiūrėkite lentelę, pastabas apie trūkstamus asmens kodus ir sąrašą „Ko programa neužpildo“.',
-          'Prireikus atsisiųskite CSV / JSON arba atspausdinkite juodraštį.',
+          'Prireikus atsisiųskite EDS .ffdata failą, CSV / JSON arba atspausdinkite juodraštį.',
           'Prisijunkite prie EDS, užpildykite GPM312 ir GPM312L (L9 tarifą, išmokų skirstymą pagal rūšis ir tarifus, U priedą) ir pateikite iki kitų metų vasario 15 d.',
         ],
         rules: [
@@ -286,7 +286,7 @@ export const taxPages: HelpPage[] = [
           'L8 – nuolatiniam gyventojui išmokėta apmokestinamoji A klasės išmoka be NPD, GPM, VSD ir PSD atėmimo; L10 – išskaičiuotas GPM; L9 – taikytas tarifas (rašomas ir kai GPM po NPD lygus nuliui). Su darbo santykiais susijusioms išmokoms taikomas kodas 01; kitos rūšys (03, 04, 05, 08 ir kt.) ir skirtingi tarifai rašomi atskirose eilutėse.',
           'Deklaracijos 4 laukelis – L8 suma, 5 laukelis – L10 suma, 6 laukelis – išmokas išmokėjusio asmens lėšomis sumokėtas GPM, 7 laukelis – užsienyje sumokėtas GPM.',
           'Jei per metus ištaisomos GPM313 deklaruotos sumos, tikslinamas ir atitinkamo mėnesio GPM313 (65 punktas).',
-          'Programa nevaldo nenuolatinių gyventojų (U priedas), kitų A klasės išmokų, B klasės išmokų, neapmokestinamų ir užsienyje apmokestintų išmokų.',
+          'Lentelėje ir .ffdata eksporte kiekvienai eilutei galima pasirinkti L9 / U9 tarifą ir priedą GPM312L arba GPM312U (su U14 valstybės kodu); programa nevaldo kitų A klasės išmokų, B klasės išmokų, neapmokestinamų ir užsienyje apmokestintų išmokų.',
         ],
         mistakes: [
           'Bruto suma laikoma išmokėta suma: jei gruodžio atlyginimas išmokamas sausį, deklaruojama pagal išmokėjimo, o ne priskaičiavimo metus.',
@@ -304,7 +304,7 @@ export const taxPages: HelpPage[] = [
         steps: [
           'Откройте «GPM312 (годовая)» и выберите налоговый год.',
           'Просмотрите таблицу, замечания об отсутствующих личных кодах и список «Что программа не заполняет».',
-          'При необходимости скачайте CSV / JSON или распечатайте черновик.',
+          'При необходимости скачайте файл .ffdata для EDS, CSV / JSON или распечатайте черновик.',
           'Войдите в EDS, заполните GPM312 и GPM312L (ставку L9, разбивку выплат по видам и ставкам, приложение U) и подайте до 15 февраля следующего года.',
         ],
         rules: [
@@ -312,7 +312,7 @@ export const taxPages: HelpPage[] = [
           'L8 — облагаемая выплата класса A резиденту без вычета NPD, GPM, VSD и PSD; L10 — удержанный GPM; L9 — применённая ставка (указывается и когда GPM после NPD равен нулю). Для выплат, связанных с трудовыми отношениями, применяется код 01; другие виды (03, 04, 05, 08 и др.) и разные ставки указываются в отдельных строках.',
           'Поле 4 декларации — сумма L8, поле 5 — сумма L10, поле 6 — GPM, уплаченный за счёт выплатившего лица, поле 7 — GPM, уплаченный за рубежом.',
           'Если за год исправляются суммы, заявленные в GPM313, уточняется и GPM313 соответствующего месяца (п. 65).',
-          'Программа не ведёт нерезидентов (приложение U), другие выплаты класса A, выплаты класса B, необлагаемые и облагаемые за рубежом выплаты.',
+          'В таблице и экспорте .ffdata для каждой строки можно выбрать ставку L9 / U9 и приложение GPM312L или GPM312U (с кодом государства U14); программа не ведёт другие выплаты класса A, выплаты класса B, необлагаемые и облагаемые за рубежом выплаты.',
         ],
         mistakes: [
           'Брутто принимается за выплаченную сумму: если зарплата за декабрь выплачивается в январе, декларировать нужно по году выплаты, а не начисления.',
@@ -330,7 +330,7 @@ export const taxPages: HelpPage[] = [
         steps: [
           'Open "GPM312 (annual)" and choose the tax year.',
           'Review the table, the notes about missing personal codes and the list "What the application does not fill".',
-          'Download CSV / JSON or print the draft if needed.',
+          'Download the EDS .ffdata file, CSV / JSON or print the draft if needed.',
           'Sign in to EDS, complete GPM312 and GPM312L (the L9 rate, the split of payments by type and rate, appendix U) and submit by 15 February of the next year.',
         ],
         rules: [
@@ -338,7 +338,7 @@ export const taxPages: HelpPage[] = [
           'L8 is the taxable class A payment to a resident without deducting NPD, GPM, VSD and PSD; L10 is the GPM withheld; L9 is the rate applied (also stated when the GPM after NPD is zero). Employment-related payments use code 01; other types (03, 04, 05, 08, etc.) and different rates go on separate rows.',
           'Declaration field 4 is the sum of L8, field 5 the sum of L10, field 6 the GPM paid from the payer\'s own funds, field 7 the GPM paid abroad.',
           'If amounts declared in GPM313 are corrected during the year, the GPM313 of that month is corrected too (item 65).',
-          'The application does not handle non-residents (appendix U), other class A payments, class B payments, tax-exempt and foreign-taxed payments.',
+          'In the table and .ffdata export each row allows selecting the L9 / U9 rate and appendix GPM312L or GPM312U (with U14 country code); the application does not handle other class A payments, class B payments, tax-exempt and foreign-taxed payments.',
         ],
         mistakes: [
           'Treating the gross as the amount paid: if the December salary is paid in January, declare by the year of payment, not accrual.',
@@ -365,11 +365,11 @@ export const taxPages: HelpPage[] = [
           'Atidarykite „Mokesčiai & i.SAF XML“, FR0600 skirtuką, pasirinkite laikotarpį.',
           'Peržiūrėkite apskaičiuotus laukus.',
           'Peržiūrėkite sąrašus „rankiniam tvarkymui“ ir „nepatikrinta atskaita“ – juose esantys dokumentai į laukus neįtraukti.',
-          'Prisijunkite prie EDS, užpildykite FR0600 formą (laukus perkelkite ir papildykite rankiniu būdu) ir pateikite.',
+          'Atsisiųskite EDS .ffdata failą arba prisijunkite prie EDS, užpildykite FR0600 formą (papildykite rankiniu būdu) ir pateikite.',
         ],
         rules: [
           'Automatiškai įtraukiami vidaus dokumentai su 21 %, 9 %, 5 % ir (nuo 2026-01-01) 12 % tarifais; kitos eilutės – tik su priskirtu i.SAF kodu, pagal VMI lentelę „FR0600 + i.SAF kodas“.',
-          'Laukai 12–24 ir 32–34 skaičiuojami tik pagal priskirtus kodus; pirkėjo apskaičiuotas PVM rodomas kaip apskaičiuotas, jo atskaita (35) nepatikrinta. 36 laukas = 29–31 minus 35, o kai užpildyti 32–34 laukai, jis neskaičiuojamas (apskaičiuos EDS). 26–28 laukus ir maržą (16) užpildykite EDS. Dokumentas, kurio kodas netinka kontrahentui (pvz., PVM13 lietuviui), rodomas rankiniam tvarkymui. FR0564 sumos (13, 14, 18) rodomos tik kaip informacija.',
+          'Laukai 12–24 ir 32–34 skaičiuojami tik pagal priskirtus kodus; pirkėjo apskaičiuotas PVM rodomas kaip apskaičiuotas, jo atskaita (35) nepatikrinta. 36 laukas = 29–31 minus 35, o kai užpildyti 32–34 laukai, juodraštyje jis neskaičiuojamas (jį apskaičiuoja .ffdata eksportas ir EDS). 26–28 laukus galima įvesti skydelyje (.ffdata eksportui) arba EDS; maržą (16) užpildykite EDS. Dokumentas, kurio kodas netinka kontrahentui (pvz., PVM13 lietuviui), rodomas rankiniam tvarkymui. FR0564 sumos (13, 14, 18) rodomos tik kaip informacija.',
           'Dokumentai be eilučių arba kurių antraštės sumos nesutampa su eilutėmis rodomi rankiniam tvarkymui.',
           'Pirkimai su nepatikrinta atskaitos teise neįtraukiami į 35 lauką.',
           'Tiekėjų KS mažina 25 ir 35 laukus.',
@@ -392,11 +392,11 @@ export const taxPages: HelpPage[] = [
           'Откройте «Налоги и i.SAF XML», вкладку FR0600, выберите период.',
           'Проверьте рассчитанные поля.',
           'Просмотрите списки «для ручной обработки» и «непроверенный вычет» — эти документы в поля не включены.',
-          'Войдите в EDS, заполните форму FR0600 (перенесите поля и дополните вручную) и подайте.',
+          'Скачайте файл .ffdata для EDS или войдите в EDS, заполните форму FR0600 (дополните вручную) и подайте.',
         ],
         rules: [
           'Автоматически включаются внутренние документы со ставками 21 %, 9 %, 5 % и (с 2026-01-01) 12 %; остальные строки — только с назначенным кодом i.SAF, по таблице VMI «FR0600 + i.SAF kodas».',
-          'Поля 12–24 и 32–34 считаются только по назначенным кодам; НДС, исчисленный покупателем, показан как расчётный, его вычет (35) не проверен. Поле 36 = 29–31 минус 35, а при заполненных полях 32–34 не рассчитывается (его рассчитает EDS). Поля 26–28 и маржу (16) заполните в EDS. Документ, код которого не подходит контрагенту (например, PVM13 литовцу), показывается для ручной обработки. Суммы FR0564 (13, 14, 18) показаны только для информации.',
+          'Поля 12–24 и 32–34 считаются только по назначенным кодам; НДС, исчисленный покупателем, показан как расчётный, его вычет (35) не проверен. Поле 36 = 29–31 минус 35, а при заполненных полях 32–34 в черновике не рассчитывается (его рассчитывают экспорт .ffdata и EDS). Поля 26–28 можно указать в панели (для экспорта .ffdata) или в EDS; маржу (16) заполните в EDS. Документ, код которого не подходит контрагенту (например, PVM13 литовцу), показывается для ручной обработки. Суммы FR0564 (13, 14, 18) показаны только для информации.',
           'Документы без строк или с расхождением итогов и строк показываются для ручной обработки.',
           'Покупки с непроверенным правом на вычет не включаются в поле 35.',
           'KS поставщиков уменьшают поля 25 и 35.',
@@ -419,11 +419,11 @@ export const taxPages: HelpPage[] = [
           'Open "Taxes & i.SAF XML", the FR0600 tab, and choose the period.',
           'Review the computed fields.',
           'Review the "manual handling" and "deduction not reviewed" lists: those documents are not included in the fields.',
-          'Sign in to EDS, fill in the FR0600 form (transfer the fields and complete the rest by hand) and submit it.',
+          'Download the EDS .ffdata file or sign in to EDS, fill in the FR0600 form (complete the rest by hand) and submit it.',
         ],
         rules: [
           'Domestic documents at 21 %, 9 %, 5 % and (from 2026-01-01) 12 % are included automatically; other lines only with an assigned i.SAF code, following the VMI table "FR0600 + i.SAF kodas".',
-          'Fields 12–24 and 32–34 are computed only from assigned codes; VAT calculated by the buyer is shown as computed and its deduction (35) is not reviewed. Field 36 = 29–31 minus 35; when fields 32–34 are filled it is not computed (EDS computes it). Complete fields 26–28 and the margin (16) in EDS. A document whose code does not fit the counterparty (e.g. PVM13 for a Lithuanian customer) is listed for manual handling. FR0564 amounts (13, 14, 18) are shown for information only.',
+          'Fields 12–24 and 32–34 are computed only from assigned codes; VAT calculated by the buyer is shown as computed and its deduction (35) is not reviewed. Field 36 = 29–31 minus 35; when fields 32–34 are filled it is not computed in the draft (the .ffdata export and EDS compute it). Fields 26–28 can be entered in the panel (for .ffdata export) or in EDS; complete the margin (16) in EDS. A document whose code does not fit the counterparty (e.g. PVM13 for a Lithuanian customer) is listed for manual handling. FR0564 amounts (13, 14, 18) are shown for information only.',
           'Documents without lines or whose header totals differ from their lines are listed for manual handling.',
           'Purchases whose right to deduct has not been reviewed are excluded from field 35.',
           'Supplier credit notes reduce fields 25 and 35.',

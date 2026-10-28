@@ -89,3 +89,20 @@ test('VAT rates in the help match the i.SAF classifier', () => {
 test('the help route files exist', () => {
   for (const file of ['page.tsx', path.join('[slug]', 'page.tsx')]) assert.ok(fs.existsSync(path.join(__dirname, '..', 'src', 'app', 'help', file)), file);
 });
+
+test('help limitations, gpm313 and sales-invoices pages reflect current features in lt, ru and en', () => {
+  const lim = helpPages.find(p => p.slug === 'limitations').text;
+  const gpm = helpPages.find(p => p.slug === 'gpm313').text;
+  const inv = helpPages.find(p => p.slug === 'sales-invoices').text;
+  for (const lang of LANGS) {
+    const limRules = lim[lang].rules.join(' ');
+    for (const token of ['FR0564R/T/TP', 'GPM312U', 'PLN204', 'FIFO', '1-SD']) {
+      assert.ok(limRules.includes(token), `limitations (${lang}) must mention ${token}`);
+    }
+    const gpmRules = gpm[lang].rules.join(' ');
+    assert.ok(gpmRules.includes('15'), `gpm313 (${lang}) must describe the 15th day split`);
+    assert.doesNotMatch(gpmRules, /todėl 6 ir 7 laukų neskirsto|поэтому поля 6 и 7 не разделяет|so it does not split fields 6 and 7/, `gpm313 (${lang}) must not claim fields 6 and 7 are never split`);
+    const invRules = inv[lang].rules.join(' ');
+    assert.ok(invRules.includes('PVM15') && invRules.includes('PVM34'), `sales-invoices (${lang}) must mention reverse-charge codes PVM15 and PVM34`);
+  }
+});

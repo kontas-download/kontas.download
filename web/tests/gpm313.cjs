@@ -91,3 +91,25 @@ test('gpm313: filing deadline is the 15th of the next month', () => {
   assert.equal(gpm313DueDate('2026-09-01', '2026-09-30'), '2026-10-15');
   assert.equal(gpm313DueDate('2026-02-01', '2026-02-28'), '2026-03-15');
 });
+
+test('gpm313: payoutDate splits withheld GPM between field 6 (<= 15th) and field 7 (> 15th)', () => {
+  const run = db.prepare("SELECT id FROM PayrollRun WHERE companyId=1 AND year=2026 AND month=12").get().id;
+  pr.setRunPayoutDate(db, 1, run, '2026-12-10', null);
+  assert.equal(pr.getRun(db, 1, run).run.payoutDate, '2026-12-10');
+  const firstHalf = gpm313Draft(db, 1, 2026, 12);
+  assert.equal(firstHalf.payoutDate, '2026-12-10');
+  assert.equal(firstHalf.f6, firstHalf.totals.gpmTotal);
+  assert.equal(firstHalf.f7, 0);
+  assert.ok(!firstHalf.notFilled.some(n => n.startsWith('6 ir 7 laukai')));
+  pr.setRunPayoutDate(db, 1, run, '2026-12-22', null);
+  const secondHalf = gpm313Draft(db, 1, 2026, 12);
+  assert.equal(secondHalf.payoutDate, '2026-12-22');
+  assert.equal(secondHalf.f6, 0);
+  assert.equal(secondHalf.f7, secondHalf.totals.gpmTotal);
+  pr.setRunPayoutDate(db, 1, run, null, null);
+  const cleared = gpm313Draft(db, 1, 2026, 12);
+  assert.equal(cleared.payoutDate, null);
+  assert.equal(cleared.f6, null);
+  assert.equal(cleared.f7, null);
+  assert.ok(cleared.notFilled.some(n => n.startsWith('6 ir 7 laukai')));
+});

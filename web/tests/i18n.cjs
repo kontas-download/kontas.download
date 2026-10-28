@@ -35,3 +35,13 @@ test('language comes from the cookie, then Accept-Language, then Lithuanian', ()
   assert.equal(pickLang(undefined, 'de'), 'lt');
   assert.equal(pickLang(undefined, null), 'lt');
 });
+
+test('server error messages translate to Russian and English while keeping Lithuanian default', () => {
+  const { translateServerError } = require('../src/lib/errors.ts');
+  assert.equal(translateServerError('Reikia prisijungti', 'lt'), 'Reikia prisijungti');
+  assert.equal(translateServerError('Reikia prisijungti', 'ru'), 'Требуется вход в систему');
+  assert.equal(translateServerError('Reikia prisijungti', 'en'), 'Sign-in required');
+  assert.equal(translateServerError('Nepakanka atsargų: „Popierius“ likutis 2, reikia 5', 'ru'), 'Недостаточно запасов: остаток «Popierius» 2, требуется 5');
+  assert.equal(translateServerError('Nepakanka atsargų: „Popierius“ likutis 2, reikia 5', 'en'), 'Insufficient stock: "Popierius" balance is 2, required 5');
+  assert.equal(translateServerError('Sąskaita 9999 nerasta sąskaitų plane', 'en'), 'Account 9999 not found in the chart of accounts');
+});

@@ -3,7 +3,7 @@ import { requireApiAccess, checkOrigin, currentUser } from '@/lib/access';
 import { apiError, HttpError } from '@/lib/errors';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
-import { deleteRun, getRun, overrideLine, postRun, recalculateRun, setLineGross, unpostRun, verifyRun } from '@/lib/payroll-runs';
+import { deleteRun, getRun, overrideLine, postRun, recalculateRun, setLineGross, setRunPayoutDate, unpostRun, verifyRun } from '@/lib/payroll-runs';
 
 async function runId(context: { params: Promise<{ id: string }> }) {
   const id = Number((await context.params).id);
@@ -42,6 +42,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       case 'gross': setLineGross(db, companyId, id, lineId, body.gross, actorId); break;
       case 'override': overrideLine(db, companyId, id, lineId, body.field, body.value, body.reason, actorId); break;
       case 'verify': verifyRun(db, companyId, id, actorId); break;
+      case 'payoutDate': setRunPayoutDate(db, companyId, id, body.payoutDate, actorId); break;
       case 'post': postRun(db, companyId, id, actorId); break;
       case 'unpost': unpostRun(db, companyId, id, body.reason, actorId); break;
       default: throw new HttpError(400, 'Nežinomas veiksmas');

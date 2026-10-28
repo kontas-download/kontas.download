@@ -295,8 +295,8 @@ export const accountingPages: HelpPage[] = [
         rules: [
           'Metai ir mėnuo privalomi; žiniaraščio data – paskutinė mėnesio diena.',
           'Įrašai: D 6304 su kreditu 4480, 4481 ir 4482, įskaitant darbdavio įmokas.',
-          'Forma pateikiami procentai yra supaprastintas pasiūlymas: neapskaičiuojamas NPD, progresiniai GPM tarifai, Sodros lubos ir kiti individualūs atvejai. Galutinės sumos yra jūsų įvestos.',
-          'Programa neteikia GPM313, GPM312, SAM ar kitų pranešimų VMI ar Sodrai.',
+          'Šios paprastos formos procentai yra supaprastintas pasiūlymas; skaičiavimui pagal taisyklių registrą (NPD, progresiniai GPM tarifai, „Sodros“ lubos) naudokite puslapį „Darbo užmokesčio skaičiavimas“ (/payroll).',
+          'Programa paruošia GPM313 ir GPM312 juodraščius, bet nepateikia jų ar SAM / 1-SD formų VMI ar „Sodrai“ automatiškai.',
           'Uždarytame laikotarpyje žiniaraščių keisti negalima.',
         ],
         mistakes: [
@@ -317,8 +317,8 @@ export const accountingPages: HelpPage[] = [
         rules: [
           'Год и месяц обязательны; дата ведомости — последний день месяца.',
           'Проводки: Д 6304 с кредитом 4480, 4481 и 4482, включая взносы работодателя.',
-          'Проценты в форме — упрощённое предложение: не учитываются NPD, прогрессивные ставки GPM, потолки Sodra и другие индивидуальные случаи. Итоговые суммы — те, что ввели вы.',
-          'Программа не подаёт GPM313, GPM312, SAM и другие уведомления в VMI или Sodra.',
+          'Проценты в этой простой форме — упрощённое предложение; для расчёта по реестру правил (NPD, прогрессивные ставки GPM, потолки Sodra) используйте страницу «Расчёт зарплаты» (/payroll).',
+          'Программа готовит черновики GPM313 и GPM312, но не подаёт их и формы SAM / 1-SD в VMI или Sodra автоматически.',
           'В закрытом периоде ведомости изменять нельзя.',
         ],
         mistakes: [
@@ -339,8 +339,8 @@ export const accountingPages: HelpPage[] = [
         rules: [
           'Year and month are required; the payroll date is the last day of the month.',
           'Entries: D 6304 against C 4480, 4481 and 4482, including employer contributions.',
-          'The percentages in the form are a simplified suggestion: NPD, progressive GPM rates, Sodra caps and other individual cases are not calculated. The final amounts are the ones you enter.',
-          'The application does not submit GPM313, GPM312, SAM or other notifications to VMI or Sodra.',
+          'The percentages in this simple form are a simplified suggestion; for calculations using the rules registry (NPD, progressive GPM rates, Sodra caps) use the "Payroll calculation" page (/payroll).',
+          'The application prepares GPM313 and GPM312 drafts, but does not submit them or SAM / 1-SD forms to VMI or Sodra automatically.',
           'Payroll sheets in a locked period cannot be changed.',
         ],
         mistakes: [
