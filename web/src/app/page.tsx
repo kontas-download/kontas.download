@@ -19,7 +19,10 @@ import {
   FileSpreadsheet,
   Building2,
   Scale
-} from 'lucide-react';
+} from '@/components/icons';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: { absolute: (await pageTitle('nav.overview')) + ' · kontas.download' } }; }
 
 export default async function DashboardPage() {
   await requirePageAccess();

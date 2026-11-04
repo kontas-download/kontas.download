@@ -8,6 +8,28 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const denied = await requireApiAccess();
+    if (denied) return denied;
+    const { id: idStr } = await context.params;
+    const id = Number(idStr);
+    if (!Number.isSafeInteger(id) || id <= 0) return NextResponse.json({ error: 'Neteisingas ID' }, { status: 400 });
+
+    const companyId = await getActiveCompanyId();
+    const db = getDb();
+    const sale = db.prepare('SELECT * FROM Sale WHERE id = ? AND companyId = ?').get(id, companyId);
+    if (!sale) return NextResponse.json({ error: 'Įrašas nerastas' }, { status: 404 });
+    const items = db.prepare('SELECT * FROM SaleItem WHERE saleId = ? ORDER BY id ASC').all(id);
+    return NextResponse.json({ success: true, sale, items });
+  } catch (err: any) {
+    return apiError(err);
+  }
+}
+
 export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> }

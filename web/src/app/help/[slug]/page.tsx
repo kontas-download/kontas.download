@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ArrowRight, ExternalLink, CircleHelp } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink, CircleHelp } from '@/components/icons';
 import { requirePageAccess } from '@/lib/access';
 import { getT } from '@/lib/i18n/server';
 import { formatDate } from '@/lib/i18n/translate';

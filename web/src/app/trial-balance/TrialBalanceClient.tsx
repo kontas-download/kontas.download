@@ -10,7 +10,7 @@ import {
   ArrowRight,
   CheckCircle2,
   AlertTriangle
-} from 'lucide-react';
+} from '@/components/icons';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize } from '@/components/TableSort';

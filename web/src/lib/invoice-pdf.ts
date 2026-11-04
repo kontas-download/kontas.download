@@ -13,19 +13,21 @@ export function invoiceDefinition(doc: InvoiceDocument): TDocumentDefinitions {
   const amount = (value: number) => formatDocNumber(doc.lang, value);
   const party = (title: string, p: Party, vat: boolean): Content => ({ stack: [ {text:title,bold:true,color:'#64748b',margin:[0,0,0,5]}, {text:p.name,bold:true,fontSize:12}, ...(p.code?[{text:x.companyCode+': '+p.code}]:[]), ...(vat && p.vatCode?[{text:x.vatCode+': '+p.vatCode}]:[]), ...(p.address?[{text:p.address}]:[]) ] });
   const headers = [x.colNo,x.colItem,x.colQty,doc.isVatPayer?x.colPriceNet:x.colPrice,...(doc.isVatPayer?[x.colVatPct]:[]),doc.isVatPayer?x.colSumVat:x.colSum];
-  const rows: TableCell[][] = [headers.map(text=>({text,bold:true,color:'#ffffff',fillColor:'#1e293b',margin:[0,5,0,5]}))];
+  const rightCols = new Set(headers.map((_,i)=>i).filter(i=>i>=2)); // quantity, price, VAT %, sum: header and values share the right edge
+  const rows: TableCell[][] = [headers.map((text,i)=>({text,bold:true,color:'#ffffff',fillColor:'#1e293b',margin:[0,5,0,5],alignment:rightCols.has(i)?'right' as const:'left' as const}))];
   doc.items.forEach((item,i)=>rows.push([String(i+1),item.itemName,{text:String(item.quantity),alignment:'right'},{text:formatDocNumber(doc.lang,item.price,2,6),alignment:'right'},...(doc.isVatPayer?[{text:String(item.vatRate ?? 0),alignment:'right' as const}]:[]),{text:amount(item.sumWithVat),alignment:'right'}]));
   const summary: Content[] = doc.isVatPayer
     ? [{text:x.sumNet+': '+amount(doc.net)+' '+doc.currency},{text:x.vat+': '+amount(doc.vat)+' '+doc.currency},...(doc.reverseCharge?[{text:doc.reverseCharge==='LT_96'?x.reverseChargeLt96:x.reverseChargeEu,fontSize:9,color:'#475569'}]:[])]
     : [{text:doc.vatMode==='SVS_LT'?x.noVatSvs:x.noVatSeller,fontSize:9,color:'#475569'}];
   return { pageSize:'A4',pageMargins:[40,42,40,48],defaultStyle:{font:'Roboto',fontSize:10,lineHeight:1.2},info:{title:doc.number,author:doc.seller.name},footer:(page,pages)=>({text:page+' / '+pages,alignment:'center',fontSize:8,color:'#64748b',margin:[0,15,0,0]}),content:[
+    ...(doc.logo?[{image:doc.logo,fit:[160,64] as [number,number],margin:[0,0,0,14] as [number,number,number,number]}]:[]),
     {text:(doc.correction?x.creditPrefix:'')+(doc.vatMode==='SVS_LT'?x.titleSvs:doc.isVatPayer?x.titleVat:x.titleNoVat),fontSize:20,bold:true,color:'#0f172a'},
     {text:x.number+' '+doc.number,margin:[0,6,0,4],fontSize:12,bold:true},
     {text:x.issueDate+': '+doc.date,margin:[0,0,0,doc.correction?4:22],color:'#475569'},
     ...(doc.correction?[{text:x.corrects+': '+doc.correction.originalNumber+' ('+doc.correction.originalDate+')'+(doc.correction.reason?'. '+x.reason+': '+doc.correction.reason:''),margin:[0,0,0,22] as [number,number,number,number],color:'#475569'}]:[]),
     {columns:[party(x.seller,doc.seller,doc.vatMode!=='NON_VAT'),party(x.buyer,doc.buyer,Boolean(doc.buyer.isVatPayer))],columnGap:30,margin:[0,0,0,22]},
     {text:x.currency+': '+doc.currency,fontSize:9,alignment:'right',margin:[0,0,0,6]},
-    {table:{headerRows:1,widths:doc.isVatPayer?[22,'*',38,64,35,70]:[22,'*',42,72,78],body:rows},layout:'lightHorizontalLines'},
+    {table:{headerRows:1,widths:doc.isVatPayer?[24,'*',46,64,40,78]:[24,'*',46,72,82],body:rows},layout:{hLineWidth:(i:number,node:{table:{body:unknown[]}})=>i===0||i===node.table.body.length?0:i===1?0:0.5,vLineWidth:()=>0,hLineColor:()=>'#cbd5e1',paddingLeft:()=>6,paddingRight:()=>6,paddingTop:()=>6,paddingBottom:()=>6}},
     {stack:[...summary,{text:x.total+': '+amount(doc.total)+' '+doc.currency,bold:true,fontSize:14,margin:[0,8,0,0]}],alignment:'right',margin:[0,18,0,20],unbreakable:true},
     {stack:[...(doc.dueDate?[{text:x.dueDate+': '+doc.dueDate,bold:true}]:[]),...(doc.seller.bankIban?[{text:x.iban+': '+doc.seller.bankIban}]:[]),...(doc.seller.bankName?[{text:x.bank+': '+doc.seller.bankName}]:[]),...(doc.seller.bankSwift?[{text:x.swift+': '+doc.seller.bankSwift}]:[])],unbreakable:true}
   ] };

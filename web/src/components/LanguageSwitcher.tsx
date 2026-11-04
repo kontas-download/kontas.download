@@ -1,6 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { Globe } from 'lucide-react';
+import { Globe } from '@/components/icons';
 import { LANGS, LANG_NAMES, type Lang } from '@/lib/i18n/config';
 import { storeLang } from '@/lib/i18n/cookie';
 import { useI18n } from '@/lib/i18n/client';

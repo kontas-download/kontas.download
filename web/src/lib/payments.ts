@@ -145,3 +145,27 @@ export function settleManually(db: Database.Database, companyId: number, input: 
     return id;
   })();
 }
+
+// Manual payment status of a sales invoice from the invoice list. Paid: the open balance is settled like cash at the till (journal entry included).
+// Unpaid: manual settlements and their journal entries are removed; money linked from the bank must be unlinked in the bank page instead.
+export function setSalePaymentStatus(db: Database.Database, companyId: number, saleId: number, status: 'paid' | 'unpaid') {
+  if (status !== 'paid' && status !== 'unpaid') throw new HttpError(400, 'Neteisingi duomenys');
+  const sale = db.prepare("SELECT id, COALESCE(docType,'SF') AS docType FROM Sale WHERE id=? AND companyId=?").get(saleId, companyId) as { id: number; docType: string } | undefined;
+  if (!sale) throw new HttpError(404, 'Įrašas nerastas');
+  if (sale.docType !== 'SF') throw new HttpError(409, 'Kreditinio dokumento apmokėjimo būsena nekeičiama');
+  db.transaction(() => {
+    if (status === 'paid') {
+      if (openDocuments(db, companyId).some(d => d.kind === 'SALE' && d.id === saleId)) settleManually(db, companyId, { kind: 'SALE', documentId: saleId, method: 'CASH' });
+      db.prepare("UPDATE Sale SET statusName='Apmokėta' WHERE id=? AND companyId=?").run(saleId, companyId);
+      return;
+    }
+    const bank = db.prepare('SELECT COUNT(*) AS n FROM PaymentAllocation WHERE saleId=?').get(saleId) as { n: number };
+    if (bank.n > 0) throw new HttpError(409, 'Sąskaita apmokėta per banko operaciją: atsiekite mokėjimą puslapyje „Bankas“.');
+    for (const row of db.prepare('SELECT id FROM ManualSettlement WHERE saleId=? AND companyId=?').all(saleId, companyId) as { id: number }[]) {
+      db.prepare("DELETE FROM GeneralEntry WHERE companyId=? AND sourceType='SETTLEMENT' AND sourceId=?").run(companyId, row.id);
+      db.prepare('DELETE FROM ManualSettlement WHERE id=? AND companyId=?').run(row.id, companyId);
+    }
+    db.prepare("UPDATE Sale SET statusName='Neapmokėta' WHERE id=? AND companyId=?").run(saleId, companyId);
+  })();
+  return db.prepare('SELECT * FROM Sale WHERE id=? AND companyId=?').get(saleId, companyId);
+}

@@ -3,6 +3,9 @@ import React from 'react';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { LedgerClient } from './LedgerClient';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.ledger') }; }
 
 export default async function LedgerPage() {
   await requirePageAccess();
@@ -13,6 +16,7 @@ export default async function LedgerPage() {
     SELECT * FROM GeneralEntry
     WHERE companyId = ?
     ORDER BY date DESC, id DESC
+    LIMIT 1000
   `).all(companyId) as any[];
 
   const totalCount = db.prepare('SELECT COUNT(*) as cnt FROM GeneralEntry WHERE companyId = ?').get(companyId) as { cnt: number };

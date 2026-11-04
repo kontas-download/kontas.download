@@ -18,7 +18,10 @@ let dbInstance: Database.Database | null = null;
 export function getDb() {
   if (!dbInstance) {
     const configured = process.env.DATABASE_URL;
-    const dbPath = configured?.startsWith('file:') ? configured.slice(5) : path.join(process.cwd(), 'prisma', 'dev.db');
+    let dbPath = configured?.startsWith('file:') ? configured.slice(5) : path.join(process.cwd(), 'prisma', 'dev.db');
+    if (process.platform !== 'win32' && /^[a-zA-Z]:/.test(dbPath)) {
+      dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
+    }
     const db = new Database(dbPath);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');

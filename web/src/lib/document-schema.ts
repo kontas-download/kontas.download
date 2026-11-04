@@ -13,6 +13,8 @@ export function migrateDocuments(db: Database.Database) {
     }
     db.exec("CREATE TABLE IF NOT EXISTS InvoiceDelivery (companyId INTEGER NOT NULL, saleId INTEGER NOT NULL, requestId TEXT NOT NULL, recipient TEXT NOT NULL, status TEXT NOT NULL, messageId TEXT, createdAt INTEGER NOT NULL, PRIMARY KEY(companyId,requestId))");
     db.exec("CREATE TABLE IF NOT EXISTS CompanyMailSettings (companyId INTEGER PRIMARY KEY REFERENCES Company(id) ON DELETE CASCADE, host TEXT NOT NULL, port INTEGER NOT NULL, secure INTEGER NOT NULL, sender TEXT NOT NULL, username TEXT NOT NULL, passwordEncrypted TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1)");
+    if (!has('Company','notes')) db.exec('ALTER TABLE Company ADD COLUMN notes TEXT');
+    db.exec("CREATE TABLE IF NOT EXISTS CompanyLogo (companyId INTEGER PRIMARY KEY REFERENCES Company(id) ON DELETE CASCADE, mime TEXT NOT NULL CHECK(mime IN ('image/png','image/jpeg')), data BLOB NOT NULL, updatedAt TEXT NOT NULL DEFAULT (datetime('now')))");
     db.prepare("INSERT OR IGNORE INTO AppMigration VALUES (?,datetime('now'))").run('2026-10-documents-v2');
   }).immediate();
 }

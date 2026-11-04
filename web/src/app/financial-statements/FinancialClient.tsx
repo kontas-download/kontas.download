@@ -11,7 +11,7 @@ import {
   CheckCircle2, 
   AlertCircle,
   Building2
-} from 'lucide-react';
+} from '@/components/icons';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALES } from '@/lib/i18n/config';
 import { computePnl, computeBalance, balanceNet } from '@/lib/financial-statements-calc';

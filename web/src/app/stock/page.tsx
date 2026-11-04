@@ -3,6 +3,9 @@ import React from 'react';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { StockClient } from './StockClient';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.stock') }; }
 
 export default async function StockPage() {
   await requirePageAccess();

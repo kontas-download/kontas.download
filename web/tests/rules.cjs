@@ -17,6 +17,8 @@ const realLoad = Module._load;
 Module._load = function (name, parent, isMain) {
   if (name === 'next/headers') return { cookies: async () => ({ get: key => jar.has(key) ? { value: jar.get(key) } : undefined }), headers: async () => new Headers() };
   if (name === 'next/navigation') return { redirect: url => { throw new Error('redirect:' + url); } };
+  // Phosphor ships an ESM file for require(); icons render nothing in these server render tests.
+  if (name === '@phosphor-icons/react/ssr') return new Proxy({}, { get: () => () => null });
   if (name.startsWith('@/')) name = path.join(__dirname, '../src', name.slice(2));
   return realLoad.call(this, name, parent, isMain);
 };

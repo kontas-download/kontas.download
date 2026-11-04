@@ -3,6 +3,9 @@ import React from 'react';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { ClientsClient } from './ClientsClient';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.clients') }; }
 
 export default async function ClientsPage() {
   await requirePageAccess();

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/lib/i18n/client';
 import { TAX_CODES, type TaxKind } from '@/lib/tax-codes';
+import { askConfirm } from '@/components/ConfirmHost';
 
 interface Line { kind: TaxKind; itemId: number; docId: number; document: string; date: string; docType: string | null; counterparty: string; vatCode: string; itemName: string; rate: number | null; net: number; vat: number; taxCode: string | null; autoCode: string | null; note: string; review: string | null; }
 const keyOf = (l: { kind: TaxKind; itemId: number }) => `${l.kind}:${l.itemId}`;
@@ -64,7 +65,7 @@ export function TaxCodesPanel({ start, end }: { start: string; end: string }) {
           <p className="text-xs text-slate-400 mt-1">{t('tax.codes.hint')}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => { if (!changed.length || window.confirm(t('tax.codes.unsaved'))) void load(); }} disabled={busy} className="px-3 py-2 rounded-lg border border-slate-700 text-slate-200 text-sm disabled:opacity-50">{t('tax.codes.reload')}</button>
+          <button onClick={async () => { if (!changed.length || await askConfirm(t('tax.codes.unsaved'))) void load(); }} disabled={busy} className="px-3 py-2 rounded-lg border border-slate-700 text-slate-200 text-sm disabled:opacity-50">{t('tax.codes.reload')}</button>
           <button onClick={() => save()} disabled={busy || !changed.length} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold">{t('tax.codes.save', { count: changed.length })}</button>
         </div>
       </div>

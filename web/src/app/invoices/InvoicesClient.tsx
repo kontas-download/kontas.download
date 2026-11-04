@@ -15,13 +15,15 @@ import {
   X,
   AlertCircle,
   Filter,
-  RotateCcw
-} from 'lucide-react';
+  RotateCcw,
+  Copy
+} from '@/components/icons';
 import { InvoiceDeliveryDialog } from '@/components/InvoiceDeliveryDialog';
 import { CreditNoteDialog } from '@/components/CreditNoteDialog';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
+import { askConfirm } from '@/components/ConfirmHost';
 
 interface InvoiceItem {
   id?: number;
@@ -86,7 +88,61 @@ export function InvoicesClient({
   const [emailInvoice, setEmailInvoice] = useState<any | null>(null);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- read the URL after hydration
   useEffect(() => { const id = Number(new URLSearchParams(window.location.search).get('emailClientId')); if(id > 0) setEmailClientId(id); }, []);
-  const clientForSale = (sale: any) => clientsList.find(c => c.id === sale.clientId || (sale.clientCode && c.code === sale.clientCode));
+
+  // Pre-indexed map for O(1) instant client resolution
+  const clientMap = useMemo(() => {
+    const byId = new Map<number, any>();
+    const byCode = new Map<string, any>();
+    for (const c of clientsList) {
+      if (c.id) byId.set(c.id, c);
+      if (c.code) byCode.set(c.code, c);
+    }
+    return { byId, byCode };
+  }, [clientsList]);
+
+  const clientForSale = (sale: any) => {
+    if (sale.clientId && clientMap.byId.has(sale.clientId)) return clientMap.byId.get(sale.clientId);
+    if (sale.clientCode && clientMap.byCode.has(sale.clientCode)) return clientMap.byCode.get(sale.clientCode);
+    return null;
+  };
+
+  const toggleExpand = async (saleId: number) => {
+    if (expandedId === saleId) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(saleId);
+    if (!itemsMap[saleId]) {
+      try {
+        const res = await fetch(`/api/invoices/${saleId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.items) {
+            setItemsMap(prev => ({ ...prev, [saleId]: data.items }));
+          }
+        }
+      } catch {
+        // fallback
+      }
+    }
+  };
+
+  const openCreditModal = async (sale: any) => {
+    if (!itemsMap[sale.id]) {
+      try {
+        const res = await fetch(`/api/invoices/${sale.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.items) {
+            setItemsMap(prev => ({ ...prev, [sale.id]: data.items }));
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    setCreditSale(sale);
+  };
   // Form modal state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<any | null>(null);
@@ -98,7 +154,7 @@ export function InvoicesClient({
     number: '',
     saleDate: new Date().toISOString().split('T')[0],
     payUntil: new Date(new Date().getTime() + 14 * 86400000).toISOString().split('T')[0],
-    statusName: 'Apmokėta',
+    statusName: 'Neapmokėta',
     warehouseName: 'Pagrindinis',
     clientId: null as number | null,
     clientName: '',
@@ -253,7 +309,7 @@ export function InvoicesClient({
       number: nextNum,
       saleDate: new Date().toISOString().split('T')[0],
       payUntil: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
-      statusName: 'Apmokėta',
+      statusName: 'Neapmokėta',
       warehouseName: 'Pagrindinis',
       clientId: null as number | null,
     clientName: '',
@@ -268,9 +324,70 @@ export function InvoicesClient({
     setIsFormOpen(true);
   };
 
-  const openEditModal = (sale: any) => {
+  // Copy: opens the "new invoice" form prefilled from an existing invoice (new number and dates, unpaid).
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const openCopyModal = async (sale: any) => {
+    let srcItems = itemsMap[sale.id];
+    if (!srcItems) {
+      try {
+        const res = await fetch(`/api/invoices/${sale.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.items) {
+            srcItems = data.items;
+            setItemsMap(prev => ({ ...prev, [sale.id]: data.items }));
+          }
+        }
+      } catch { /* fallback below */ }
+    }
+    srcItems = srcItems || [];
+    const series = sale.series || 'PARD';
+    setEditingSale(null);
+    setFormData({
+      series,
+      number: getNextInvoiceNumber(series),
+      saleDate: new Date().toISOString().split('T')[0],
+      payUntil: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+      statusName: 'Neapmokėta',
+      warehouseName: sale.warehouseName || 'Pagrindinis',
+      clientId: sale.clientId || null,
+      clientName: sale.clientName || '',
+      clientCode: sale.clientCode || '',
+      clientVatCode: sale.clientVatCode || '',
+      notes: sale.notes || '',
+      items: srcItems.length > 0 ? srcItems.map(it => ({
+        itemName: it.itemName,
+        itemCode: it.itemCode || '',
+        quantity: it.quantity || 1,
+        price: it.price || 0,
+        vatRate: it.vatRate ?? defaultVatRate
+      })) : [
+        { itemName: 'Paslauga', itemCode: '', quantity: 1, price: sale.sumWithoutVat || 100, vatRate: defaultVatRate }
+      ]
+    });
+    setErrorMsg('');
+    setSelectedId(null);
+    setIsFormOpen(true);
+  };
+
+  const openEditModal = async (sale: any) => {
     setEditingSale(sale);
-    const existingItems = itemsMap[sale.id] || [];
+    let existingItems = itemsMap[sale.id];
+    if (!existingItems) {
+      try {
+        const res = await fetch(`/api/invoices/${sale.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.items) {
+            existingItems = data.items;
+            setItemsMap(prev => ({ ...prev, [sale.id]: data.items }));
+          }
+        }
+      } catch {
+        // fallback
+      }
+    }
+    existingItems = existingItems || [];
     setFormData({
       series: sale.series || 'PARD',
       number: sale.number || '',
@@ -368,8 +485,25 @@ export function InvoicesClient({
     }
   };
 
+  // Paid <-> unpaid from the list. Paid creates a cash settlement (journal entry); unpaid removes manual settlements.
+  const handleTogglePaid = async (sale: any): Promise<string | null> => {
+    const markPaid = (sale.statusName || 'Apmokėta') !== 'Apmokėta';
+    const doc = `${sale.series} ${sale.number}`;
+    if (!await askConfirm(t(markPaid ? 'invoices.confirmMarkPaid' : 'invoices.confirmMarkUnpaid', { doc }))) return null;
+    try {
+      const res = await fetch(`/api/invoices/${sale.id}/payment-status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: markPaid ? 'paid' : 'unpaid' }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t('invoices.errStatus'));
+      setSales(sales.map(s => s.id === sale.id ? { ...s, statusName: data.sale.statusName } : s));
+      return data.sale.statusName as string;
+    } catch (err: any) {
+      alert(err.message);
+      return null;
+    }
+  };
+
   const handleDeleteInvoice = async (sale: any) => {
-    if (!window.confirm(t('invoices.confirmDelete', { doc: `${sale.series} ${sale.number}` }))) return;
+    if (!await askConfirm(t('invoices.confirmDelete', { doc: `${sale.series} ${sale.number}` }))) return;
 
     try {
       const res = await fetch(`/api/invoices/${sale.id}`, { method: 'DELETE' });
@@ -402,13 +536,25 @@ export function InvoicesClient({
             {t('invoices.totalLabel')} <strong className="text-white font-mono">{sales.length}</strong>
           </p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors shadow-sm self-start"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{t('invoices.newInvoice')}</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 self-start">
+          <button
+            type="button"
+            onClick={() => { const s = sales.find(x => x.id === selectedId); if (s) openCopyModal(s); }}
+            disabled={selectedId === null}
+            title={selectedId === null ? t('invoices.copyHint') : undefined}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-700 text-slate-200 font-bold text-xs transition-colors hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+          >
+            <Copy className="w-4 h-4" />
+            <span>{t('invoices.copyInvoice')}</span>
+          </button>
+          <button
+            onClick={openCreateModal}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t('invoices.newInvoice')}</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Filter Bar */}
@@ -560,6 +706,7 @@ export function InvoicesClient({
             <thead className="text-[11px] uppercase bg-slate-950/80 text-slate-400 border-b border-slate-800 tracking-wider">
               <tr>
                 <th className="w-8 py-2.5 px-2 text-center"></th>
+                <th className="w-8 py-2.5 px-2 text-center"><span className="sr-only">{t('invoices.selectCol')}</span></th>
                 <SortableTh field="document" currentField={sortField} currentDirection={sortDirection} onSort={handleSort}>
                   {t('invoices.colDocument')}
                 </SortableTh>
@@ -597,11 +744,20 @@ export function InvoicesClient({
                     <tr className="hover:bg-slate-800/40 transition-colors">
                       <td className="py-2 px-2 text-center">
                         <button
-                          onClick={() => setExpandedId(isExpanded ? null : sale.id)}
+                          onClick={() => toggleExpand(sale.id)}
                           className="p-1 hover:bg-slate-800 rounded text-slate-400"
                         >
                           {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                         </button>
+                      </td>
+                      <td className="py-2 px-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedId === sale.id}
+                          onChange={() => setSelectedId(selectedId === sale.id ? null : sale.id)}
+                          aria-label={`${t('invoices.selectRow')} ${sale.series}${sale.number}`}
+                          className="h-4 w-4 cursor-pointer accent-emerald-500"
+                        />
                       </td>
                       <td className="py-2 px-3 font-semibold text-white">
                         <div className="flex items-center gap-1 font-mono">
@@ -622,7 +778,11 @@ export function InvoicesClient({
                         <div className="font-semibold text-xs truncate max-w-[200px]" title={sale.clientName}>
                           {sale.clientName || '—'}
                         </div>
-                        {clientForSale(sale)?.email && <button type="button" className="block text-xs text-emerald-400 underline" onClick={() => setEmailInvoice(sale)}>{clientForSale(sale).email}</button>}
+                        {(sale.clientEmail || clientForSale(sale)?.email) && (
+                          <button type="button" className="block text-xs text-emerald-400 underline" onClick={() => setEmailInvoice(sale)}>
+                            {sale.clientEmail || clientForSale(sale)?.email}
+                          </button>
+                        )}
                         {sale.clientCode && (
                           <div className="text-[10px] text-slate-400 font-mono">
                             {t('invoices.clientCodeLine', { code: sale.clientCode })}
@@ -639,9 +799,16 @@ export function InvoicesClient({
                         €{Number(sale.sumWithVat || 0).toFixed(2)}
                       </td>
                       <td className="py-2 px-3 text-center font-sans">
-                        <span className="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                          {statusLabel(sale.statusName || 'Apmokėta')}
-                        </span>
+                        {sale.docType === 'KS' ? (
+                          <span className="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            {statusLabel(sale.statusName || 'Apmokėta')}
+                          </span>
+                        ) : (
+                          <button type="button" onClick={() => handleTogglePaid(sale)} title={t('invoices.statusToggle')} aria-label={`${t('invoices.statusToggle')}: ${sale.series} ${sale.number}`}
+                            className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border transition-colors ${(sale.statusName || 'Apmokėta') === 'Apmokėta' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20'}`}>
+                            {statusLabel(sale.statusName || 'Apmokėta')}
+                          </button>
+                        )}
                         {sale.docType !== 'KS' && sale.paidAmount > 0 && (
                           <div className={`mt-1 text-[10px] ${Math.round((Number(sale.dueAmount) - Number(sale.paidAmount)) * 100) <= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
                             {Math.round((Number(sale.dueAmount) - Number(sale.paidAmount)) * 100) <= 0 ? t('invoices.paidViaBank') : t('invoices.receivedOf', { paid: Number(sale.paidAmount).toFixed(2), due: Number(sale.dueAmount).toFixed(2) })}
@@ -659,7 +826,7 @@ export function InvoicesClient({
                           </button>
                           {sale.docType !== 'KS' && (
                             <button
-                              onClick={() => setCreditSale(sale)}
+                              onClick={() => openCreditModal(sale)}
                               className="px-1.5 py-0.5 hover:bg-slate-800 rounded text-[10px] font-bold text-amber-400 transition-colors"
                               title={t('invoices.createCredit')}
                             >
@@ -687,7 +854,7 @@ export function InvoicesClient({
                     {/* Expanded Items */}
                     {isExpanded && (
                       <tr className="bg-slate-950/60 font-sans">
-                        <td colSpan={10} className="p-3 pl-10 border-b border-slate-800">
+                        <td colSpan={11} className="p-3 pl-10 border-b border-slate-800">
                           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                             {t('invoices.linesHeadingCount', { count: items.length })}
                           </div>
@@ -727,7 +894,7 @@ export function InvoicesClient({
               })}
               {paginatedSales.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-slate-400 font-sans">
+                  <td colSpan={11} className="py-12 text-center text-slate-400 font-sans">
                     {t('invoices.noResults')}
                   </td>
                 </tr>
@@ -813,6 +980,26 @@ export function InvoicesClient({
                   />
                 </div>
               </div>
+
+              {/* Payment status of an existing invoice: changes it at once (settlement + journal), independent of Save */}
+              {editingSale && editingSale.docType !== 'KS' && (
+                <div className="flex items-center justify-between gap-3 border border-slate-800 rounded-xl p-3 bg-slate-950/60">
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-400 font-semibold">{t('invoices.paymentStatus')}:</span>
+                    <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border ${(editingSale.statusName || 'Apmokėta') === 'Apmokėta' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
+                      {statusLabel(editingSale.statusName || 'Apmokėta')}
+                    </span>
+                  </div>
+                  <button type="button"
+                    onClick={async () => {
+                      const next = await handleTogglePaid(editingSale);
+                      if (next) { setEditingSale({ ...editingSale, statusName: next }); setFormData({ ...formData, statusName: next }); }
+                    }}
+                    className="px-3 py-1.5 rounded-lg border border-slate-700 text-xs font-semibold text-slate-200 hover:bg-slate-800 transition-colors">
+                    {(editingSale.statusName || 'Apmokėta') === 'Apmokėta' ? t('invoices.markUnpaid') : t('invoices.markPaid')}
+                  </button>
+                </div>
+              )}
 
               {/* Client Info */}
               <div className="border border-slate-800 rounded-xl p-3 bg-slate-950/60 space-y-3">

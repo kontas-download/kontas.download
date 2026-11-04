@@ -12,11 +12,12 @@ import {
   Calendar,
   Filter,
   RotateCcw
-} from 'lucide-react';
+} from '@/components/icons';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALES } from '@/lib/i18n/config';
 import { getNextDocumentNumber } from '@/lib/numbering';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
+import { askConfirm } from '@/components/ConfirmHost';
 
 export function LedgerClient({ 
   initialEntries, 
@@ -212,7 +213,7 @@ export function LedgerClient({
   };
 
   const handleDelete = async (entry: any) => {
-    if (!window.confirm(t('ledger.confirmDelete', { debit: entry.debitAccount, credit: entry.creditAccount, amount: entry.amount }))) return;
+    if (!await askConfirm(t('ledger.confirmDelete', { debit: entry.debitAccount, credit: entry.creditAccount, amount: entry.amount }))) return;
     try {
       const res = await fetch(`/api/ledger/${entry.id}`, { method: 'DELETE' });
       const data = await res.json();

@@ -54,8 +54,20 @@ CREATE INDEX IF NOT EXISTS idx_entry_source ON GeneralEntry(companyId,sourceType
 export function migrateAccounting(db: Database.Database) {
   db.exec('CREATE TABLE IF NOT EXISTS AppMigration (version TEXT PRIMARY KEY, appliedAt TEXT NOT NULL)');
   db.transaction(() => {
-    if (db.prepare('SELECT version FROM AppMigration WHERE version = ?').get('2026-10-ledger-sync-v1')) return;
-    db.exec(accountingSql);
-    db.prepare("INSERT INTO AppMigration VALUES (?, datetime('now'))").run('2026-10-ledger-sync-v1');
+    if (!db.prepare('SELECT version FROM AppMigration WHERE version = ?').get('2026-10-ledger-sync-v1')) {
+      db.exec(accountingSql);
+      db.prepare("INSERT INTO AppMigration VALUES (?, datetime('now'))").run('2026-10-ledger-sync-v1');
+    }
+    if (!db.prepare('SELECT version FROM AppMigration WHERE version = ?').get('2026-10-performance-indexes-v1')) {
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_SaleItem_sale ON SaleItem(saleId);
+        CREATE INDEX IF NOT EXISTS idx_PurchaseItem_purchase ON PurchaseItem(purchaseId);
+        CREATE INDEX IF NOT EXISTS idx_Sale_company_date ON Sale(companyId, saleDate DESC, id DESC);
+        CREATE INDEX IF NOT EXISTS idx_Purchase_company_date ON Purchase(companyId, purchaseDate DESC, id DESC);
+        CREATE INDEX IF NOT EXISTS idx_BankTransaction_date ON BankTransaction(companyId, date DESC, id DESC);
+        CREATE INDEX IF NOT EXISTS idx_Client_company_name ON Client(companyId, name ASC);
+      `);
+      db.prepare("INSERT INTO AppMigration VALUES (?, datetime('now'))").run('2026-10-performance-indexes-v1');
+    }
   }).immediate();
 }

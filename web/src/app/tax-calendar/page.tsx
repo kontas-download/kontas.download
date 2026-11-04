@@ -4,6 +4,9 @@ import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { calendarEvents, loadSettings } from '@/lib/tax-calendar';
 import { TaxCalendarClient } from './TaxCalendarClient';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.taxCalendar') }; }
 
 export const dynamic = 'force-dynamic';
 

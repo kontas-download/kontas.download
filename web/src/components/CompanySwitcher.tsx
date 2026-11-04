@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/lib/i18n/client';
-import { Building2, Check, ChevronsUpDown, Plus, Settings } from 'lucide-react';
+import { Building2, Check, ChevronsUpDown, Plus, Settings } from '@/components/icons';
 
 interface Company {
   id: number;
@@ -11,6 +11,24 @@ interface Company {
   code?: string | null;
   currencyCode?: string;
   isDefault?: number;
+}
+
+// Company logo when one is uploaded; otherwise the generic building icon.
+function CompanyMark({ companyId }: { companyId: number | null }) {
+  const [failedFor, setFailedFor] = useState<number | null>(null);
+  if (companyId && failedFor !== companyId) {
+    return (
+      <div className="w-7 h-7 rounded-md bg-white flex items-center justify-center shrink-0 overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={`/api/companies/${companyId}/logo`} alt="" onError={() => setFailedFor(companyId)} className="max-h-6 max-w-6 object-contain" />
+      </div>
+    );
+  }
+  return (
+    <div className="w-7 h-7 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+      <Building2 className="w-4 h-4" />
+    </div>
+  );
 }
 
 export function CompanySwitcher() {
@@ -84,9 +102,7 @@ export function CompanySwitcher() {
         className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-800/80 hover:bg-slate-800 text-left transition-colors border border-slate-700/60 shadow-sm"
       >
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-7 h-7 rounded-md bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
-            <Building2 className="w-4 h-4" />
-          </div>
+          <CompanyMark companyId={activeId} />
           <div className="overflow-hidden">
             <div className="text-xs text-slate-400 font-medium">{t('companies.activeCompany')}</div>
             <div className="text-sm font-semibold text-slate-100 truncate">

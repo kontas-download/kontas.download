@@ -14,11 +14,12 @@ import {
   Filter,
   RotateCcw,
   Calendar
-} from 'lucide-react';
+} from '@/components/icons';
 import { getNextDocumentNumber } from '@/lib/numbering';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
+import { askConfirm } from '@/components/ConfirmHost';
 
 export function PurchasesClient({ 
   initialPurchases,
@@ -272,7 +273,7 @@ export function PurchasesClient({
   };
 
   const handleDelete = async (p: any) => {
-    if (!window.confirm(t('purchases.confirmDelete', { doc: `${p.series} ${p.number}` }))) return;
+    if (!await askConfirm(t('purchases.confirmDelete', { doc: `${p.series} ${p.number}` }))) return;
     try {
       const res = await fetch(`/api/purchases/${p.id}`, { method: 'DELETE' });
       const data = await res.json();

@@ -6,6 +6,25 @@
 
 Pagrindinė dokumentacijos kalba – lietuvių. Jei lietuviškas ir angliškas tekstai skiriasi, viršesnis lietuviškas.
 
+### 0.3.0 – naujas dizainas, šviesi tema, nustatymai ir įmonės logotipas
+
+Archyvas: `kontas-download-0.3.0.zip`, šalia – kontrolinės sumos failas `kontas-download-0.3.0.zip.sha256`.
+
+- Nauja išvaizda: Geist šriftas, vieninga spalvų paletė, Phosphor ikonos, patvirtinimo langai vietoje naršyklės dialogų, 404 ir įkėlimo puslapiai.
+- Sistemos nustatymų puslapis: kalba, tamsi / šviesi / pagal įrenginį tema, paskyra, duomenų bazės kopija.
+- Sąskaitos apmokėjimo būsenos keitimas sąraše ir redagavimo lange (grynieji pinigai su žurnalo įrašu); būsena nustatoma pagal likutį; naujos sąskaitos pagal nutylėjimą neapmokėtos.
+- Sąskaitos kopijavimas: pažymėjus sąskaitą sąraše atidaroma nauja sąskaitos forma su užpildytais duomenimis.
+- Įmonės logotipas (PNG arba JPEG): rodomas sąskaitų PDF viršuje ir šoninėje juostoje; įmonės formoje atsirado laisvos formos pastabų laukas.
+- Sąskaitos PDF lentelė: antraštės ir reikšmės lygiuojamos pagal stulpelius.
+- Modaliniai langai slenka, kai netelpa į ekraną, ir turi vieningą stilių; naršyklės kortelės pavadinime rodomas skyrius.
+- Cloudflare Containers diegimas: duomenų bazės momentinės kopijos į R2, užrakinti vidiniai tiltai, tik vienas konteinerio egzempliorius.
+- Importo taisymo skriptas `scripts/repair_item_names.py` atkuria konkrečius eilučių pavadinimus iš senos sistemos eksporto.
+
+Kontrolinė suma:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.3.0.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.3.0.zip.sha256).Split(' ')[0]` – turi būti `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.3.0.zip.sha256` – turi būti `OK`.
+- Linux: `sha256sum -c kontas-download-0.3.0.zip.sha256` – turi būti `OK`.
+
 ### 0.2.3 – PLN204 juodraštis ir išplėstas VMI formų eksportas
 
 Archyvas: `kontas-download-0.2.3.zip`, šalia – kontrolinės sumos failas `kontas-download-0.2.3.zip.sha256`.
@@ -100,6 +119,25 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 
 Основной язык документации – литовский; при расхождении текстов приоритет у литовского.
 
+### 0.3.0 – новый дизайн, светлая тема, настройки и логотип компании
+
+Архив: `kontas-download-0.3.0.zip`, рядом – файл контрольной суммы `kontas-download-0.3.0.zip.sha256`.
+
+- Новое оформление: шрифт Geist, единая палитра, иконки Phosphor, диалоги подтверждения вместо окон браузера, страницы 404 и загрузки.
+- Страница системных настроек: язык, тёмная / светлая / как на устройстве тема, учётная запись, копия базы данных.
+- Смена статуса оплаты счёта в списке и в окне редактирования (наличными с записью в журнале); статус определяется по остатку; новые счета по умолчанию неоплачены.
+- Копирование счёта: отметьте счёт в списке, и откроется форма нового счёта с заполненными данными.
+- Логотип компании (PNG или JPEG): показывается вверху PDF счетов и в боковой панели; в форме компании появилось поле свободных заметок.
+- Таблица PDF счёта: заголовки и значения выровнены по колонкам.
+- Модальные окна прокручиваются, если не помещаются на экран, и имеют единый стиль; в заголовке вкладки браузера показан раздел.
+- Развёртывание Cloudflare Containers: снимки базы данных в R2, закрытые внутренние мосты, один экземпляр контейнера.
+- Скрипт исправления импорта `scripts/repair_item_names.py` восстанавливает конкретные названия строк из экспорта старой системы.
+
+Контрольная сумма:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.3.0.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.3.0.zip.sha256).Split(' ')[0]` – должно быть `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.3.0.zip.sha256` – должно быть `OK`.
+- Linux: `sha256sum -c kontas-download-0.3.0.zip.sha256` – должно быть `OK`.
+
 ### 0.2.3 – черновик PLN204 и расширенный экспорт форм VMI
 
 Архив: `kontas-download-0.2.3.zip`, рядом – файл контрольной суммы `kontas-download-0.2.3.zip.sha256`.
@@ -193,6 +231,25 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 ## English
 
 The main documentation language is Lithuanian; if the texts differ, the Lithuanian one prevails.
+
+### 0.3.0 – new design, light theme, settings and company logo
+
+Archive: `kontas-download-0.3.0.zip`, with the checksum file `kontas-download-0.3.0.zip.sha256` next to it.
+
+- New look: Geist typeface, one colour palette, Phosphor icons, confirmation dialogs instead of browser prompts, 404 and loading pages.
+- System settings page: language, dark / light / match-device theme, account, database backup.
+- Changing an invoice's payment status in the list and in the edit window (cash, with a journal entry); the status follows the open balance; new invoices are unpaid by default.
+- Copy invoice: select an invoice in the list and a new invoice form opens, prefilled with its data.
+- Company logo (PNG or JPEG): shown at the top of invoice PDFs and in the sidebar; the company form gained a free-form notes field.
+- Invoice PDF table: headers and values are aligned by column.
+- Modal windows scroll when they do not fit the screen and share one style; the browser tab title shows the section.
+- Cloudflare Containers deployment: database snapshots to R2, locked internal bridges, a single container instance.
+- The import repair script `scripts/repair_item_names.py` restores concrete line names from the old system's export.
+
+Checksum:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.3.0.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.3.0.zip.sha256).Split(' ')[0]` must print `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.3.0.zip.sha256` must print `OK`.
+- Linux: `sha256sum -c kontas-download-0.3.0.zip.sha256` must print `OK`.
 
 ### 0.2.3 – PLN204 draft and extended VMI forms export
 

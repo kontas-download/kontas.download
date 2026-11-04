@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Scale } from 'lucide-react';
+import { Scale } from '@/components/icons';
 import { requirePageAccess } from '@/lib/access';
 import { todayVilnius } from '@/lib/dates';
 import { helpSourceById } from '@/lib/help/sources';
@@ -7,6 +7,9 @@ import { getT } from '@/lib/i18n/server';
 import { formatDate, formatMoney, type T } from '@/lib/i18n/translate';
 import type { Lang } from '@/lib/i18n/config';
 import { rules, rulesFreshness, type RuleEntry } from '@/lib/rules';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.rules') }; }
 
 export const dynamic = 'force-dynamic';
 

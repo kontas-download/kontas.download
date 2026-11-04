@@ -3,6 +3,9 @@ import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { getSettings, listAssets } from '@/lib/fixed-assets';
 import { AssetsClient, type AssetDto } from './AssetsClient';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.assets') }; }
 
 export const dynamic = 'force-dynamic';
 

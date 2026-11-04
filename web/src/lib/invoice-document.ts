@@ -1,10 +1,11 @@
 import { taxMode, type TaxMode } from './tax';
 import { getDb } from './db';
 import { HttpError } from './errors';
+import { companyLogoDataUrl } from './company-logo';
 import { invoiceMailDraft, isDocLang, resolveDocLang, type DocLang } from './doc-language';
 export interface Party { name: string; code: string | null; vatCode: string | null; address: string | null; email: string | null; bankName?: string | null; bankIban?: string | null; bankSwift?: string | null; isVatPayer: number; }
 export interface DocumentItem { itemName: string; quantity: number; price: number; vatRate: number; sumWithoutVat: number; sumWithVat: number; }
-export interface InvoiceDocument { lang: DocLang; vatMode: TaxMode; companyId: number; id: number; number: string; date: string; dueDate: string | null; currency: string; isVatPayer: boolean; seller: Party; buyer: Party; items: DocumentItem[]; net: number; vat: number; total: number; correction?: { originalNumber: string; originalDate: string; reason: string }; reverseCharge?: 'EU' | 'LT_96'; }
+export interface InvoiceDocument { lang: DocLang; vatMode: TaxMode; companyId: number; id: number; number: string; date: string; dueDate: string | null; currency: string; isVatPayer: boolean; logo?: string; seller: Party; buyer: Party; items: DocumentItem[]; net: number; vat: number; total: number; correction?: { originalNumber: string; originalDate: string; reason: string }; reverseCharge?: 'EU' | 'LT_96'; }
 interface SaleRow { id: number; companyId: number; clientId: number | null; clientName: string; clientCode: string | null; clientVatCode: string | null; series: string | null; number: string; saleDate: string; payUntil: string | null; currencyCode: string; sellerIsVatPayer: number | null; sellerVatMode: TaxMode | null; docType: string | null; originalSaleId: number | null; correctionReason: string | null; sumWithoutVat: number; vat: number; sumWithVat: number; }
 // `requestedLang` (chosen for this document) wins over the language stored on the customer; the default is Lithuanian.
 export function invoiceDocument(id: number, companyId: number, requestedLang?: unknown): InvoiceDocument {
@@ -43,7 +44,8 @@ export function invoiceDocument(id: number, companyId: number, requestedLang?: u
       if (codes.some(c => c === 'PVM25' || c === 'PVM26' || c === 'PVM27')) reverseCharge = 'LT_96';
       else if (codes.some(c => c === 'PVM15' || c === 'PVM34' || c === 'PVM19')) reverseCharge = 'EU';
     }
-    return { lang: resolveDocLang(requestedLang, client?.documentLang), vatMode, companyId, id, number: [sale.series,sale.number].filter(Boolean).join(' '), date: sale.saleDate, dueDate: sale.payUntil, currency: sale.currencyCode || 'EUR', isVatPayer, seller, buyer, items: items.map(i=>({...i, price: i.price === 0 && i.quantity > 0 && i.sumWithoutVat !== 0 ? i.sumWithoutVat / i.quantity : i.price})), net: sale.sumWithoutVat, vat: sale.vat, total: sale.sumWithVat, ...(correction ? { correction } : {}), ...(reverseCharge ? { reverseCharge } : {}) };
+    const logo = companyLogoDataUrl(companyId);
+    return { lang: resolveDocLang(requestedLang, client?.documentLang), ...(logo ? { logo } : {}), vatMode, companyId, id, number: [sale.series,sale.number].filter(Boolean).join(' '), date: sale.saleDate, dueDate: sale.payUntil, currency: sale.currencyCode || 'EUR', isVatPayer, seller, buyer, items: items.map(i=>({...i, price: i.price === 0 && i.quantity > 0 && i.sumWithoutVat !== 0 ? i.sumWithoutVat / i.quantity : i.price})), net: sale.sumWithoutVat, vat: sale.vat, total: sale.sumWithVat, ...(correction ? { correction } : {}), ...(reverseCharge ? { reverseCharge } : {}) };
   })();
 }
 export function invoiceFilename(doc: Pick<InvoiceDocument,'number'>) { return 'Invoice-' + doc.number.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,80) + '.pdf'; }

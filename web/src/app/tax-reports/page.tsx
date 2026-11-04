@@ -3,6 +3,9 @@ import React from 'react';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { TaxReportsClient } from './TaxReportsClient';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.taxReports') }; }
 
 export default async function TaxReportsPage() {
   await requirePageAccess();

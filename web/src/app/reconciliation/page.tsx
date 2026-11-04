@@ -3,6 +3,9 @@ import React from 'react';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { ReconciliationClient } from './ReconciliationClient';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.reconciliation') }; }
 
 export default async function ReconciliationPage() {
   await requirePageAccess();

@@ -10,7 +10,7 @@ import {
   ChevronsLeft, 
   ChevronsRight,
   Download
-} from 'lucide-react';
+} from '@/components/icons';
 import { useT } from '@/lib/i18n/client';
 
 export type SortDirection = 'asc' | 'desc';

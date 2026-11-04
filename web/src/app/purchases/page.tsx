@@ -4,6 +4,9 @@ import React from 'react';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { PurchasesClient } from './PurchasesClient';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.purchases') }; }
 
 export default async function PurchasesPage() {
   await requirePageAccess();

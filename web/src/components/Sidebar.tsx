@@ -22,10 +22,10 @@ import {
   UserCog,
   KeyRound,
   CircleHelp,
-  Scale
-} from 'lucide-react';
+  Scale,
+  Settings
+} from '@/components/icons';
 import { CompanySwitcher } from './CompanySwitcher';
-import { LanguageSwitcher } from './LanguageSwitcher';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { useT } from '@/lib/i18n/client';
 
@@ -106,6 +106,8 @@ export function Sidebar() {
           <Link
             key={item.href}
             href={item.href}
+            prefetch={false}
+            onMouseEnter={() => router.prefetch(item.href)}
             className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
               isActive
                 ? 'bg-emerald-600 text-white shadow-sm font-bold'
@@ -142,10 +144,8 @@ export function Sidebar() {
       <nav className="flex-1 p-3 overflow-y-auto">
         {renderNavGroup(t('nav.groupOperations'), [...operationItems, ...extraItems.map(item => ({ ...item, icon: Wallet }))])}
         {renderNavGroup(t('nav.groupAccounting'), accountingItems)}
-        {renderNavGroup(t('nav.groupSystem'), [...systemItems, ...(profile?.role === 'admin' ? [{ name: 'nav.users', href: '/users', icon: UserCog }] : []), { name: 'nav.rules', href: '/rules', icon: Scale }, { name: 'nav.help', href: '/help', icon: CircleHelp }])}
+        {renderNavGroup(t('nav.groupSystem'), [...systemItems, ...(profile?.role === 'admin' ? [{ name: 'nav.users', href: '/users', icon: UserCog }] : []), { name: 'nav.rules', href: '/rules', icon: Scale }, { name: 'nav.settings', href: '/settings', icon: Settings }, { name: 'nav.help', href: '/help', icon: CircleHelp }])}
       </nav>
-
-      <LanguageSwitcher />
 
       {/* User profile & Logout */}
       <div className="p-3 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between">

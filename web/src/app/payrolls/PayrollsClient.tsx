@@ -13,10 +13,11 @@ import {
   Calendar,
   Filter,
   RotateCcw
-} from 'lucide-react';
+} from '@/components/icons';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
+import { askConfirm } from '@/components/ConfirmHost';
 
 interface EmployeeLine {
   employeeName: string;
@@ -287,7 +288,7 @@ export function PayrollsClient({ initialPayrolls, payrollRules }: { initialPayro
   };
 
   const handleDelete = async (p: any) => {
-    if (!window.confirm(t('payroll.confirmDelete', { year: p.year, month: p.month }))) return;
+    if (!await askConfirm(t('payroll.confirmDelete', { year: p.year, month: p.month }))) return;
     try {
       const res = await fetch(`/api/payrolls/${p.id}`, { method: 'DELETE' });
       const data = await res.json();

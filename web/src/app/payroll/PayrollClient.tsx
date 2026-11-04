@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Users, Wallet } from 'lucide-react';
+import { Users, Wallet } from '@/components/icons';
 import { useI18n } from '@/lib/i18n/client';
+import { askConfirm } from '@/components/ConfirmHost';
 
 export interface EmployeeDto {
   id: number; name: string; personalCode: string | null; position: string | null; baseSalary: number; contractType: 'OPEN' | 'FIXED';
@@ -56,7 +57,7 @@ export function PayrollClient({ initialEmployees, initialRuns, companyId }: { in
     if (d) { setForm(null); setEditId(null); await reloadEmployees(); }
   }
   async function removeEmployee(e: EmployeeDto) {
-    if (!window.confirm(t('payroll.rConfirmDeleteEmployee', { name: e.name }))) return;
+    if (!await askConfirm(t('payroll.rConfirmDeleteEmployee', { name: e.name }))) return;
     if (await call(`/api/payroll/employees/${e.id}`, 'DELETE')) await reloadEmployees();
   }
   function editEmployee(e: EmployeeDto) {
@@ -75,7 +76,7 @@ export function PayrollClient({ initialEmployees, initialRuns, companyId }: { in
     if (d) { setDetail(d); setOverride(null); await reloadRuns(); }
   }
   async function removeRun() {
-    if (!detail || !window.confirm(t('payroll.rConfirmDeleteRun', { month: detail.run.month, year: detail.run.year }))) return;
+    if (!detail || !await askConfirm(t('payroll.rConfirmDeleteRun', { month: detail.run.month, year: detail.run.year }))) return;
     if (await call(`/api/payroll/runs/${detail.run.id}`, 'DELETE')) { setDetail(null); await reloadRuns(); }
   }
   function editGross(l: Line) {

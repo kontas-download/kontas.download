@@ -18,6 +18,7 @@ export interface Company {
   bankName?: string | null;
   bankIban?: string | null;
   bankSwift?: string | null;
+  notes?: string | null;
   currencyCode: string;
   isDefault: number;
   createdAt?: string;

@@ -10,9 +10,10 @@ import {
   X, 
   AlertCircle,
   RotateCcw
-} from 'lucide-react';
+} from '@/components/icons';
 import { useT } from '@/lib/i18n/client';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
+import { askConfirm } from '@/components/ConfirmHost';
 
 export function AccountsClient({ initialAccounts }: { initialAccounts: any[] }) {
   const t = useT();
@@ -139,7 +140,7 @@ export function AccountsClient({ initialAccounts }: { initialAccounts: any[] }) 
   };
 
   const handleDelete = async (acc: any) => {
-    if (!window.confirm(t('accounts.confirmDelete', { code: acc.code, name: acc.name }))) return;
+    if (!await askConfirm(t('accounts.confirmDelete', { code: acc.code, name: acc.name }))) return;
     try {
       const res = await fetch(`/api/accounts/${acc.id}`, { method: 'DELETE' });
       const data = await res.json();

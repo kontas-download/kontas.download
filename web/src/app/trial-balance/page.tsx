@@ -4,6 +4,9 @@ import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { getT } from '@/lib/i18n/server';
 import { TrialBalanceClient } from './TrialBalanceClient';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.trialBalance') }; }
 
 export default async function TrialBalancePage() {
   await requirePageAccess();

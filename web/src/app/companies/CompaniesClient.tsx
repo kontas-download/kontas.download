@@ -1,5 +1,6 @@
 'use client';
 
+import { CompanyLogoField } from '@/components/CompanyLogoField';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n/client';
@@ -21,11 +22,12 @@ import {
   Landmark,
   X,
   AlertCircle
-} from 'lucide-react';
+} from '@/components/icons';
 import { CompanyWithStats } from '@/lib/company';
 import { CompanySmtpDialog } from '@/components/CompanySmtpDialog';
 import { AccountingControlDialog } from '@/components/AccountingControlDialog';
 import { CompanyDataPanel } from '@/components/CompanyDataPanel';
+import { askConfirm } from '@/components/ConfirmHost';
 
 interface Props {
   initialCompanies: CompanyWithStats[];
@@ -62,6 +64,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
     bankName: '',
     bankIban: '',
     bankSwift: '',
+    notes: '',
     currencyCode: 'EUR'
   });
 
@@ -85,6 +88,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
       bankName: '',
       bankIban: '',
       bankSwift: '',
+      notes: '',
       currencyCode: 'EUR'
     });
     setErrorMsg('');
@@ -106,6 +110,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
       bankName: comp.bankName || '',
       bankIban: comp.bankIban || '',
       bankSwift: comp.bankSwift || '',
+      notes: comp.notes || '',
       currencyCode: comp.currencyCode || 'EUR'
     });
     setErrorMsg('');
@@ -187,7 +192,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
       alert(t('companies.cannotDeleteOnly'));
       return;
     }
-    const confirmDelete = window.confirm(
+    const confirmDelete = await askConfirm(
       t('companies.confirmDelete', { name: comp.name })
     );
     if (!confirmDelete) return;
@@ -206,7 +211,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
 
   // Fictional demonstration company; after creation it becomes the active company through the usual switch.
   const handleCreateDemo = async () => {
-    if (!window.confirm(t('demo.confirm'))) return;
+    if (!await askConfirm(t('demo.confirm'))) return;
     setCreatingDemo(true);
     let companyId: number;
     try {
@@ -280,11 +285,11 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2.5">
-            <Building2 className="w-7 h-7 text-emerald-600" />
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
+            <Building2 className="w-7 h-7 text-emerald-400" />
             <span>{t('companies.title')}</span>
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-400 mt-1">
             {t('companies.subtitle')}
           </p>
         </div>
@@ -314,10 +319,10 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
           return (
             <div
               key={comp.id}
-              className={`rounded-2xl border transition-all p-6 bg-white shadow-sm flex flex-col justify-between ${
+              className={`rounded-2xl border transition-all p-6 bg-slate-900 shadow-sm flex flex-col justify-between ${
                 isActive 
                   ? 'border-emerald-500 ring-2 ring-emerald-500/20' 
-                  : 'border-slate-200 hover:border-slate-300'
+                  : 'border-slate-800 hover:border-slate-300'
               }`}
             >
               <div>
@@ -326,31 +331,31 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                   <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${
                       isActive 
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
-                        : 'bg-slate-100 text-slate-700'
+                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40' 
+                        : 'bg-slate-800 text-slate-200'
                     }`}>
                       {comp.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold text-slate-900 leading-tight">
+                      <h2 className="text-lg font-bold text-white leading-tight">
                         {comp.name}
                       </h2>
-                      <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
-                        {comp.code && <span>{t('companies.codeLabel')}: <strong className="text-slate-700">{comp.code}</strong></span>}
-                        {comp.vatCode && <span>{t('companies.vatLabel')}: <strong className="text-slate-700">{comp.vatCode}</strong></span>}
+                      <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                        {comp.code && <span>{t('companies.codeLabel')}: <strong className="text-slate-200">{comp.code}</strong></span>}
+                        {comp.vatCode && <span>{t('companies.vatLabel')}: <strong className="text-slate-200">{comp.vatCode}</strong></span>}
                       </div>
                     </div>
                   </div>
 
                   {isActive ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/40">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                       {t('companies.activeCompany')}
                     </span>
                   ) : (
                     <button
                       onClick={() => handleSwitchActive(comp.id)}
-                      className="px-3 py-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                      className="px-3 py-1 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-200 rounded-lg transition-colors"
                     >
                       {t('companies.switchHere')}
                     </button>
@@ -358,7 +363,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                 </div>
 
                 {/* Company Contact / Bank Details */}
-                <div className="mt-5 space-y-2 text-xs text-slate-600 border-t border-slate-100 pt-4">
+                <div className="mt-5 space-y-2 text-xs text-slate-300 border-t border-slate-800 pt-4">
                   {comp.address && (
                     <div className="flex items-center gap-2">
                       <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -368,10 +373,10 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                   {comp.bankIban && (
                     <div className="flex items-center gap-2">
                       <CreditCard className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>{comp.bankName ? `${comp.bankName}: ` : ''}<code className="bg-slate-50 px-1 py-0.5 rounded text-slate-800 font-mono">{comp.bankIban}</code></span>
+                      <span>{comp.bankName ? `${comp.bankName}: ` : ''}<code className="bg-slate-800/50 px-1 py-0.5 rounded text-slate-100 font-mono">{comp.bankIban}</code></span>
                     </div>
                   )}
-                  <div className="flex items-center gap-4 text-slate-500">
+                  <div className="flex items-center gap-4 text-slate-400">
                     {comp.email && (
                       <span className="flex items-center gap-1.5">
                         <Mail className="w-3.5 h-3.5 text-slate-400" />
@@ -388,45 +393,45 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                 </div>
 
                 {/* Mini Stats */}
-                <div className="grid grid-cols-4 gap-2 mt-5 p-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
+                <div className="grid grid-cols-4 gap-2 mt-5 p-3 rounded-xl bg-slate-800/50 border border-slate-800 text-center">
                   <div>
-                    <div className="text-[11px] text-slate-500">{t('companies.statSales')}</div>
-                    <div className="text-sm font-bold text-slate-900 mt-0.5">{comp.salesCount}</div>
+                    <div className="text-[11px] text-slate-400">{t('companies.statSales')}</div>
+                    <div className="text-sm font-bold text-white mt-0.5">{comp.salesCount}</div>
                   </div>
                   <div>
-                    <div className="text-[11px] text-slate-500">{t('companies.statPurchases')}</div>
-                    <div className="text-sm font-bold text-slate-900 mt-0.5">{comp.purchasesCount}</div>
+                    <div className="text-[11px] text-slate-400">{t('companies.statPurchases')}</div>
+                    <div className="text-sm font-bold text-white mt-0.5">{comp.purchasesCount}</div>
                   </div>
                   <div>
-                    <div className="text-[11px] text-slate-500">{t('companies.statClients')}</div>
-                    <div className="text-sm font-bold text-slate-900 mt-0.5">{comp.clientsCount}</div>
+                    <div className="text-[11px] text-slate-400">{t('companies.statClients')}</div>
+                    <div className="text-sm font-bold text-white mt-0.5">{comp.clientsCount}</div>
                   </div>
                   <div>
-                    <div className="text-[11px] text-slate-500">{t('companies.statBank')}</div>
-                    <div className="text-sm font-bold text-slate-900 mt-0.5">{comp.bankCount}</div>
+                    <div className="text-[11px] text-slate-400">{t('companies.statBank')}</div>
+                    <div className="text-sm font-bold text-white mt-0.5">{comp.bankCount}</div>
                   </div>
                 </div>
               </div>
 
               {/* Bottom Actions */}
-              {isAdmin && <button onClick={() => setControlCompany(comp)} className="mt-4 mr-4 text-sm font-semibold text-emerald-700 underline">{t('companies.controlTitle')}</button>}
-              {isAdmin && <button onClick={() => setDataCompany(comp)} className="mt-4 mr-4 text-sm font-semibold text-emerald-700 underline">{t('companies.dataButton')}</button>}
-              <button onClick={() => setSmtpCompany(comp)} className="mt-4 text-sm font-semibold text-emerald-700 underline">{t('companies.smtpButton')}</button>
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+              {isAdmin && <button onClick={() => setControlCompany(comp)} className="mt-4 mr-4 text-sm font-semibold text-emerald-300 underline">{t('companies.controlTitle')}</button>}
+              {isAdmin && <button onClick={() => setDataCompany(comp)} className="mt-4 mr-4 text-sm font-semibold text-emerald-300 underline">{t('companies.dataButton')}</button>}
+              <button onClick={() => setSmtpCompany(comp)} className="mt-4 text-sm font-semibold text-emerald-300 underline">{t('companies.smtpButton')}</button>
+              <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openEditModal(comp)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-200 bg-slate-900 border border-slate-800 hover:bg-slate-800 transition-colors"
                   >
-                    <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                    <Edit3 className="w-3.5 h-3.5 text-slate-400" />
                     <span>{t('common.edit')}</span>
                   </button>
 
                   {isAdmin && <button
                     onClick={() => setImportingCompanyId(comp.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-100 transition-colors"
                   >
-                    <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                    <Upload className="w-3.5 h-3.5 text-emerald-400" />
                     <span>{t('companies.importBackup')}</span>
                   </button>}
                 </div>
@@ -435,7 +440,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                   <button
                     onClick={() => handleDeleteCompany(comp)}
                     title={t('companies.deleteCompany')}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -459,22 +464,22 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
       {smtpCompany && <CompanySmtpDialog company={smtpCompany} onClose={() => setSmtpCompany(null)} />}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-emerald-600" />
+          <div className="bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-800">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-emerald-400" />
                 <span>{t('companies.newCompany')}</span>
               </h3>
               <button 
                 onClick={() => setIsCreateOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-800"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {errorMsg && (
-              <div className="mt-4 p-3 rounded-lg bg-rose-50 text-rose-700 text-xs flex items-center gap-2">
+              <div className="mt-4 p-3 rounded-lg bg-rose-500/10 text-rose-300 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
@@ -482,7 +487,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
 
             <form onSubmit={handleCreateCompany} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-200 mb-1">
                   {t('companies.nameLabel')}
                 </label>
                 <input
@@ -491,13 +496,13 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                   placeholder={t('companies.namePlaceholder')}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">
                     {t('companies.codeField')}
                   </label>
                   <input
@@ -505,12 +510,11 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                     placeholder="301234567"
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-                <label className="block text-xs font-semibold text-slate-700">{t('companies.vatMode')}<select value={formData.taxMode} onChange={e=>setFormData({...formData,taxMode:e.target.value,isVatPayer:e.target.value!=='NON_VAT'})} className="block w-full border rounded p-2"><option value="NON_VAT">{t('companies.modeNonVat')}</option><option value="STANDARD_VAT">{t('companies.modeVat')}</option><option value="SVS_LT">{t('companies.modeSvs')}</option></select></label><label className="block text-xs text-slate-600">{t('companies.modeEffectiveFrom')}<input type="date" required value={formData.taxEffectiveFrom} onChange={e=>setFormData({...formData,taxEffectiveFrom:e.target.value})} className="block border rounded p-2"/></label>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">
                     {t('companies.vatCode')}
                   </label>
                   <input
@@ -518,13 +522,15 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                     placeholder="LT100000000000"
                     value={formData.vatCode}
                     onChange={(e) => setFormData({ ...formData, vatCode: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
+                <label className="block text-xs font-semibold text-slate-200">{t('companies.vatMode')}<select value={formData.taxMode} onChange={e=>setFormData({...formData,taxMode:e.target.value,isVatPayer:e.target.value!=='NON_VAT'})} className="block w-full mt-1 px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"><option value="NON_VAT">{t('companies.modeNonVat')}</option><option value="STANDARD_VAT">{t('companies.modeVat')}</option><option value="SVS_LT">{t('companies.modeSvs')}</option></select></label>
+                <label className="block text-xs font-semibold text-slate-200">{t('companies.modeEffectiveFrom')}<input type="date" required value={formData.taxEffectiveFrom} onChange={e=>setFormData({...formData,taxEffectiveFrom:e.target.value})} className="block w-full mt-1 px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/></label>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-200 mb-1">
                   {t('companies.address')}
                 </label>
                 <input
@@ -532,13 +538,13 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                   placeholder={t('companies.addressPlaceholder')}
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">
                     {t('companies.email')}
                   </label>
                   <input
@@ -546,11 +552,11 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                     placeholder={t('companies.emailPlaceholder')}
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">
                     {t('companies.phone')}
                   </label>
                   <input
@@ -558,54 +564,54 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                     placeholder="+37060000000"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>
 
-              <div className="border-t border-slate-100 pt-3">
-                <div className="text-xs font-bold text-slate-800 mb-2">{t('companies.bankDetails')}</div>
+              <div className="border-t border-slate-800 pt-3">
+                <div className="text-xs font-bold text-slate-100 mb-2">{t('companies.bankDetails')}</div>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs text-slate-600 mb-1">{t('companies.bankName')}</label>
+                    <label className="block text-xs text-slate-300 mb-1">{t('companies.bankName')}</label>
                     <input
                       type="text"
                       placeholder={t('companies.bankName')}
                       value={formData.bankName}
                       onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     <div className="col-span-2">
-                      <label className="block text-xs text-slate-600 mb-1">{t('companies.ibanAccount')}</label>
+                      <label className="block text-xs text-slate-300 mb-1">{t('companies.ibanAccount')}</label>
                       <input
                         type="text"
                         placeholder="LT..."
                         value={formData.bankIban}
                         onChange={(e) => setFormData({ ...formData, bankIban: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-600 mb-1">SWIFT / BIC</label>
+                      <label className="block text-xs text-slate-300 mb-1">SWIFT / BIC</label>
                       <input
                         type="text"
                         placeholder="AAAALT00"
                         value={formData.bankSwift}
                         onChange={(e) => setFormData({ ...formData, bankSwift: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsCreateOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 rounded-lg"
                 >
                   {t('common.cancel')}
                 </button>
@@ -625,22 +631,22 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
       {/* Modal: Edit Company */}
       {editingCompany && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Edit3 className="w-5 h-5 text-emerald-600" />
+          <div className="bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-800">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-emerald-400" />
                 <span>{t('companies.editDetails')}</span>
               </h3>
               <button 
                 onClick={() => setEditingCompany(null)}
-                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-800"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {errorMsg && (
-              <div className="mt-4 p-3 rounded-lg bg-rose-50 text-rose-700 text-xs flex items-center gap-2">
+              <div className="mt-4 p-3 rounded-lg bg-rose-500/10 text-rose-300 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
@@ -648,7 +654,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
 
             <form onSubmit={handleUpdateCompany} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-200 mb-1">
                   {t('companies.nameLabel')}
                 </label>
                 <input
@@ -656,113 +662,129 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">
                     {t('companies.codeField')}
                   </label>
                   <input
                     type="text"
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-                <label className="block text-xs font-semibold text-slate-700">{t('companies.vatMode')}<select value={formData.taxMode} onChange={e=>setFormData({...formData,taxMode:e.target.value,isVatPayer:e.target.value!=='NON_VAT'})} className="block w-full border rounded p-2"><option value="NON_VAT">{t('companies.modeNonVat')}</option><option value="STANDARD_VAT">{t('companies.modeVat')}</option><option value="SVS_LT">{t('companies.modeSvs')}</option></select></label><label className="block text-xs text-slate-600">{t('companies.modeEffectiveFrom')}<input type="date" required value={formData.taxEffectiveFrom} onChange={e=>setFormData({...formData,taxEffectiveFrom:e.target.value})} className="block border rounded p-2"/></label>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">
                     {t('companies.vatCode')}
                   </label>
                   <input
                     type="text"
                     value={formData.vatCode}
                     onChange={(e) => setFormData({ ...formData, vatCode: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
+                <label className="block text-xs font-semibold text-slate-200">{t('companies.vatMode')}<select value={formData.taxMode} onChange={e=>setFormData({...formData,taxMode:e.target.value,isVatPayer:e.target.value!=='NON_VAT'})} className="block w-full mt-1 px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"><option value="NON_VAT">{t('companies.modeNonVat')}</option><option value="STANDARD_VAT">{t('companies.modeVat')}</option><option value="SVS_LT">{t('companies.modeSvs')}</option></select></label>
+                <label className="block text-xs font-semibold text-slate-200">{t('companies.modeEffectiveFrom')}<input type="date" required value={formData.taxEffectiveFrom} onChange={e=>setFormData({...formData,taxEffectiveFrom:e.target.value})} className="block w-full mt-1 px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"/></label>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-200 mb-1">
                   {t('companies.address')}
                 </label>
                 <input
                   type="text"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">
                     {t('companies.email')}
                   </label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-200 mb-1">
                     {t('companies.phone')}
                   </label>
                   <input
                     type="text"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>
 
-              <div className="border-t border-slate-100 pt-3">
-                <div className="text-xs font-bold text-slate-800 mb-2">{t('companies.bankDetails')}</div>
+              <div className="border-t border-slate-800 pt-3">
+                <div className="text-xs font-bold text-slate-100 mb-2">{t('companies.bankDetails')}</div>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs text-slate-600 mb-1">{t('companies.bankName')}</label>
+                    <label className="block text-xs text-slate-300 mb-1">{t('companies.bankName')}</label>
                     <input
                       type="text"
                       value={formData.bankName}
                       onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     <div className="col-span-2">
-                      <label className="block text-xs text-slate-600 mb-1">{t('companies.ibanAccount')}</label>
+                      <label className="block text-xs text-slate-300 mb-1">{t('companies.ibanAccount')}</label>
                       <input
                         type="text"
                         value={formData.bankIban}
                         onChange={(e) => setFormData({ ...formData, bankIban: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-600 mb-1">SWIFT / BIC</label>
+                      <label className="block text-xs text-slate-300 mb-1">SWIFT / BIC</label>
                       <input
                         type="text"
                         value={formData.bankSwift}
                         onChange={(e) => setFormData({ ...formData, bankSwift: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <div>
+                <label htmlFor="company-notes" className="block text-xs font-semibold text-slate-200 mb-1">{t('companies.notes')}</label>
+                <textarea
+                  id="company-notes"
+                  rows={4}
+                  maxLength={2000}
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder={t('companies.notesHint')}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-950 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y"
+                />
+              </div>
+
+              {editingCompany && <CompanyLogoField companyId={editingCompany.id} />}
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setEditingCompany(null)}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 rounded-lg"
                 >
                   {t('common.cancel')}
                 </button>
@@ -782,45 +804,45 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
       {/* Modal: Import JSON Backup */}
       {importingCompanyId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Upload className="w-5 h-5 text-emerald-600" />
+          <div className="bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-800">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Upload className="w-5 h-5 text-emerald-400" />
                 <span>{t('companies.importTitle')}</span>
               </h3>
               <button 
                 onClick={() => setImportingCompanyId(null)}
-                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-800"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleImportSubmit} className="mt-4 space-y-4">
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-slate-300">
                 {t('companies.importIntro')}
               </p>
 
-              <div className="border-2 border-dashed border-slate-300 rounded-xl p-5 text-center hover:border-emerald-500 transition-colors">
+              <div className="border-2 border-dashed border-slate-700 rounded-xl p-5 text-center hover:border-emerald-500 transition-colors">
                 <input
                   type="file"
                   accept=".json"
                   onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                  className="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                  className="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
                 />
               </div>
 
               {importStatus && (
-                <div className="p-3 rounded-lg bg-slate-100 text-xs font-mono text-slate-800">
+                <div className="p-3 rounded-lg bg-slate-800 text-xs font-mono text-slate-100">
                   {importStatus}
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setImportingCompanyId(null)}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 rounded-lg"
                 >
                   {t('common.cancel')}
                 </button>

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useT } from '@/lib/i18n/client';
+import { askConfirm } from '@/components/ConfirmHost';
 
 interface Line { itemName: string; itemCode?: string; quantity: number; price: number; vatRate: number; }
 interface Template { id: number; name: string; clientId: number; clientName: string; series: string; frequency: string; nextDate: string; endDate: string | null; payDays: number; notes: string | null; items: Line[]; active: boolean; due: boolean; runs: number; }
@@ -36,7 +37,7 @@ export function RecurringClient({ today, templates, clients }: { today: string; 
     if (ok) { setForm(null); router.refresh(); }
   }
   async function issue(tpl: Template) {
-    if (!window.confirm(t('recurring.confirmIssue', { name: tpl.name, client: tpl.clientName, total: total(tpl.items).toFixed(2) }))) return;
+    if (!await askConfirm(t('recurring.confirmIssue', { name: tpl.name, client: tpl.clientName, total: total(tpl.items).toFixed(2) }))) return;
     const data = await call(`/api/recurring/${tpl.id}/issue`, 'POST', {});
     if (data) { setNotice(t('recurring.issued', { doc: `${data.sale.series} ${data.sale.number}`, next: data.finished ? t('recurring.finished') : data.nextDate })); router.refresh(); }
   }
@@ -70,7 +71,7 @@ export function RecurringClient({ today, templates, clients }: { today: string; 
                   {tpl.due && <button disabled={busy} onClick={() => issue(tpl)} className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold">{t('recurring.issue')}</button>}
                   <button disabled={busy} onClick={() => edit(tpl)} className="px-2 py-1 rounded border border-slate-700 text-xs">{t('recurring.edit')}</button>
                   <button disabled={busy} onClick={async () => { if (await call(`/api/recurring/${tpl.id}`, 'PUT', { active: !tpl.active })) router.refresh(); }} className="px-2 py-1 rounded border border-slate-700 text-xs">{tpl.active ? t('recurring.pause') : t('recurring.resume')}</button>
-                  <button disabled={busy} onClick={async () => { if (window.confirm(t('recurring.confirmDelete')) && await call(`/api/recurring/${tpl.id}`, 'DELETE')) router.refresh(); }} className="px-2 py-1 rounded border border-rose-800 text-rose-300 text-xs">{t('recurring.delete')}</button>
+                  <button disabled={busy} onClick={async () => { if (await askConfirm(t('recurring.confirmDelete')) && await call(`/api/recurring/${tpl.id}`, 'DELETE')) router.refresh(); }} className="px-2 py-1 rounded border border-rose-800 text-rose-300 text-xs">{t('recurring.delete')}</button>
                 </td>
               </tr>
             ))}

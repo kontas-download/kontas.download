@@ -1,6 +1,6 @@
 {
   "name": "kontas-download",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "postinstall": "node -e \"try{require('./scripts/ensure-local-extensions.cjs')}catch(e){}\"",
@@ -15,11 +15,12 @@
     "rules:audit": "node scripts/rules-audit.cjs"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "@prisma/client": "^7.10.1",
     "better-sqlite3": "^13.0.3",
     "clsx": "^2.1.1",
     "fast-xml-parser": "^5.11.2",
-    "lucide-react": "^1.61.0",
+    "geist": "^1.8.2",
     "next": "16.4.3",
     "nodemailer": "^10.2.1",
     "pdfmake": "^0.3.13",

@@ -18,10 +18,11 @@ import {
   List,
   Filter,
   RotateCcw
-} from 'lucide-react';
+} from '@/components/icons';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
+import { askConfirm } from '@/components/ConfirmHost';
 
 export function ClientsClient({ initialClients }: { initialClients: any[] }) {
   const { t, lang } = useI18n();
@@ -203,7 +204,7 @@ export function ClientsClient({ initialClients }: { initialClients: any[] }) {
   };
 
   const handleDelete = async (id: number, name: string) => {
-    if (!window.confirm(t('clients.confirmDelete', { name }))) return;
+    if (!await askConfirm(t('clients.confirmDelete', { name }))) return;
     try {
       const res = await fetch(`/api/clients/${id}`, { method: 'DELETE' });
       const data = await res.json();

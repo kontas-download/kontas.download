@@ -11,11 +11,12 @@ import {
   AlertCircle,
   Filter,
   RotateCcw
-} from 'lucide-react';
+} from '@/components/icons';
 import { useI18n } from '@/lib/i18n/client';
 import { InventoryPanel } from './InventoryPanel';
 import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
+import { askConfirm } from '@/components/ConfirmHost';
 
 export function StockClient({ initialStock }: { initialStock: any[] }) {
   const { t, lang } = useI18n();
@@ -212,7 +213,7 @@ export function StockClient({ initialStock }: { initialStock: any[] }) {
   };
 
   const handleDelete = async (item: any) => {
-    if (!window.confirm(t('stock.confirmDelete', { name: item.name }))) return;
+    if (!await askConfirm(t('stock.confirmDelete', { name: item.name }))) return;
     try {
       const res = await fetch(`/api/stock/${item.id}`, { method: 'DELETE' });
       const data = await res.json();

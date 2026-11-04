@@ -3,6 +3,9 @@ import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { listEmployees, listRuns } from '@/lib/payroll-runs';
 import { PayrollClient, type EmployeeDto, type RunSummary } from './PayrollClient';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.payrollRuns') }; }
 
 export const dynamic = 'force-dynamic';
 

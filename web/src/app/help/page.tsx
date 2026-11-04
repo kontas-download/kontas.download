@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CircleHelp, ExternalLink } from 'lucide-react';
+import { CircleHelp, ExternalLink } from '@/components/icons';
 import { requirePageAccess } from '@/lib/access';
 import { getT } from '@/lib/i18n/server';
 import { helpPages } from '@/lib/help/pages';
@@ -7,6 +7,9 @@ import { helpSources } from '@/lib/help/sources';
 import { HELP_GROUPS } from '@/lib/help/types';
 import { formatDate } from '@/lib/i18n/translate';
 import { HelpNotices, HelpToc, groupKey } from './HelpToc';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.help') }; }
 
 export default async function HelpIndexPage() {
   await requirePageAccess();

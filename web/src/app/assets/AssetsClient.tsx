@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Package } from 'lucide-react';
+import { Package } from '@/components/icons';
 import { useI18n } from '@/lib/i18n/client';
+import { askConfirm } from '@/components/ConfirmHost';
 
 type Method = 'STRAIGHT_LINE' | 'DECLINING_BALANCE';
 const CATEGORIES = ['BUILDING', 'MACHINERY', 'VEHICLE', 'COMPUTER', 'FURNITURE', 'INTANGIBLE', 'OTHER'];
@@ -66,7 +67,7 @@ export function AssetsClient({ initialAssets, initialDefaultMethod, companyId }:
     setForm({ code: a.code, name: a.name, category: a.category, acquisitionDate: a.acquisitionDate, commissioningDate: a.commissioningDate, cost: String(a.cost), residualValue: String(a.residualValue), usefulLifeMonths: String(a.usefulLifeMonths), method: a.method, decliningFactor: a.decliningFactor === null ? '' : String(a.decliningFactor), notes: a.notes ?? '', reason: '' });
   }
   async function remove(a: AssetDto) {
-    if (!window.confirm(t('assets.confirmDelete', { code: a.code }))) return;
+    if (!await askConfirm(t('assets.confirmDelete', { code: a.code }))) return;
     if (await call(`/api/assets/${a.id}`, 'DELETE')) { setDetail(null); await reload(); }
   }
   async function saveDefault(method: Method) {
@@ -79,7 +80,7 @@ export function AssetsClient({ initialAssets, initialDefaultMethod, companyId }:
   }
   const latest = assets.reduce<string | null>((m, a) => (a.lastPeriod && (!m || a.lastPeriod > m) ? a.lastPeriod : m), null);
   async function undoLatest() {
-    if (!latest || !window.confirm(t('assets.confirmUndo', { period: latest }))) return;
+    if (!latest || !await askConfirm(t('assets.confirmUndo', { period: latest }))) return;
     if (await call('/api/assets/depreciation', 'DELETE', { period: latest, companyId })) await refresh(detail?.asset.id);
   }
   async function dispose() {
@@ -88,7 +89,7 @@ export function AssetsClient({ initialAssets, initialDefaultMethod, companyId }:
     if (d) { setInfo(t('assets.disposalResult', { book: money(d.bookValue), gain: d.gain === null ? '-' : money(d.gain) })); await refresh(detail.asset.id); }
   }
   async function cancelDisposal() {
-    if (!detail || !window.confirm(t('assets.confirmCancelDisposal'))) return;
+    if (!detail || !await askConfirm(t('assets.confirmCancelDisposal'))) return;
     if (await call(`/api/assets/${detail.asset.id}/dispose`, 'DELETE')) await refresh(detail.asset.id);
   }
 

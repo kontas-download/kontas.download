@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import { DocLanguageSelect } from '@/components/DocLanguageSelect';
 import { useT } from '@/lib/i18n/client';
+import { askConfirm } from '@/components/ConfirmHost';
 
 interface Row { saleId: number; label: string; date: string; dueDate: string | null; clientName: string; clientEmail: string; balance: number; daysOverdue: number; bucket: string; lastReminder: number | null; reminders: number; }
 interface Draft { saleId: number; label: string; to: string; subject: string; text: string; configured: boolean; requestId: string; lang: string; }
@@ -28,7 +29,7 @@ export function ReceivablesClient({ asOf, rows: initial, overpaid = [] }: { asOf
     } finally { setBusy(false); }
   }
   async function settle(row: Row) {
-    if (!window.confirm(t('receivables.confirmSettle', { label: row.label, amount: row.balance.toFixed(2) }))) return;
+    if (!await askConfirm(t('receivables.confirmSettle', { label: row.label, amount: row.balance.toFixed(2) }))) return;
     setError(''); setNotice(''); setBusy(true);
     try {
       const res = await fetch('/api/bank/settlements', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'SALE', documentId: row.saleId, method: 'CASH' }) });

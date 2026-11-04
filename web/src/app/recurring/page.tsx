@@ -4,6 +4,9 @@ import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { listTemplates } from '@/lib/recurring';
 import { RecurringClient } from './RecurringClient';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.recurring') }; }
 
 export const dynamic = 'force-dynamic';
 

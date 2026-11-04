@@ -14,11 +14,12 @@ import {
   ArrowUpRight,
   Filter,
   RotateCcw
-} from 'lucide-react';
+} from '@/components/icons';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALES } from '@/lib/i18n/config';
 import { getNextDocumentNumber } from '@/lib/numbering';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
+import { askConfirm } from '@/components/ConfirmHost';
 
 // Splits a translated text on {name} markers and substitutes the given nodes.
 function rich(text: string, nodes: Record<string, React.ReactNode>) {
@@ -246,7 +247,7 @@ export function BankClient({ initialTransactions, totalCount, companyId }: { ini
   };
 
   const handleDelete = async (t: any) => {
-    if (!window.confirm(tr('bank.confirmDelete', { date: t.date, sum: t.sum }))) return;
+    if (!await askConfirm(tr('bank.confirmDelete', { date: t.date, sum: t.sum }))) return;
     try {
       const res = await fetch(`/api/bank/${t.id}`, { method: 'DELETE' });
       const data = await res.json();

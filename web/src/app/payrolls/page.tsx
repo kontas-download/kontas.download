@@ -5,6 +5,9 @@ import { getActiveCompanyId } from '@/lib/company';
 import { todayVilnius } from '@/lib/dates';
 import { rules } from '@/lib/rules';
 import { PayrollsClient, type PayrollRules } from './PayrollsClient';
+import { pageTitle } from '@/lib/i18n/page-title';
+
+export async function generateMetadata() { return { title: await pageTitle('nav.payroll') }; }
 
 export default async function PayrollsPage() {
   await requirePageAccess();

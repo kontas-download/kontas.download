@@ -38,6 +38,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Pavadinimas privalomas' }, { status: 400 });
     }
 
+    if (body.notes !== undefined && body.notes !== null && (typeof body.notes !== 'string' || body.notes.length > 2000)) return NextResponse.json({ error: 'Pastabos: tekstas iki 2000 simbolių' }, { status: 400 });
     if (body.isVatPayer !== undefined && typeof body.isVatPayer !== 'boolean') return NextResponse.json({ error: 'Neteisingas PVM statusas' }, { status: 400 });
     const mode = taxMode(body.taxMode, body.isVatPayer ?? Boolean(vatCode?.trim()));
     const isVatPayer = mode !== 'NON_VAT';
@@ -82,6 +83,7 @@ export async function PUT(
       id
     );
 
+    if (body.notes !== undefined) db.prepare('UPDATE Company SET notes = ? WHERE id = ?').run(body.notes?.trim() || null, id);
     }).immediate();
 
     const updated = db.prepare('SELECT * FROM Company WHERE id = ?').get(id);

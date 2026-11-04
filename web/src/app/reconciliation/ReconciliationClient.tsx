@@ -12,7 +12,7 @@ import {
   ArrowRight,
   CheckCircle2,
   AlertCircle
-} from 'lucide-react';
+} from '@/components/icons';
 
 interface ClientItem {
   id: number;

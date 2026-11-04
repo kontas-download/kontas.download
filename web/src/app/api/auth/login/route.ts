@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { hashPassword, verifyPassword, createSessionToken, SESSION_SECONDS } from '@/lib/auth';
+import { hashPassword, verifyPassword, verifyPasswordDetail, createSessionToken, SESSION_SECONDS } from '@/lib/auth';
 import { checkOrigin, isRole } from '@/lib/access';
 import { logUser } from '@/lib/users';
 import { apiError } from '@/lib/errors';
@@ -24,10 +24,10 @@ export async function POST(request: Request) {
     }).immediate();
     if (!allowed) return NextResponse.json({ error: 'Per daug bandymų. Pabandykite vėliau.' }, { status: 429, headers: { 'Retry-After': '900' } });
     const user = db.prepare('SELECT id, email, name, passwordHash, role, disabledAt FROM User WHERE LOWER(email) = ?').get(normalized) as { id: number; email: string; name: string; passwordHash: string; role: string; disabledAt: number | null } | undefined;
-    const valid = user ? await verifyPassword(password, user.passwordHash) : (await hashPassword(password), false);
+    const { valid, needsRehash } = user ? await verifyPasswordDetail(password, user.passwordHash) : { valid: (await hashPassword(password), false), needsRehash: false };
     // Disabled users and unknown roles get the same answer as a wrong password.
     if (!user || !valid || user.disabledAt != null || !isRole(user.role)) return NextResponse.json({ error: 'Neteisingas el. paštas arba slaptažodis' }, { status: 401 });
-    if (!user.passwordHash.startsWith('scrypt:')) db.prepare('UPDATE User SET passwordHash = ? WHERE id = ?').run(await hashPassword(password), user.id);
+    if (needsRehash || !user.passwordHash.startsWith('scrypt:')) db.prepare('UPDATE User SET passwordHash = ? WHERE id = ?').run(await hashPassword(password), user.id);
     db.prepare('DELETE FROM LoginAttempt WHERE email = ?').run(normalized);
     logUser(db, user.id, user, 'LOGIN');
     const token = createSessionToken(user);

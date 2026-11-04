@@ -14,7 +14,7 @@ import {
   Building2,
   AlertCircle,
   FileCode2
-} from 'lucide-react';
+} from '@/components/icons';
 import { TablePagination, usePageSize } from '@/components/TableSort';
 
 interface InvoiceRow {

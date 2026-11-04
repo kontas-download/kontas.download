@@ -37,6 +37,14 @@ test('security regression suite', async t => {
       assert.notEqual(hash, await auth.hashPassword('correct-password'));
       db.prepare("INSERT INTO User (id,email,name,passwordHash,role,createdAt) VALUES (1,'test@example.test','Test',?,'admin',datetime('now'))").run(hash);
     });
+    await t.test('hashes made with the weaker N=16384,p=1 parameters still verify and are flagged for rehash', async () => {
+      const crypto = require('node:crypto');
+      const salt = crypto.randomBytes(16).toString('hex');
+      const key = crypto.scryptSync('short-pass', salt, 64, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }).toString('hex');
+      assert.deepEqual(await auth.verifyPasswordDetail('short-pass', ['scrypt', salt, key].join(':')), { valid: true, needsRehash: true });
+      assert.equal((await auth.verifyPasswordDetail('nope', ['scrypt', salt, key].join(':'))).valid, false);
+      assert.deepEqual(await auth.verifyPasswordDetail('correct-password', await auth.hashPassword('correct-password')), { valid: true, needsRehash: false });
+    });
     await t.test('forged, expired and revoked sessions are rejected', () => {
       assert.equal(auth.verifySessionToken('anything'), null);
       const token = auth.createSessionToken({ id: 1 });

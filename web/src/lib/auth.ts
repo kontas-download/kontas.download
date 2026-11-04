@@ -1,26 +1,43 @@
 import crypto from 'node:crypto';
 import { getDb } from './db';
-const options = { N: 32768, r: 8, p: 3, maxmem: 64 * 1024 * 1024 };
+// Current parameters (OWASP minimum for scrypt). Hashes made with the weaker, briefly used SHORT_SCRYPT are still accepted and upgraded on login.
+const STRONG_SCRYPT = { N: 32768, r: 8, p: 3, maxmem: 64 * 1024 * 1024 };
+const SHORT_SCRYPT = { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 export const SESSION_SECONDS = 14 * 24 * 60 * 60;
 export type SessionUser = { id: number; email: string; name: string; role: string };
+
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.randomBytes(16).toString('hex');
-  const key = await new Promise<Buffer>((resolve, reject) => crypto.scrypt(password, salt, 64, options, (err, result) => err ? reject(err) : resolve(result)));
+  const key = await new Promise<Buffer>((resolve, reject) => crypto.scrypt(password, salt, 64, STRONG_SCRYPT, (err, result) => err ? reject(err) : resolve(result)));
   return ['scrypt', salt, key.toString('hex')].join(':');
 }
-export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+
+export async function verifyPasswordDetail(password: string, stored: string): Promise<{ valid: boolean; needsRehash: boolean }> {
   try {
     const parts = stored.split(':');
     if (parts[0] === 'scrypt' && parts.length === 3) {
-      if (!/^[a-f0-9]{32}$/.test(parts[1]) || !/^[a-f0-9]{128}$/.test(parts[2])) return false;
-      const key = await new Promise<Buffer>((resolve, reject) => crypto.scrypt(password, parts[1], 64, options, (err, result) => err ? reject(err) : resolve(result)));
-      return crypto.timingSafeEqual(key, Buffer.from(parts[2], 'hex'));
+      if (!/^[a-f0-9]{32}$/.test(parts[1]) || !/^[a-f0-9]{128}$/.test(parts[2])) return { valid: false, needsRehash: false };
+      const expected = Buffer.from(parts[2], 'hex');
+      // 1. Current parameters
+      const keyStrong = await new Promise<Buffer>((resolve, reject) => crypto.scrypt(password, parts[1], 64, STRONG_SCRYPT, (err, result) => err ? reject(err) : resolve(result)));
+      if (crypto.timingSafeEqual(keyStrong, expected)) return { valid: true, needsRehash: false };
+
+      // 2. Weaker parameters used by a recent release: valid, but rehash with the current ones
+      const keyShort = await new Promise<Buffer>((resolve, reject) => crypto.scrypt(password, parts[1], 64, SHORT_SCRYPT, (err, result) => err ? reject(err) : resolve(result)));
+      if (crypto.timingSafeEqual(keyShort, expected)) return { valid: true, needsRehash: true };
+
+      return { valid: false, needsRehash: false };
     }
     // Compatibility only: rehash legacy credentials immediately after a successful login.
-    if (parts.length !== 2 || !/^[a-f0-9]{64}$/.test(parts[1])) return false;
+    if (parts.length !== 2 || !/^[a-f0-9]{64}$/.test(parts[1])) return { valid: false, needsRehash: false };
     const key = crypto.createHash('sha256').update(parts[0] + password).digest();
-    return crypto.timingSafeEqual(key, Buffer.from(parts[1], 'hex'));
-  } catch { return false; }
+    return { valid: crypto.timingSafeEqual(key, Buffer.from(parts[1], 'hex')), needsRehash: true };
+  } catch { return { valid: false, needsRehash: false }; }
+}
+
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  const { valid } = await verifyPasswordDetail(password, stored);
+  return valid;
 }
 function digest(token: string) { return crypto.createHash('sha256').update(token).digest('hex'); }
 export function createSessionToken(user: { id: number }): string {

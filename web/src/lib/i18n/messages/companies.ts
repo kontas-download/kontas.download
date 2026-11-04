@@ -2,6 +2,8 @@ import type { Namespace } from './types';
 
 const companies: Namespace = {
   lt: {
+    notes: 'Papildoma informacija', notesHint: 'Laisvos formos pastabos apie įmonę (matoma tik programoje)',
+    logoLabel: 'Logotipas', logoNone: 'Nėra', logoUpload: 'Įkelti logotipą', logoReplace: 'Pakeisti', logoRemove: 'Pašalinti', logoHint: 'PNG arba JPEG, iki 512 KB. Rodomas sąskaitų PDF viršuje ir šoninėje juostoje.', logoTooBig: 'Failas per didelis (daugiausia 512 KB).', logoError: 'Nepavyko išsaugoti logotipo.',
     activeCompany: "Aktyvi įmonė",
     selectCompany: "Pasirinkite įmonę",
     yourCompanies: "Jūsų įmonės ({count})",
@@ -90,6 +92,8 @@ const companies: Namespace = {
     controlPrevious: "Ankstesni įrašai",
   },
   ru: {
+    notes: 'Дополнительная информация', notesHint: 'Заметки о компании в свободной форме (видны только в программе)',
+    logoLabel: 'Логотип', logoNone: 'Нет', logoUpload: 'Загрузить логотип', logoReplace: 'Заменить', logoRemove: 'Удалить', logoHint: 'PNG или JPEG, до 512 КБ. Показывается вверху PDF счетов и в боковой панели.', logoTooBig: 'Файл слишком большой (максимум 512 КБ).', logoError: 'Не удалось сохранить логотип.',
     activeCompany: "Активная компания",
     selectCompany: "Выберите компанию",
     yourCompanies: "Ваши компании ({count})",
@@ -178,6 +182,8 @@ const companies: Namespace = {
     controlPrevious: "Предыдущие записи",
   },
   en: {
+    notes: 'Additional information', notesHint: 'Free-form notes about the company (visible in the app only)',
+    logoLabel: 'Logo', logoNone: 'None', logoUpload: 'Upload logo', logoReplace: 'Replace', logoRemove: 'Remove', logoHint: 'PNG or JPEG, up to 512 KB. Shown at the top of invoice PDFs and in the sidebar.', logoTooBig: 'File is too large (512 KB maximum).', logoError: 'Could not save the logo.',
     activeCompany: "Active company",
     selectCompany: "Select a company",
     yourCompanies: "Your companies ({count})",
