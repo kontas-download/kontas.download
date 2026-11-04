@@ -5,6 +5,7 @@ import { requirePageAccess } from '@/lib/access';
 import { getT } from '@/lib/i18n/server';
 import { THEME_COOKIE, parseTheme } from '@/lib/theme';
 import { SettingsClient } from './SettingsClient';
+import { UpdatePanel } from '@/components/UpdatePanel';
 import pkg from '../../../package.json';
 import { pageTitle } from '@/lib/i18n/page-title';
 
@@ -30,6 +31,7 @@ export default async function SettingsPage() {
         <p className="mt-1 text-slate-400">{t('settings.subtitle')}</p>
       </header>
       <SettingsClient theme={theme} name={user.name || user.email} email={user.email} role={user.role} admin={admin} />
+      {admin && <UpdatePanel />}
       <section aria-labelledby="more" className="rounded-xl border border-slate-800 bg-slate-900 p-6">
         <h2 id="more" className="text-lg font-semibold text-white">{t('settings.shortcuts')}</h2>
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">

@@ -67,6 +67,17 @@ To store SMTP passwords (for sending invoices), set `SMTP_ENCRYPTION_KEY` (64 he
 
 The database is stored in the `web/prisma` folder (a Docker volume), so the data survives recreating the container. A server with HTTPS: see [deploy/README.en.md](deploy/README.en.md).
 
+### Updating
+
+When a new version is published, the administrator sees it in **Settings** and in the sidebar (every 12 h the program checks `https://kontas.download/latest.json`; no data is sent; turn off with `UPDATE_CHECK=off`). Updating is one command in the program folder:
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\update.ps1   # Windows
+bash update.sh                                          # Linux / macOS
+```
+
+The command verifies the archive SHA-256, stops the program, backs up the database to `backups/database/`, moves the old program files to `backups/previous-<version>-<time>/`, rebuilds the container and checks that the program responds; on failure it restores the previous version and database. `web/prisma`, `.env` and `docker-compose.override.yml` are left untouched. New tables and columns are created automatically the first time the new version starts; existing records, companies and settings are not changed. `-Check` / `--check` only reports whether a new version exists.
+
 ## Local development
 
 You need Node.js 22 (the same version as in the Dockerfile).

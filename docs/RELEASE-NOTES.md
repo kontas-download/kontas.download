@@ -6,6 +6,19 @@
 
 Pagrindinė dokumentacijos kalba – lietuvių. Jei lietuviškas ir angliškas tekstai skiriasi, viršesnis lietuviškas.
 
+### 0.4.0 – atnaujinimai viena komanda
+
+Archyvas: `kontas-download-0.4.0.zip`, šalia – kontrolinės sumos failas `kontas-download-0.4.0.zip.sha256`.
+
+- Programa kas 12 val. patikrina, ar kontas.download paskelbė naujesnę versiją (`https://kontas.download/latest.json`; jokie duomenys nesiunčiami, išjungiama `UPDATE_CHECK=off`). Administratorius naują versiją mato Nustatymuose ir šoniniame meniu.
+- Atnaujinimas viena komanda: `update.ps1` (Windows) arba `update.sh` (Linux / macOS). Patikrinama archyvo SHA-256, padaroma duomenų bazės kopija, seni failai perkeliami į `backups/previous-*`, konteineris perkuriamas ir patikrinamas; nepavykus grąžinama ankstesnė versija. `web/prisma` ir `.env` nekeičiami.
+- Atnaujinant iš 0.3.0 ar senesnės versijos šį kartą archyvą reikia išskleisti rankiniu būdu (žr. vadovą); vėlesnius atnaujinimus atliks `update.ps1` / `update.sh`.
+
+Kontrolinė suma:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.4.0.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.4.0.zip.sha256).Split(' ')[0]` – turi būti `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.4.0.zip.sha256` – turi būti `OK`.
+- Linux: `sha256sum -c kontas-download-0.4.0.zip.sha256` – turi būti `OK`.
+
 ### 0.3.0 – naujas dizainas, šviesi tema, nustatymai ir įmonės logotipas
 
 Archyvas: `kontas-download-0.3.0.zip`, šalia – kontrolinės sumos failas `kontas-download-0.3.0.zip.sha256`.
@@ -119,6 +132,19 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 
 Основной язык документации – литовский; при расхождении текстов приоритет у литовского.
 
+### 0.4.0 – обновление одной командой
+
+Архив: `kontas-download-0.4.0.zip`, рядом – файл контрольной суммы `kontas-download-0.4.0.zip.sha256`.
+
+- Раз в 12 ч программа проверяет, опубликовал ли kontas.download новую версию (`https://kontas.download/latest.json`; никакие данные не отправляются, отключается `UPDATE_CHECK=off`). Администратор видит новую версию в Настройках и в боковом меню.
+- Обновление одной командой: `update.ps1` (Windows) или `update.sh` (Linux / macOS). Проверяется SHA-256 архива, делается копия базы, старые файлы переносятся в `backups/previous-*`, контейнер пересобирается и проверяется; при ошибке возвращается прежняя версия. `web/prisma` и `.env` не меняются.
+- При переходе с 0.3.0 и более ранних версий в этот раз архив нужно распаковать вручную (см. руководство); следующие обновления выполнит `update.ps1` / `update.sh`.
+
+Контрольная сумма:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.4.0.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.4.0.zip.sha256).Split(' ')[0]` – должно быть `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.4.0.zip.sha256` – должно быть `OK`.
+- Linux: `sha256sum -c kontas-download-0.4.0.zip.sha256` – должно быть `OK`.
+
 ### 0.3.0 – новый дизайн, светлая тема, настройки и логотип компании
 
 Архив: `kontas-download-0.3.0.zip`, рядом – файл контрольной суммы `kontas-download-0.3.0.zip.sha256`.
@@ -231,6 +257,19 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 ## English
 
 The main documentation language is Lithuanian; if the texts differ, the Lithuanian one prevails.
+
+### 0.4.0 – one-command updates
+
+Archive: `kontas-download-0.4.0.zip`, with the checksum file `kontas-download-0.4.0.zip.sha256` next to it.
+
+- Every 12 h the program checks whether kontas.download has published a newer version (`https://kontas.download/latest.json`; no data is sent; turn off with `UPDATE_CHECK=off`). The administrator sees the new version in Settings and in the sidebar.
+- One-command update: `update.ps1` (Windows) or `update.sh` (Linux / macOS). The archive SHA-256 is verified, the database is backed up, old files move to `backups/previous-*`, the container is rebuilt and checked; on failure the previous version is restored. `web/prisma` and `.env` are left untouched.
+- Coming from 0.3.0 or older, unpack the archive by hand this one time (see the manual); later updates are done by `update.ps1` / `update.sh`.
+
+Checksum:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.4.0.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.4.0.zip.sha256).Split(' ')[0]` – must be `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.4.0.zip.sha256` – must be `OK`.
+- Linux: `sha256sum -c kontas-download-0.4.0.zip.sha256` – must be `OK`.
 
 ### 0.3.0 – new design, light theme, settings and company logo
 

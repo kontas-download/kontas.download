@@ -67,6 +67,17 @@ Norint saugoti SMTP slaptažodžius (sąskaitų siuntimui), prieš paleidžiant 
 
 Duomenų bazė saugoma kataloge `web/prisma` (Docker tomas), todėl duomenys išlieka perkūrus konteinerį. Serveris su HTTPS: žr. [deploy/README.md](deploy/README.md).
 
+### Atnaujinimas
+
+Kai paskelbiama nauja versija, administratorius ją mato **Nustatymuose** ir šoniniame meniu (programa kas 12 val. patikrina `https://kontas.download/latest.json`; jokie duomenys nesiunčiami, išjungiama `UPDATE_CHECK=off`). Atnaujinama viena komanda programos aplanke:
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\update.ps1   # Windows
+bash update.sh                                          # Linux / macOS
+```
+
+Komanda patikrina archyvo SHA-256, sustabdo programą, padaro duomenų bazės kopiją į `backups/database/`, senus programos failus perkelia į `backups/previous-<versija>-<laikas>/`, perkuria konteinerį ir patikrina, ar programa atsako; nepavykus grąžina ankstesnę versiją ir duomenų bazę. `web/prisma`, `.env` ir `docker-compose.override.yml` nekeičiami. Naujos lentelės ir stulpeliai sukuriami automatiškai pirmą kartą paleidus naują versiją; esami įrašai, įmonės ir nustatymai nekeičiami. `-Check` / `--check` tik parodo, ar yra nauja versija.
+
 ## Vietinis kūrimas
 
 Reikia Node.js 22 (tokios pat versijos kaip Dockerfile).

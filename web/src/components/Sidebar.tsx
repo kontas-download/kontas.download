@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { UpdateBadge } from '@/components/UpdatePanel';
 import { 
   LayoutDashboard, 
   Receipt, 
@@ -146,6 +147,8 @@ export function Sidebar() {
         {renderNavGroup(t('nav.groupAccounting'), accountingItems)}
         {renderNavGroup(t('nav.groupSystem'), [...systemItems, ...(profile?.role === 'admin' ? [{ name: 'nav.users', href: '/users', icon: UserCog }] : []), { name: 'nav.rules', href: '/rules', icon: Scale }, { name: 'nav.settings', href: '/settings', icon: Settings }, { name: 'nav.help', href: '/help', icon: CircleHelp }])}
       </nav>
+
+      {profile?.role === 'admin' && <UpdateBadge />}
 
       {/* User profile & Logout */}
       <div className="p-3 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between">
