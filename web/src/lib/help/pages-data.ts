@@ -13,7 +13,7 @@ export const dataPages: HelpPage[] = [
         summary: 'Įmonės paketas, skyrių eksportas, klientų ir sandėlio importas iš CSV, pakeitimų istorija ir atsarginė kopija.',
         purpose: ['Duomenys nėra uždaryti programoje: bet kurią įmonę galima eksportuoti, nukopijuoti kaip naują įmonę, o atskirus skyrius – išsaugoti CSV ar JSON. Visa tai atidaroma kortelėje „Įmonių valdymas“ → „Duomenys: eksportas, importas, istorija“.'],
         steps: [
-          'Įmonės paketas: spauskite eksportuoti – gausite JSON failą su kontrolinės sumos žyma. Jame yra įmonės rekvizitai, kontragentai, sandėlis, pardavimai ir pirkimai (įskaitant KS), bankas, mokėjimų susiejimai, apmokėjimai ne per banką, atlyginimai, didžiosios knygos įrašai, mokesčių nustatymai, laikotarpio užraktas ir pakeitimų istorija.',
+          'Įmonės paketas: spauskite eksportuoti – gausite JSON failą su kontrolinės sumos žyma. Jame yra įmonės rekvizitai, kontrahentai, sandėlis, pardavimai ir pirkimai (įskaitant KS), bankas, mokėjimų susiejimai, apmokėjimai ne per banką, atlyginimai, didžiosios knygos įrašai, mokesčių nustatymai, laikotarpio užraktas ir pakeitimų istorija.',
           'Paketo importas: pasirinkite failą ir spauskite peržiūrą – programa atlieka visą importą ir jį atšaukia, parodydama kiekį ir problemas. Tik jei problemų nėra, patvirtinkite įrašymą.',
           'Importas visada sukuria NAUJĄ įmonę. Naujos įmonės pavadinimas turi skirtis nuo esamų (galite nurodyti kitą pavadinimą). Jei įmonės kodas ar PVM kodas jau yra kitoje įmonėje, importas atmetamas, kol aiškiai nepasirinksite leisti dublikatą.',
           'Skyrių eksportas: klientai, sandėlis, pardavimai, pirkimai, žurnalas ir bankas – CSV (UTF-8, kabliataškis) arba JSON.',

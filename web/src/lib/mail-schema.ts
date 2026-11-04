@@ -33,3 +33,13 @@ export function migrateMail(db: Database.Database) {
     db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-mail-v1');
   })();
 }
+
+// Client.correspondenceEmail: the address for letters sent from the program (invoices, reminders, letters). Empty = the client's
+// official e-mail. The official e-mail and phone stay on invoices and other documents.
+export function migrateClientCorrespondence(db: Database.Database) {
+  db.transaction(() => {
+    if (db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-11-client-correspondence-v1')) return;
+    if (!(db.prepare('PRAGMA table_info(Client)').all() as { name: string }[]).some(c => c.name === 'correspondenceEmail')) db.exec('ALTER TABLE Client ADD COLUMN correspondenceEmail TEXT');
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-client-correspondence-v1');
+  })();
+}

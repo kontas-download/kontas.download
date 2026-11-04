@@ -106,7 +106,7 @@ export const purchasePages: HelpPage[] = [
         steps: [
           'Pirkimų puslapyje pasirinkite XML importą ir įkelkite failą.',
           'Peržiūrėkite rezultatą: tiekėją, numerį, datą, eilutes ir sumas. Peržiūra nieko neįrašo.',
-          'Jei tiekėjo nėra kontragentuose, patvirtinkite jo sukūrimą.',
+          'Jei tiekėjo nėra kontrahentuose, patvirtinkite jo sukūrimą.',
           'Patvirtinkite importą. Po to patikrinkite atskaitomo PVM dalį ir debeto sąskaitą.',
           'Kreditinei sąskaitai peržiūroje matysite originalų pirkimą (pagal BillingReference numerį ir datą), sumas ir atstatomą PVM. Jei faile nuorodos nėra, originalą pasirenkate patys iš to paties tiekėjo pirkimų.',
         ],
@@ -183,23 +183,23 @@ export const purchasePages: HelpPage[] = [
     sources: ['lt-gov-780', 'eu-gdpr'],
     text: {
       lt: {
-        title: 'Kontragentai (pirkėjai ir tiekėjai)',
+        title: 'Kontrahentai (pirkėjai ir tiekėjai)',
         summary: 'Pirkėjų ir tiekėjų rekvizitų registras.',
-        purpose: ['Meniu „Kontragentai (CRM)“ saugomi pirkėjų ir tiekėjų rekvizitai: pavadinimas, kodas, PVM kodas, el. paštas, telefonas, adresas, miestas, šalis. Jie naudojami sąskaitose, i.SAF, priminimuose ir suderinimo aktuose.'],
+        purpose: ['Meniu „Kontrahentai (CRM)“ saugomi pirkėjų ir tiekėjų rekvizitai: pavadinimas, kodas, PVM kodas, el. paštas, telefonas, adresas, miestas, šalis. Jie naudojami sąskaitose, i.SAF, priminimuose ir suderinimo aktuose.'],
         steps: [
-          'Atidarykite „Kontragentai (CRM)“ ir sukurkite kontragentą.',
+          'Atidarykite „Kontrahentai (CRM)“ ir sukurkite kontrahentą.',
           'Įveskite juridinio asmens kodą ir PVM kodą (jei yra), el. paštą sąskaitoms siųsti ir šalį.',
           'Išsaugokite ir naudokite jį sąskaitose bei pirkimuose.',
         ],
         rules: [
-          'Kontragentai priklauso aktyviai įmonei.',
-          'Sąskaitos PDF pirkėjo duomenys imami iš sąskaitos ir kontragento kortelės; išsiųstoje kopijoje archyvuojami tuo metu buvę rekvizitai.',
-          'i.SAF: kontragentas su užsienio PVM kodu arba be PVM kodo ir ne Lietuvos šalimi neklasifikuojamas automatiškai – failas nesudaromas, kol situacija neišspręsta rankiniu būdu.',
+          'Kontrahentai priklauso aktyviai įmonei.',
+          'Sąskaitos PDF pirkėjo duomenys imami iš sąskaitos ir kontrahento kortelės; išsiųstoje kopijoje archyvuojami tuo metu buvę rekvizitai.',
+          'i.SAF: kontrahentas su užsienio PVM kodu arba be PVM kodo ir ne Lietuvos šalimi neklasifikuojamas automatiškai – failas nesudaromas, kol situacija neišspręsta rankiniu būdu.',
           'Asmens duomenys (pvz. fizinių asmenų) tvarkomi pagal BDAR – laikykite tik reikalingus duomenis.',
         ],
         mistakes: [
-          'Skirtingi kontragentai su tuo pačiu kodu – susiejimas pagal kodą tampa dviprasmiškas, ir programa tokio susiejimo nenaudoja.',
-          'Šalis paliekama tuščia užsienio kontragentui – tada programa laiko jį Lietuvos kontragentu.',
+          'Skirtingi kontrahentai su tuo pačiu kodu – susiejimas pagal kodą tampa dviprasmiškas, ir programa tokio susiejimo nenaudoja.',
+          'Šalis paliekama tuščia užsienio kontrahentui – tada programa laiko jį Lietuvos kontrahentu.',
         ],
       },
       ru: {

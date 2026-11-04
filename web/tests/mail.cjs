@@ -86,3 +86,25 @@ test('signature configurator: on by default from company details, person and cho
   assert.equal(sig.signLetter(db, 1, 'Sveiki').text, 'Sveiki');
   assert.equal(sig.signaturePreview(db, 1), null);
 });
+
+test('correspondence e-mail: letters, invoices and reminders go to it; the invoice document keeps the official e-mail', async () => {
+  const clients = require('../src/app/api/clients/route.ts');
+  const client = require('../src/app/api/clients/[id]/route.ts');
+  const put = (id, body) => client.PUT(new Request('http://localhost:3000/api/clients/' + id, { method: 'PUT', headers: { origin: 'http://localhost:3000', 'content-type': 'application/json' }, body: JSON.stringify(body) }), { params: Promise.resolve({ id: String(id) }) });
+  assert.equal((await clients.POST(post('/api/clients', { name: 'UAB Gama', email: 'info@gama.test', correspondenceEmail: 'ne-adresas' }))).status, 400);
+  const created = await (await clients.POST(post('/api/clients', { name: 'UAB Gama', code: '444', email: 'info@gama.test', correspondenceEmail: 'buhalterija@gama.test' }))).json();
+  const id = created.client.id;
+  assert.equal(created.client.correspondenceEmail, 'buhalterija@gama.test');
+  const { resolveRecipients } = require('../src/lib/mail.ts');
+  assert.deepEqual(resolveRecipients(db, 1, [id], '').map(r => r.email), ['buhalterija@gama.test'], 'letters use the correspondence address');
+  const saleId = Number(db.prepare("INSERT INTO Sale(companyId,series,number,saleDate,payUntil,clientId,clientName,clientCode,sumWithoutVat,vat,sumWithVat,createdAt) VALUES(1,'PARD','7','2025-01-10','2025-01-20',?,'UAB Gama','444',10,0,10,datetime('now'))").run(id).lastInsertRowid);
+  db.prepare("INSERT INTO SaleItem(saleId,itemName,quantity,price,sumWithoutVat,sumWithVat,vatRate) VALUES(?,'Paslauga',1,10,10,10,0)").run(saleId);
+  const { invoiceDocument, invoiceEmailDraft } = require('../src/lib/invoice-document.ts');
+  const doc = invoiceDocument(saleId, 1);
+  assert.equal(doc.buyer.email, 'info@gama.test', 'the document shows the official e-mail');
+  assert.equal(invoiceEmailDraft(doc).to, 'buhalterija@gama.test', 'the invoice letter goes to the correspondence address');
+  const { receivables } = require('../src/lib/receivables.ts');
+  assert.equal(receivables(db, 1, '2025-02-01').find(r => r.saleId === saleId).clientEmail, 'buhalterija@gama.test', 'reminders too');
+  assert.equal((await put(id, { name: 'UAB Gama', code: '444', email: 'info@gama.test', correspondenceEmail: '' })).status, 200);
+  assert.equal(invoiceEmailDraft(invoiceDocument(saleId, 1)).to, 'info@gama.test', 'empty = the official e-mail');
+});

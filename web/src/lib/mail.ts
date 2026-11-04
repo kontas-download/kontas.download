@@ -72,7 +72,7 @@ export function resolveRecipients(db: Database.Database, companyId: number, clie
   const seen = new Set<string>();
   const add = (r: Recipient) => { const key = r.email.toLowerCase(); if (!seen.has(key)) { seen.add(key); out.push(r); } };
   for (const id of Array.isArray(clientIds) ? clientIds : []) {
-    const client = db.prepare('SELECT id, name, email FROM Client WHERE id=? AND companyId=?').get(Number(id), companyId) as { id: number; name: string; email: string | null } | undefined;
+    const client = db.prepare("SELECT id, name, COALESCE(NULLIF(TRIM(correspondenceEmail),''), email) AS email FROM Client WHERE id=? AND companyId=?").get(Number(id), companyId) as { id: number; name: string; email: string | null } | undefined;
     if (!client) throw new HttpError(400, 'Kontrahentas nerastas');
     for (const email of (client.email || '').split(/[;,\s]+/).filter(Boolean)) {
       if (!validEmail(email)) throw new HttpError(400, `Neteisingas kontrahento „${client.name}“ el. paštas: ${email}`);

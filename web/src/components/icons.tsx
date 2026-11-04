@@ -27,6 +27,7 @@ import {
   CreditCard as PCreditCard,
   DownloadSimple as PDownloadSimple,
   EnvelopeSimple as PEnvelopeSimple,
+  Robot as PRobot,
   FileCode as PFileCode,
   FileMagnifyingGlass as PFileMagnifyingGlass,
   FileText as PFileText,
@@ -120,6 +121,7 @@ export const List = wrap(PList);
 export const Lock = wrap(PLock);
 export const LogOut = wrap(PSignOut);
 export const Mail = wrap(PEnvelopeSimple);
+export const Bot = wrap(PRobot);
 export const MapPin = wrap(PMapPin);
 export const Package = wrap(PPackage);
 export const Phone = wrap(PPhone);

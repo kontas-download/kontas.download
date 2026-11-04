@@ -5,7 +5,7 @@ const rows: [string, string, string, string][] = [
   ['title', 'Tarpusavio atsiskaitymų suderinimo aktas', 'Акт сверки взаиморасчётов', 'Reconciliation statement of mutual settlements'],
   ['subtitle', 'Oficialus pirkėjų ir tiekėjų skolų suderinimo aktas su parašų ir antspaudų rekvizitais', 'Официальный акт сверки задолженности покупателей и поставщиков с реквизитами подписей и печатей', 'Official statement for reconciling customer and supplier balances, with signature and stamp fields'],
   ['print', 'Spausdinti / PDF', 'Печать / PDF', 'Print / PDF'],
-  ['selectCounterparty', 'Pasirinkite kontragentą (Pirkėją / Tiekėją):', 'Выберите контрагента (покупателя / поставщика):', 'Select a counterparty (customer / supplier):'],
+  ['selectCounterparty', 'Pasirinkite kontrahentą (Pirkėją / Tiekėją):', 'Выберите контрагента (покупателя / поставщика):', 'Select a counterparty (customer / supplier):'],
   ['selectPlaceholder', '-- Pasirinkite iš sąrašo --', '-- Выберите из списка --', '-- Select from the list --'],
   ['codeSuffix', '(kodas: {code})', '(код: {code})', '(code: {code})'],
   ['asOf', 'Būklė datai:', 'Состояние на дату:', 'Status as of:'],
@@ -33,7 +33,7 @@ const rows: [string, string, string, string][] = [
   ['signature', '(parašas)', '(подпись)', '(signature)'],
   ['fullName', '(vardas, pavardė)', '(имя, фамилия)', '(first name, surname)'],
   ['stampPlace', 'A.V. (Antspaudo vieta)', 'М.П. (место печати)', 'Stamp (place for stamp)'],
-  ['emptyHint', 'Pasirinkite kontragentą ir spauskite „Sudaryti aktą“', 'Выберите контрагента и нажмите «Сформировать акт»', 'Select a counterparty and click “Generate statement”'],
+  ['emptyHint', 'Pasirinkite kontrahentą ir spauskite „Sudaryti aktą“', 'Выберите контрагента и нажмите «Сформировать акт»', 'Select a counterparty and click “Generate statement”'],
   ['emptyHint2', 'Sistema automatiškai surinks visus pardavimo, pirkimo ir banko dokumentus', 'Система автоматически соберёт все документы продаж, покупок и банка', 'The system will automatically collect all sales, purchase and bank documents'],
 ];
 

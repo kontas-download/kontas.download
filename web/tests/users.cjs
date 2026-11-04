@@ -120,12 +120,21 @@ test('user management, roles and passwords', async t => {
         ['import-package', () => api('companies/import-package').POST(request('POST', {}))],
         ['legacy import', () => api('companies/import').POST(request('POST', { companyId: 1, jsonData: {} }))],
         ['history', () => api('companies/[id]/history').GET(request('GET'), context(1))],
-        ['accounting-control GET', () => api('companies/[id]/accounting-control').GET(request('GET'), context(1))],
-        ['accounting-control PUT', () => api('companies/[id]/accounting-control').PUT(request('PUT', { lockedThrough: '2026-01-31', reason: 'x' }), context(1))],
         ['companies POST', () => api('companies').POST(request('POST', { name: 'New' }))],
         ['companies DELETE', () => api('companies/[id]').DELETE(request('DELETE'), context(2))],
       ];
       for (const [name, call] of forbidden) assert.equal((await call()).status, 403, name);
+      // Period closing: an accountant closes (moves the lock forward) and sees only the lock history; reopening is for administrators.
+      const control = api('companies/[id]/accounting-control');
+      assert.equal((await control.PUT(request('PUT', { lockedThrough: '2026-01-31', reason: 'sausis uždarytas' }), context(1))).status, 200);
+      assert.equal((await control.PUT(request('PUT', { lockedThrough: '2026-02-28', reason: 'vasaris uždarytas' }), context(1))).status, 200);
+      assert.equal((await control.PUT(request('PUT', { lockedThrough: '2026-01-31', reason: 'atidaryti' }), context(1))).status, 403, 'an accountant cannot move the lock back');
+      assert.equal((await control.PUT(request('PUT', { lockedThrough: null, reason: 'nuimti' }), context(1))).status, 403, 'an accountant cannot remove the lock');
+      const seen = await (await control.GET(request('GET'), context(1))).json();
+      assert.equal(seen.canReopen, false);
+      assert.ok(seen.events.length >= 2 && seen.events.every(e => e.entity === 'AccountingLock'), 'only the lock history');
+      assert.equal(db.prepare('SELECT lockedThrough FROM AccountingLock WHERE companyId=1').get().lockedThrough, '2026-02-28');
+      db.prepare('DELETE FROM AccountingLock WHERE companyId=1').run();
       assert.ok(db.prepare('SELECT 1 FROM Company WHERE id=2').get());
       assert.equal(db.prepare("SELECT role FROM User WHERE id=?").get(accountantId).role, 'accountant');
       // Pages: the users page redirects an accountant away, normal pages open.

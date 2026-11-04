@@ -21,6 +21,7 @@ import {
   LogOut,
   UserCheck,
   Mail,
+  Bot,
   UserCog,
   KeyRound,
   CircleHelp,
@@ -148,7 +149,7 @@ export function Sidebar() {
       <nav className="flex-1 p-3 overflow-y-auto">
         {renderNavGroup(t('nav.groupOperations'), [...operationItems, ...extraItems.map(item => ({ ...item, icon: Wallet }))])}
         {renderNavGroup(t('nav.groupAccounting'), accountingItems)}
-        {renderNavGroup(t('nav.groupSystem'), [...systemItems, ...(profile?.role === 'admin' ? [{ name: 'nav.users', href: '/users', icon: UserCog }] : []), { name: 'nav.rules', href: '/rules', icon: Scale }, { name: 'nav.settings', href: '/settings', icon: Settings }, { name: 'nav.help', href: '/help', icon: CircleHelp }])}
+        {renderNavGroup(t('nav.groupSystem'), [...systemItems, ...(profile?.role === 'admin' ? [{ name: 'nav.users', href: '/users', icon: UserCog }] : []), { name: 'nav.automation', href: '/automation', icon: Bot }, { name: 'nav.rules', href: '/rules', icon: Scale }, { name: 'nav.settings', href: '/settings', icon: Settings }, { name: 'nav.help', href: '/help', icon: CircleHelp }])}
       </nav>
 
       {profile?.role === 'admin' && <UpdateBadge />}

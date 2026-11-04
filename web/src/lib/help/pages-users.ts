@@ -12,7 +12,7 @@ export const userPages: HelpPage[] = [
         summary: 'Kolegų paskyros, rolės administratorius ir buhalteris, išjungimas, slaptažodžiai.',
         purpose: [
           'Programa skirta keliems žmonėms. Pirmasis administratorius sukuriamas paleidžiant programą pirmą kartą; kitas paskyras kuria administratorius skiltyje „Naudotojai“. Savarankiškos registracijos nėra.',
-          'Administratorius gali viską. Buhalteris atlieka visą įprastą apskaitos darbą visose įmonėse (dokumentai, kontragentai, bankas, DU, didžioji knyga, mokesčiai, ataskaitos, esamų įmonių rekvizitai ir SMTP).',
+          'Administratorius gali viską. Buhalteris atlieka visą įprastą apskaitos darbą visose įmonėse (dokumentai, kontrahentai, bankas, DU, didžioji knyga, mokesčiai, ataskaitos, esamų įmonių rekvizitai ir SMTP).',
         ],
         steps: [
           'Atidarykite „Naudotojai“ (meniu matomas tik administratoriams) ir spauskite „Naujas naudotojas“.',

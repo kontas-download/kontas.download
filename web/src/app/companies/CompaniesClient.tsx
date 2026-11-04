@@ -414,7 +414,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
               </div>
 
               {/* Bottom Actions */}
-              {isAdmin && <button onClick={() => setControlCompany(comp)} className="mt-4 mr-4 text-sm font-semibold text-emerald-300 underline">{t('companies.controlTitle')}</button>}
+              <button onClick={() => setControlCompany(comp)} className="mt-4 mr-4 text-sm font-semibold text-emerald-300 underline">{t('companies.controlTitle')}</button>
               {isAdmin && <button onClick={() => setDataCompany(comp)} className="mt-4 mr-4 text-sm font-semibold text-emerald-300 underline">{t('companies.dataButton')}</button>}
               <button onClick={() => setSmtpCompany(comp)} className="mt-4 text-sm font-semibold text-emerald-300 underline">{t('companies.smtpButton')}</button>
               <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between gap-2">

@@ -13,8 +13,9 @@ import { migrateFixedAssets } from './assets-schema';
 import { migrateInventory, migrateInventoryGuards, migratePurchaseWarehouse } from './inventory-schema';
 import { migratePayroll, migratePayrollPayoutDate } from './payroll-schema';
 import { migrateHr, migrateHrContacts, migrateHrLinks } from './hr-schema';
-import { migrateMail } from './mail-schema';
+import { migrateClientCorrespondence, migrateMail } from './mail-schema';
 import { migrateMailSignature } from './mail-signature';
+import { migrateAutomation } from './automation-schema';
 import Database from 'better-sqlite3';
 import path from 'node:path';
 let dbInstance: Database.Database | null = null;
@@ -66,7 +67,9 @@ export function getDb() {
     migrateHrContacts(db);
     migrateHrLinks(db);
     migrateMail(db);
+    migrateClientCorrespondence(db);
     migrateMailSignature(db);
+    migrateAutomation(db);
     dbInstance = db;
   }
   return dbInstance;

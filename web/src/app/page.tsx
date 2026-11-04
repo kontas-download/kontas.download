@@ -21,10 +21,12 @@ import {
   Scale
 } from '@/components/icons';
 import { pageTitle } from '@/lib/i18n/page-title';
+import { periodWhere, resolvePeriod } from '@/lib/dashboard-period';
+import { PeriodPicker } from '@/components/PeriodPicker';
 
 export async function generateMetadata() { return { title: { absolute: (await pageTitle('nav.overview')) + ' · kontas.download' } }; }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ period?: string; from?: string; to?: string }> }) {
   await requirePageAccess();
   const { t, lang } = await getT();
   const locale = LOCALES[lang];
@@ -32,11 +34,16 @@ export default async function DashboardPage() {
   const company = await getActiveCompany();
   const companyId = company.id;
 
-  // Metrics filtered by active company
-  const totalSales = db.prepare('SELECT SUM(sumWithVat) as s, COUNT(*) as c FROM Sale WHERE companyId = ?').get(companyId) as { s: number, c: number };
-  const totalPurchases = db.prepare('SELECT SUM(sumWithVat) as s, COUNT(*) as c FROM Purchase WHERE companyId = ?').get(companyId) as { s: number, c: number };
-  const totalClients = db.prepare('SELECT COUNT(*) as c FROM Client WHERE companyId = ?').get(companyId) as { c: number };
-  const totalBankOps = db.prepare('SELECT COUNT(*) as c FROM BankTransaction WHERE companyId = ?').get(companyId) as { c: number };
+  // Metrics of the chosen period (default: this year); "all" gives the whole history.
+  const period = resolvePeriod(await searchParams, todayVilnius());
+  const ps = periodWhere('saleDate', period), pp = periodWhere('purchaseDate', period), pb = periodWhere('date', period);
+  const totalSales = db.prepare(`SELECT SUM(sumWithVat) as s, COUNT(*) as c FROM Sale WHERE companyId = ?${ps.sql}`).get(companyId, ...ps.args) as { s: number, c: number };
+  const totalPurchases = db.prepare(`SELECT SUM(sumWithVat) as s, COUNT(*) as c FROM Purchase WHERE companyId = ?${pp.sql}`).get(companyId, ...pp.args) as { s: number, c: number };
+  // Clients that were invoiced in the period (all counterparties when the whole history is shown).
+  const totalClients = (period.from || period.to
+    ? db.prepare(`SELECT COUNT(DISTINCT COALESCE(clientId, clientName)) as c FROM Sale WHERE companyId = ?${ps.sql}`).get(companyId, ...ps.args)
+    : db.prepare('SELECT COUNT(*) as c FROM Client WHERE companyId = ?').get(companyId)) as { c: number };
+  const totalBankOps = db.prepare(`SELECT COUNT(*) as c FROM BankTransaction WHERE companyId = ?${pb.sql}`).get(companyId, ...pb.args) as { c: number };
 
   const salesSum = totalSales?.s || 0;
   const purchasesSum = totalPurchases?.s || 0;
@@ -55,11 +62,11 @@ export default async function DashboardPage() {
   const topClients = db.prepare(`
     SELECT clientName, clientCode, SUM(sumWithVat) as totalSpent, COUNT(*) as invoiceCount
     FROM Sale
-    WHERE companyId = ? AND clientName IS NOT NULL
+    WHERE companyId = ? AND clientName IS NOT NULL${ps.sql}
     GROUP BY clientName
     ORDER BY totalSpent DESC
     LIMIT 5
-  `).all(companyId) as any[];
+  `).all(companyId, ...ps.args) as any[];
 
   // Last 12 months: revenue vs expenses
   const monthKeys: string[] = [];
@@ -150,6 +157,10 @@ export default async function DashboardPage() {
         {taxRules.stale && taxRules.asOf && <p role="alert" className="mt-2">{t('rules.stale', { days: taxRules.daysOld ?? 0 })}</p>}
         {taxRules.provisional > 0 && <p className="mt-2 text-slate-400">{t('rules.provisionalNote', { count: taxRules.provisional })}</p>}
       </div>
+
+      {/* Period of the statistics */}
+      <PeriodPicker period={period} labels={{ title: t('dashboard.periodTitle'), month: t('dashboard.periodMonth'), quarter: t('dashboard.periodQuarter'), year: t('dashboard.periodYear'), last12: t('dashboard.periodLast12'), lastYear: t('dashboard.periodLastYear'), all: t('dashboard.periodAll'), custom: t('dashboard.periodCustom'), from: t('dashboard.periodFrom'), to: t('dashboard.periodTo'), apply: t('dashboard.periodApply') }} />
+      <p className="-mt-5 text-xs text-slate-500">{period.from || period.to ? t('dashboard.periodShowing', { from: period.from ? formatDate(lang, period.from) : '…', to: period.to ? formatDate(lang, period.to) : '…' }) : t('dashboard.periodShowingAll')}</p>
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -277,7 +288,8 @@ export default async function DashboardPage() {
                         {Number(inv.sumWithVat).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        <span className="inline-block px-2 py-0.5 text-[11px] rounded-full bg-emerald-500/10 text-emerald-400 font-medium">
+                        {/* Same colours as the invoice list: paid green, unpaid amber. */}
+                        <span className={`inline-block px-2 py-0.5 text-[11px] rounded-full border font-medium ${(inv.statusName || 'Apmokėta') === 'Apmokėta' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
                           {statusLabel(inv.statusName || 'Apmokėta')}
                         </span>
                       </td>

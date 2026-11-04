@@ -31,8 +31,8 @@ export async function PUT(request: Request, context: Context) {
     const t = parseTemplate(db, companyId, body);
     const last = db.prepare('SELECT MAX(periodDate) d FROM RecurringRun WHERE recurringId=?').get(id) as { d: string | null };
     if (last.d && t.nextDate <= last.d) throw new HttpError(409, `Sąskaita už laikotarpį ${last.d} jau išrašyta: kita data turi būti vėlesnė`);
-    db.prepare('UPDATE RecurringInvoice SET name=?,clientId=?,series=?,frequency=?,nextDate=?,anchorDay=?,endDate=?,payDays=?,notes=?,itemsJson=? WHERE id=? AND companyId=?')
-      .run(t.name, t.clientId, t.series, t.frequency, t.nextDate, t.anchorDay, t.endDate, t.payDays, t.notes, JSON.stringify(t.items), id, companyId);
+    db.prepare('UPDATE RecurringInvoice SET name=?,clientId=?,series=?,frequency=?,nextDate=?,anchorDay=?,endDate=?,payDays=?,notes=?,itemsJson=?,autoMode=? WHERE id=? AND companyId=?')
+      .run(t.name, t.clientId, t.series, t.frequency, t.nextDate, t.anchorDay, t.endDate, t.payDays, t.notes, JSON.stringify(t.items), t.autoMode, id, companyId);
     return NextResponse.json({ success: true });
   } catch (err) {
     return apiError(err);

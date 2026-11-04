@@ -35,3 +35,6 @@ export function saveMailSettings(companyId:number,body:Record<string,unknown>) {
   getDb().prepare('INSERT INTO CompanyMailSettings(companyId,host,port,secure,sender,username,passwordEncrypted,enabled) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(companyId) DO UPDATE SET host=excluded.host,port=excluded.port,secure=excluded.secure,sender=excluded.sender,username=excluded.username,passwordEncrypted=excluded.passwordEncrypted,enabled=excluded.enabled').run(companyId,host.trim(),port,Number(secure),sender,username,secret,Number(enabled));
   return publicMailSettings(companyId);
 }
+
+/** Address for letters from the program: the correspondence e-mail when set, otherwise the official e-mail. */
+export const mailAddressOf = (c: { email?: string | null; correspondenceEmail?: string | null } | null | undefined) => (c?.correspondenceEmail?.trim() || c?.email?.trim() || '');

@@ -25,7 +25,7 @@ export async function GET(request: Request, context: Context) {
     try { mailConfiguration(companyId); } catch { configured = false; }
     const draft = reminderMailDraft(doc.lang, { number: doc.number, date: doc.date, dueDate: doc.dueDate, balance: open.balance, currency: doc.currency, seller: doc.seller.name });
     return NextResponse.json({
-      to: doc.buyer.email || '',
+      to: doc.mailTo || doc.buyer.email || '',
       lang: doc.lang,
       subject: draft.subject,
       text: draft.text,

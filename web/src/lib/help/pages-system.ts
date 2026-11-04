@@ -10,7 +10,7 @@ export const systemPages: HelpPage[] = [
       lt: {
         title: 'Įmonės ir kelių įmonių apskaita',
         summary: 'Įmonių kūrimas, rekvizitai, PVM režimas, SMTP, perjungimas, importas ir trynimas.',
-        purpose: ['Vienoje programoje galima tvarkyti kelias įmones. Kiekvienos įmonės dokumentai, kontragentai, bankas, nustatymai ir SMTP yra atskiri; aktyvi įmonė pasirenkama šoniniame meniu.'],
+        purpose: ['Vienoje programoje galima tvarkyti kelias įmones. Kiekvienos įmonės dokumentai, kontrahentai, bankas, nustatymai ir SMTP yra atskiri; aktyvi įmonė pasirenkama šoniniame meniu.'],
         steps: [
           'Atidarykite „Įmonių valdymas“ ir sukurkite naują įmonę (pavadinimas privalomas).',
           'Redaguokite rekvizitus: kodas, PVM kodas, adresas, el. paštas, telefonas, banko pavadinimas, IBAN, SWIFT/BIC.',

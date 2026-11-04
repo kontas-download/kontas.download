@@ -24,7 +24,8 @@ export default async function InvoicesPage() {
            COALESCE((SELECT SUM(amount) FROM PaymentAllocation WHERE saleId = s.id), 0) as paidAmount,
            ROUND(s.sumWithVat + COALESCE((SELECT SUM(sumWithVat) FROM Sale WHERE originalSaleId = s.id), 0), 2) as dueAmount,
            COALESCE((SELECT COUNT(*) FROM SaleItem WHERE saleId = s.id), 0) as itemCount,
-           cl.email as clientEmail
+           -- Letters go to the correspondence e-mail when the client has one, otherwise to the official e-mail.
+           COALESCE(NULLIF(TRIM(cl.correspondenceEmail),''), cl.email) as clientEmail
     FROM Sale s
     LEFT JOIN Client cl ON cl.id = s.clientId
     WHERE s.companyId = ?
@@ -49,7 +50,7 @@ export default async function InvoicesPage() {
 
   // Load client list for fast autocompletion
   const clients = db.prepare(`
-    SELECT id, name, code, vatCode, isVatPayer, email, address FROM Client WHERE companyId = ? ORDER BY name ASC
+    SELECT id, name, code, vatCode, isVatPayer, email, correspondenceEmail, address FROM Client WHERE companyId = ? ORDER BY name ASC
   `).all(companyId) as any[];
 
   return (

@@ -13,7 +13,7 @@ export const salesPages: HelpPage[] = [
         purpose: ['Meniu „Pardavimai / Sąskaitos“ išrašomos ir tvarkomos pardavimo sąskaitos (SF), iš jų formuojami kreditiniai dokumentai, PDF ir siuntimas el. paštu.'],
         steps: [
           'Atidarykite „Pardavimai / Sąskaitos“ ir spauskite naujos sąskaitos mygtuką.',
-          'Pasirinkite pirkėją iš kontragentų sąrašo (arba įveskite jo pavadinimą, kodą ir PVM kodą).',
+          'Pasirinkite pirkėją iš kontrahentų sąrašo (arba įveskite jo pavadinimą, kodą ir PVM kodą).',
           'Patikrinkite seriją ir numerį – programa pasiūlo kitą serijos numerį (didžiausias esamas + 1, išlaikant nulių skaičių).',
           'Nurodykite sąskaitos datą ir apmokėjimo terminą. Data lemia, koks pardavėjo PVM režimas bus taikomas.',
           'Įveskite eilutes: pavadinimą, kiekį, kainą be PVM ir PVM tarifą (21 %, 9 %, 5 % arba 0 %). Ne PVM mokėtojui tarifas nerodomas ir lygus 0.',

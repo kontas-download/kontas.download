@@ -8,7 +8,8 @@ import { todayVilnius } from './dates';
 
 export type Frequency = 'MONTH' | 'QUARTER' | 'YEAR';
 export interface TemplateLine { itemName: string; itemCode?: string; quantity: number; price: number; vatRate: number; }
-export interface Template { id: number; companyId: number; name: string; clientId: number; series: string; frequency: Frequency; nextDate: string; anchorDay: number; endDate: string | null; payDays: number; notes: string | null; items: TemplateLine[]; active: boolean; }
+export interface Template { id: number; companyId: number; name: string; clientId: number; series: string; frequency: Frequency; nextDate: string; anchorDay: number; endDate: string | null; payDays: number; notes: string | null; items: TemplateLine[]; active: boolean; autoMode?: AutoMode; }
+export type AutoMode = 'MANUAL' | 'ISSUE' | 'ISSUE_SEND';
 
 const STEP: Record<Frequency, number> = { MONTH: 1, QUARTER: 3, YEAR: 12 };
 const iso = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
@@ -33,6 +34,11 @@ function parseLines(value: unknown): TemplateLine[] {
   });
 }
 
+const autoModeOf = (value: unknown): AutoMode => {
+  if (value === undefined || value === null || value === '') return 'MANUAL';
+  if (value !== 'MANUAL' && value !== 'ISSUE' && value !== 'ISSUE_SEND') throw new HttpError(400, 'Neteisingas automatinio išrašymo režimas');
+  return value;
+};
 export function parseTemplate(db: Database.Database, companyId: number, body: any) {
   if (!body || typeof body.name !== 'string' || !body.name.trim() || body.name.length > 200) throw new HttpError(400, 'Nurodykite šablono pavadinimą');
   const clientId = Number(body.clientId);
@@ -43,13 +49,13 @@ export function parseTemplate(db: Database.Database, companyId: number, body: an
   const payDays = body.payDays == null ? 14 : Number(body.payDays);
   if (!Number.isInteger(payDays) || payDays < 0 || payDays > 365) throw new HttpError(400, 'Apmokėjimo terminas: nuo 0 iki 365 dienų');
   const series = typeof body.series === 'string' && body.series.trim() ? body.series.trim().slice(0, 20) : 'SF';
-  return { name: body.name.trim(), clientId, frequency: body.frequency as Frequency, nextDate: body.nextDate as string, anchorDay: Number(body.nextDate.slice(8, 10)), endDate: body.endDate || null, payDays, series, notes: typeof body.notes === 'string' && body.notes.trim() ? body.notes.trim().slice(0, 500) : null, items: parseLines(body.items) };
+  return { name: body.name.trim(), clientId, frequency: body.frequency as Frequency, nextDate: body.nextDate as string, anchorDay: Number(body.nextDate.slice(8, 10)), endDate: body.endDate || null, payDays, series, notes: typeof body.notes === 'string' && body.notes.trim() ? body.notes.trim().slice(0, 500) : null, items: parseLines(body.items), autoMode: autoModeOf(body.autoMode) };
 }
 
 export function listTemplates(db: Database.Database, companyId: number): (Template & { clientName: string; due: boolean; runs: number })[] {
   const today = todayVilnius();
   const rows = db.prepare(`SELECT r.*, c.name clientName, (SELECT COUNT(*) FROM RecurringRun x WHERE x.recurringId=r.id) runs FROM RecurringInvoice r JOIN Client c ON c.id=r.clientId WHERE r.companyId=? ORDER BY r.active DESC, r.nextDate, r.id`).all(companyId) as any[];
-  return rows.map(r => ({ id: r.id, companyId: r.companyId, name: r.name, clientId: r.clientId, clientName: r.clientName, series: r.series, frequency: r.frequency, nextDate: r.nextDate, anchorDay: r.anchorDay, endDate: r.endDate, payDays: r.payDays, notes: r.notes, items: JSON.parse(r.itemsJson), active: Boolean(r.active), runs: r.runs, due: Boolean(r.active) && r.nextDate <= today }));
+  return rows.map(r => ({ id: r.id, companyId: r.companyId, name: r.name, clientId: r.clientId, clientName: r.clientName, series: r.series, frequency: r.frequency, nextDate: r.nextDate, anchorDay: r.anchorDay, endDate: r.endDate, payDays: r.payDays, notes: r.notes, items: JSON.parse(r.itemsJson), autoMode: r.autoMode ?? 'MANUAL', active: Boolean(r.active), runs: r.runs, due: Boolean(r.active) && r.nextDate <= today }));
 }
 
 // Issues the invoice for the template's current period. A period can be issued only once (RecurringRun primary key).
@@ -75,6 +81,6 @@ export function issueRecurring(companyId: number, id: number, options: { number?
     const next = advance(row.nextDate, row.anchorDay, row.frequency);
     const finished = row.endDate && next > row.endDate;
     db.prepare('UPDATE RecurringInvoice SET nextDate=?, active=? WHERE id=?').run(next, finished ? 0 : 1, id);
-    return { sale, items, nextDate: next, finished: Boolean(finished), periodDate: row.nextDate };
+    return { sale, items, saleId, nextDate: next, finished: Boolean(finished), periodDate: row.nextDate };
   })();
 }

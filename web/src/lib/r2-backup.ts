@@ -122,11 +122,12 @@ export function createFilesArchive(): Buffer | null {
     path.join(rootDir, 'docs', 'vmi'),
   ];
 
-  const existingDirs = candidateDirs.filter(d => fs.existsSync(d) && fs.readdirSync(d).length > 0);
+  // Runtime-only paths: the ignore comments keep the build from tracing (and shipping) the whole project into the image.
+  const existingDirs = candidateDirs.filter(d => fs.existsSync(/*turbopackIgnore: true*/ d) && fs.readdirSync(/*turbopackIgnore: true*/ d).length > 0);
 
   if (existingDirs.length === 0) {
     const publicDir = path.join(rootDir, 'public');
-    if (fs.existsSync(publicDir)) {
+    if (fs.existsSync(/*turbopackIgnore: true*/ publicDir)) {
       execSync(`tar -czf "${archivePath}" -C "${rootDir}" public`, { stdio: 'ignore' });
     } else {
       return null;

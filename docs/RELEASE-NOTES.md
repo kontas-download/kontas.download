@@ -6,6 +6,22 @@
 
 Pagrindinė dokumentacijos kalba – lietuvių. Jei lietuviškas ir angliškas tekstai skiriasi, viršesnis lietuviškas.
 
+### 0.5.1 – automatizavimas, el. paštas korespondencijai, apžvalgos laikotarpiai
+
+Archyvas: `kontas-download-0.5.1.zip`, šalia – kontrolinės sumos failas `kontas-download-0.5.1.zip.sha256`. Atnaujinti iš 0.4.0 ar 0.5.0: `update.ps1` / `update.sh`.
+
+- Skyrius „Automatizavimas“: robotas kasdien išrašo periodines sąskaitas ir išsiunčia jas su PDF, siunčia priminimus skolininkams pagal dienas po termino, susieja vienareikšmius banko mokėjimus, siunčia savaitės suvestinę ir mokesčių terminų priminimus. Kiekvienas darbas įjungiamas atskirai, viskas įrašoma į žurnalą.
+- Kontrahento laukas „El. paštas korespondencijai“: laiškai iš programos siunčiami juo, tuščias – naudojamas el. paštas; sąskaitose lieka el. paštas ir telefonas.
+- Apžvalgos statistika už pasirinktą laikotarpį (numatyta – šie metai), bet koks laikotarpis nuo–iki ir visas laikas.
+- Periodinis šablonas: klientas iš anksto nepasirenkamas, duomenys iš paskutinės kliento sąskaitos (serija, eilutės, apmokėjimo terminas, pastabos), PVM stulpelis tik PVM mokėtojui. Numatyta serija – dažniausia įmonės serija.
+- Laikotarpių uždarymas: buhalteris gali uždaryti, atidaryti – tik administratorius.
+- Pataisyta: neapmokėtų sąskaitų spalva apžvalgoje, kontrahento formos lygiavimas, terminas „kontrahentas“; mažesnis Docker atvaizdas.
+
+Kontrolinė suma:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.1.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.1.zip.sha256).Split(' ')[0]` – turi būti `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.1.zip.sha256` – turi būti `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.1.zip.sha256` – turi būti `OK`.
+
 ### 0.5.0 – personalas, laiškai su šablonais ir parašu, automatinis užpildymas
 
 Archyvas: `kontas-download-0.5.0.zip`, šalia – kontrolinės sumos failas `kontas-download-0.5.0.zip.sha256`. Atnaujinti iš 0.4.0: `update.ps1` / `update.sh`.
@@ -103,7 +119,7 @@ Archyvas: `kontas-download-0.2.1.zip`, šalia – kontrolinės sumos failas `kon
 - Atsargos ir savikaina: svertinio vidurkio ir FIFO metodai (pagal nutylėjimą išjungta), judėjimai, rankinis koregavimas su priežastimi.
 - VMI formų juodraščiai ir `.ffdata` failai: FR0564 (su FR0564P/R/T/TP priedais), GPM313 (iš užregistruotų darbo užmokesčio skaičiavimų, su 6 ir 7 laukų skirstymu pagal išmokėjimo datą), GPM312 (metinė suvestinė pagal darbuotojus su GPM312L ir GPM312U priedais) ir PLN204 (metinės pelno mokesčio deklaracijos juodraštis su PLN204S ir PLN204Z priedais); puslapiai, CSV/JSON/FFDATA, terminai registre.
 - Taisyklių registras: tarifai, terminai ir darbo užmokesčio parametrai su galiojimo datomis; puslapis „Taisyklės“ (`/rules`); pelno mokesčio tarifas imamas iš registro pagal metus.
-- Kontragentai, laikotarpių uždarymas, apskaitos įrašų pakeitimų istorija.
+- Kontrahentai, laikotarpių uždarymas, apskaitos įrašų pakeitimų istorija.
 - Naudotojai ir rolės (administratorius, buhalteris), slaptažodžio keitimas, prisijungimo bandymų ribojimas.
 - Įmonės paketo eksportas/importas (apima ir darbo užmokesčio, ilgalaikio turto, atsargų lenteles), skyrių eksportas CSV/JSON, visos duomenų bazės kopija administratoriui (mygtukas puslapyje „Įmonių valdymas“, `/api/admin/backup`).
 - Sąsaja, įtaisyta pagalba ir serverio klaidų pranešimai lietuvių, rusų ir anglų kalbomis.
@@ -147,6 +163,22 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 ## Русский
 
 Основной язык документации – литовский; при расхождении текстов приоритет у литовского.
+
+### 0.5.1 – автоматизация, e-mail для корреспонденции, периоды на главной
+
+Архив: `kontas-download-0.5.1.zip`, рядом – файл контрольной суммы `kontas-download-0.5.1.zip.sha256`. Обновление с 0.4.0 или 0.5.0: `update.ps1` / `update.sh`.
+
+- Раздел «Автоматизация»: робот каждый день выставляет периодические счета и отправляет их с PDF, шлёт напоминания должникам в заданные дни после срока, разносит однозначные банковские платежи, отправляет недельную сводку и напоминания о налоговых сроках. Каждая задача включается отдельно, всё пишется в журнал.
+- Поле контрагента «E-mail для корреспонденции»: письма из программы идут на него, если пусто – на обычный e-mail; в счетах остаются e-mail и телефон.
+- Статистика на главной за выбранный период (по умолчанию этот год), любой период с–по и всё время.
+- Периодический шаблон: клиент заранее не выбран, данные из последнего счёта клиента (серия, строки, срок оплаты, примечание), колонка PVM только для плательщика. Серия по умолчанию – самая используемая серия компании.
+- Закрытие периодов: бухгалтер может закрыть, открыть – только администратор.
+- Исправлено: цвет неоплаченных счетов на главной, выравнивание формы контрагента, термин «kontrahentas»; образ Docker меньше.
+
+Контрольная сумма:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.1.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.1.zip.sha256).Split(' ')[0]` – должно быть `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.1.zip.sha256` – должно быть `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.1.zip.sha256` – должно быть `OK`.
 
 ### 0.5.0 – кадры, письма с шаблонами и подписью, автозаполнение
 
@@ -289,6 +321,22 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 ## English
 
 The main documentation language is Lithuanian; if the texts differ, the Lithuanian one prevails.
+
+### 0.5.1 – automation, correspondence e-mail, overview periods
+
+Archive: `kontas-download-0.5.1.zip`, with the checksum file `kontas-download-0.5.1.zip.sha256` next to it. Updating from 0.4.0 or 0.5.0: `update.ps1` / `update.sh`.
+
+- Automation section: every day the robot issues recurring invoices and e-mails them with the PDF, sends reminders to debtors on the given days after the due date, links unambiguous bank payments, sends the weekly summary and tax deadline reminders. Each job is switched on separately and everything is logged.
+- Counterparty field "Correspondence e-mail": letters from the program go there, empty means the e-mail; invoices keep the e-mail and phone.
+- Overview statistics for a chosen period (this year by default), any from–to range and all time.
+- Recurring template: no client chosen in advance, details from the client's last invoice (series, lines, payment term, notes), the VAT column only for VAT payers. The default series is the company's most used one.
+- Period closing: an accountant can close a period, only an administrator can reopen it.
+- Fixed: colour of unpaid invoices on the overview, counterparty form alignment, the term "kontrahentas"; a smaller Docker image.
+
+Checksum:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.1.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.1.zip.sha256).Split(' ')[0]` – must be `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.1.zip.sha256` – must be `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.1.zip.sha256` – must be `OK`.
 
 ### 0.5.0 – personnel, letters with templates and signature, autocomplete
 

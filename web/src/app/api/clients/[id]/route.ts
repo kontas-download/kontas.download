@@ -1,6 +1,7 @@
 import { requireApiAccess, checkOrigin } from '@/lib/access';
 import { apiError } from '@/lib/errors';
 import { NextResponse } from 'next/server';
+import { validEmail } from '@/lib/company-mail';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { isDocLang } from '@/lib/doc-language';
@@ -22,6 +23,9 @@ export async function PUT(
     if (!getDb().prepare('SELECT id FROM Client WHERE id = ? AND companyId = ?').get(id, companyId)) return NextResponse.json({ error: 'Įrašas nerastas' }, { status: 404 });
     const body = await request.json();
     const { name, code, vatCode, email, phone, address, city, countryName } = body;
+    // Address for letters from the program; empty = the official e-mail. Several addresses may be separated by ; or ,
+    const correspondenceEmail = typeof body.correspondenceEmail === 'string' ? body.correspondenceEmail.trim() : '';
+    if (correspondenceEmail.length > 500 || correspondenceEmail.split(/[;,\s]+/).filter(Boolean).some((x: string) => !validEmail(x))) return NextResponse.json({ error: 'Neteisingas el. paštas korespondencijai' }, { status: 400 });
     if (body.isVatPayer !== undefined && typeof body.isVatPayer !== 'boolean') return NextResponse.json({ error: 'Neteisingas PVM statusas' }, { status: 400 });
     const isVatPayer = body.isVatPayer ?? Boolean(vatCode?.trim());
     // Language of invoices, emails and reminders for this customer: lt, ru, en, or empty for the default (Lithuanian). Omitted = unchanged.
@@ -49,6 +53,7 @@ export async function PUT(
         city = ?,
         countryName = ?,
         documentLang = CASE WHEN ? = 1 THEN ? ELSE documentLang END,
+        correspondenceEmail = CASE WHEN ? = 1 THEN ? ELSE correspondenceEmail END,
         updatedAt = datetime('now')
       WHERE id = ? AND companyId = ?
     `).run(
@@ -63,6 +68,8 @@ export async function PUT(
       countryName ? countryName.trim() : 'Lietuva',
       documentLang === undefined ? 0 : 1,
       documentLang ?? null,
+      body.correspondenceEmail === undefined ? 0 : 1,
+      correspondenceEmail || null,
       id,
       companyId
     );

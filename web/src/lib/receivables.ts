@@ -16,7 +16,7 @@ export function bucketFor(days: number): Bucket {
 
 // Open sales with their overdue age. A sale without a due date is treated as due on the invoice date.
 export function receivables(db: Database.Database, companyId: number, asOf: string): Receivable[] {
-  const meta = new Map((db.prepare(`SELECT s.id, s.payUntil, s.clientId, COALESCE(c.email,'') email,
+  const meta = new Map((db.prepare(`SELECT s.id, s.payUntil, s.clientId, COALESCE(NULLIF(TRIM(c.correspondenceEmail),''),c.email,'') email,
       (SELECT MAX(createdAt) FROM ReminderLog r WHERE r.companyId=s.companyId AND r.saleId=s.id AND r.status='sent') lastReminder,
       (SELECT COUNT(*) FROM ReminderLog r WHERE r.companyId=s.companyId AND r.saleId=s.id AND r.status='sent') reminders
     FROM Sale s LEFT JOIN Client c ON c.id=s.clientId AND c.companyId=s.companyId WHERE s.companyId=?`).all(companyId) as { id: number; payUntil: string | null; clientId: number | null; email: string; lastReminder: number | null; reminders: number }[]).map(r => [r.id, r]));

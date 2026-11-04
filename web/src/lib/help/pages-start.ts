@@ -12,7 +12,7 @@ export const startPages: HelpPage[] = [
         summary: 'Kaip sutvarkyta programa, kas rodoma apžvalgoje ir kokia tvarka pradėti darbą.',
         purpose: [
           'kontas.download – savame serveryje veikianti Lietuvos įmonių apskaitos programa: pardavimų ir pirkimų dokumentai, bankas, skolos, didžioji knyga, ataskaitos ir mokesčių failų paruošimas.',
-          'Apžvalgos skydelis (meniu „Apžvalga“) rodo aktyvios įmonės pardavimų ir pirkimų sumas su PVM, jų skirtumą, kontragentų ir banko operacijų skaičių bei paskutines 8 pardavimo sąskaitas. Tai orientacinė suvestinė, ne finansinė ataskaita.',
+          'Apžvalgos skydelis (meniu „Apžvalga“) rodo aktyvios įmonės pardavimų ir pirkimų sumas su PVM, jų skirtumą, kontrahentų ir banko operacijų skaičių bei paskutines 8 pardavimo sąskaitas. Tai orientacinė suvestinė, ne finansinė ataskaita.',
           'Visi duomenys priklauso aktyviai įmonei, pasirinktai šoniniame meniu. Kitos įmonės duomenys nerodomi ir nekeičiami.',
         ],
         steps: [
@@ -20,7 +20,7 @@ export const startPages: HelpPage[] = [
           'Meniu „Įmonių valdymas“ patikrinkite įmonės rekvizitus (pavadinimas, kodas, PVM kodas, adresas, IBAN) ir PVM režimą su jo galiojimo data.',
           'Jei sąskaitas siųsite el. paštu, įmonės kortelėje nustatykite jos SMTP serverį.',
           'Patikrinkite sąskaitų planą (meniu „Sąskaitų planas“) – programa naudoja sąskaitas 2410, 4430, 2444, 4492, 5001, 6118, 2710 ir kitas.',
-          'Įveskite arba importuokite kontragentus, tada pradėkite išrašyti sąskaitas, registruoti pirkimus ir importuoti banko išrašus.',
+          'Įveskite arba importuokite kontrahentus, tada pradėkite išrašyti sąskaitas, registruoti pirkimus ir importuoti banko išrašus.',
           'Mėnesio pabaigoje peržiūrėkite skolas, apyvartos žiniaraštį, paruoškite i.SAF / FR0600 failus ir, jei reikia, uždarykite laikotarpį.',
         ],
         rules: [

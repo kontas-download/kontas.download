@@ -18,7 +18,7 @@ export default async function MailPage() {
   const companyId = await getActiveCompanyId();
   const debt = new Map<number, number>();
   for (const r of receivables(db, companyId, todayVilnius())) if (r.clientId) debt.set(r.clientId, Math.round(((debt.get(r.clientId) || 0) + r.balance) * 100) / 100);
-  const clients = (db.prepare("SELECT id, name, COALESCE(email,'') AS email FROM Client WHERE companyId=? ORDER BY name COLLATE NOCASE").all(companyId) as { id: number; name: string; email: string }[])
+  const clients = (db.prepare("SELECT id, name, COALESCE(NULLIF(TRIM(correspondenceEmail),''), email, '') AS email FROM Client WHERE companyId=? ORDER BY name COLLATE NOCASE").all(companyId) as { id: number; name: string; email: string }[])
     .map(c => ({ ...c, balance: debt.get(c.id) || 0 })) as MailClientRow[];
   return <MailClient clients={clients} templates={listMailTemplates(db, companyId)} messages={listMailMessages(db, companyId) as never} smtpReady={Boolean(companyMail(companyId)?.enabled)} signature={signaturePreview(db, companyId)} />;
 }

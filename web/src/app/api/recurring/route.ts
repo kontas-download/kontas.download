@@ -24,8 +24,8 @@ export async function POST(request: Request) {
     const companyId = await getActiveCompanyId();
     const db = getDb();
     const t = parseTemplate(db, companyId, await request.json());
-    const res = db.prepare('INSERT INTO RecurringInvoice(companyId,name,clientId,series,frequency,nextDate,anchorDay,endDate,payDays,notes,itemsJson,active,createdAt) VALUES(?,?,?,?,?,?,?,?,?,?,?,1,?)')
-      .run(companyId, t.name, t.clientId, t.series, t.frequency, t.nextDate, t.anchorDay, t.endDate, t.payDays, t.notes, JSON.stringify(t.items), Date.now());
+    const res = db.prepare('INSERT INTO RecurringInvoice(companyId,name,clientId,series,frequency,nextDate,anchorDay,endDate,payDays,notes,itemsJson,active,createdAt,autoMode) VALUES(?,?,?,?,?,?,?,?,?,?,?,1,?,?)')
+      .run(companyId, t.name, t.clientId, t.series, t.frequency, t.nextDate, t.anchorDay, t.endDate, t.payDays, t.notes, JSON.stringify(t.items), Date.now(), t.autoMode);
     return NextResponse.json({ success: true, id: Number(res.lastInsertRowid) });
   } catch (err) {
     return apiError(err);

@@ -1,0 +1,53 @@
+import type { Namespace } from './types';
+
+// [key, lt, ru, en]
+const rows: [string, string, string, string][] = [
+  ['title', 'Automatizavimas', 'Автоматизация', 'Automation'],
+  ['subtitle', 'Robotas kasdien atlieka įjungtus darbus ir viską įrašo į žurnalą. Kiekvienas darbas įjungiamas atskirai.', 'Робот каждый день выполняет включённые задачи и всё записывает в журнал. Каждая задача включается отдельно.', 'Every day the robot does the jobs that are on and logs everything. Each job is switched on separately.'],
+  ['smtpMissing', 'Įmonės SMTP nenustatytas: laiškai nebus siunčiami. Nustatykite jį skiltyje „Įmonių valdymas“ → SMTP.', 'SMTP компании не настроен: письма отправляться не будут. Настройте его в «Управление компаниями» → SMTP.', 'The company SMTP is not set up: no letters will be sent. Configure it in Company management → SMTP.'],
+  ['recurring', 'Periodinės sąskaitos', 'Периодические счета', 'Recurring invoices'],
+  ['recurringHint', 'Atėjus terminui išrašo sąskaitas pagal šablonus, kuriuose pasirinktas automatinis išrašymas, ir, jei nurodyta, išsiunčia jas klientui su PDF.', 'В срок выставляет счета по шаблонам с автоматическим выставлением и, если указано, отправляет их клиенту с PDF.', 'When due, issues invoices from templates set to automatic issuing and, if chosen, e-mails them to the client with the PDF.'],
+  ['recurringCount', 'Šablonų su automatiniu išrašymu: {count}.', 'Шаблонов с автоматическим выставлением: {count}.', 'Templates with automatic issuing: {count}.'],
+  ['recurringOpen', 'Nustatyti šablonuose', 'Настроить в шаблонах', 'Set up in templates'],
+  ['reminders', 'Priminimai skolininkams', 'Напоминания должникам', 'Reminders to debtors'],
+  ['remindersHint', 'Vėluojančių sąskaitų klientams siunčia priminimą su sąskaitos PDF nurodytomis dienomis po termino (ne dažniau kaip kas 3 d.).', 'Клиентам с просроченными счетами отправляет напоминание с PDF счёта в указанные дни после срока (не чаще раза в 3 дня).', 'Sends overdue clients a reminder with the invoice PDF on the given days after the due date (at most every 3 days).'],
+  ['reminderDays', 'Dienos po termino (pvz. 3, 14, 30)', 'Дни после срока (напр. 3, 14, 30)', 'Days after due date (e.g. 3, 14, 30)'],
+  ['reminderTemplate', 'Laiško šablonas', 'Шаблон письма', 'Letter template'],
+  ['reminderDefault', '— standartinis priminimo tekstas —', '— стандартный текст напоминания —', '— standard reminder text —'],
+  ['bank', 'Banko mokėjimų susiejimas', 'Разнесение банковских платежей', 'Bank payment matching'],
+  ['bankHint', 'Mokėjimus, kurių paskirtyje yra sąskaitos numeris ir suma lygi likučiui (be abejonių), susieja su sąskaitomis. Abejotini lieka buhalteriui.', 'Платежи, где в назначении номер счёта и сумма равна остатку (без сомнений), связывает со счетами. Сомнительные остаются бухгалтеру.', 'Links payments that carry the invoice number and exactly the open balance (no doubt) to the invoices. Uncertain ones stay for the accountant.'],
+  ['digest', 'Savaitės suvestinė', 'Недельная сводка', 'Weekly summary'],
+  ['digestHint', 'Kartą per savaitę išsiunčia laišką: išrašytos sąskaitos, gauti mokėjimai, skolos ir vėluojantys, artimiausi mokesčių terminai.', 'Раз в неделю письмо: выставленные счета, поступления, долги и просрочки, ближайшие налоговые сроки.', 'Once a week a letter: invoices issued, payments received, amounts owed and overdue, upcoming tax deadlines.'],
+  ['digestDay', 'Siuntimo diena', 'День отправки', 'Day to send'],
+  ['day1', 'Pirmadienis', 'Понедельник', 'Monday'], ['day2', 'Antradienis', 'Вторник', 'Tuesday'], ['day3', 'Trečiadienis', 'Среда', 'Wednesday'], ['day4', 'Ketvirtadienis', 'Четверг', 'Thursday'], ['day5', 'Penktadienis', 'Пятница', 'Friday'], ['day6', 'Šeštadienis', 'Суббота', 'Saturday'], ['day7', 'Sekmadienis', 'Воскресенье', 'Sunday'],
+  ['tax', 'Mokesčių terminų priminimai', 'Напоминания о налоговых сроках', 'Tax deadline reminders'],
+  ['taxHint', 'Prieš mokesčių kalendoriaus terminą išsiunčia priminimą apie dar nepažymėtas prievoles.', 'Перед сроком из налогового календаря отправляет напоминание о ещё не отмеченных обязанностях.', 'Before a tax calendar deadline, sends a reminder about obligations not marked as done.'],
+  ['taxDays', 'Kiek dienų prieš terminą', 'За сколько дней до срока', 'Days before the deadline'],
+  ['notifyEmail', 'El. paštas suvestinei ir mokesčių priminimams', 'E-mail для сводки и налоговых напоминаний', 'E-mail for the summary and tax reminders'],
+  ['notifyHint', 'Paprastai savininko ar buhalterio adresas.', 'Обычно адрес владельца или бухгалтера.', 'Usually the owner or accountant address.'],
+  ['save', 'Išsaugoti', 'Сохранить', 'Save'],
+  ['saved', 'Nustatymai išsaugoti.', 'Настройки сохранены.', 'Settings saved.'],
+  ['runNow', 'Paleisti dabar', 'Запустить сейчас', 'Run now'],
+  ['running', 'Vykdoma…', 'Выполняется…', 'Running…'],
+  ['ranDone', 'Atlikta darbų: {count}. Rezultatai – žurnale.', 'Выполнено задач: {count}. Результаты – в журнале.', 'Jobs done: {count}. Results are in the log.'],
+  ['ranNothing', 'Nėra įjungtų darbų.', 'Нет включённых задач.', 'No jobs are switched on.'],
+  ['scheduleNote', 'Robotas veikia kasdien nuo 7 val. (Lietuvos laiku); kiekvienas darbas – kartą per dieną.', 'Робот работает ежедневно с 7:00 (по литовскому времени); каждая задача – раз в день.', 'The robot runs daily from 07:00 (Lithuanian time); each job once a day.'],
+  ['log', 'Roboto žurnalas', 'Журнал робота', 'Robot log'],
+  ['logEmpty', 'Robotas dar nieko nedarė.', 'Робот пока ничего не делал.', 'The robot has not done anything yet.'],
+  ['ok', 'atlikta: {count}', 'выполнено: {count}', 'done: {count}'],
+  ['error', 'klaida', 'ошибка', 'error'],
+  ['nothingToDo', 'Nebuvo ką daryti.', 'Делать было нечего.', 'Nothing to do.'],
+  ['job_recurring', 'Periodinės sąskaitos', 'Периодические счета', 'Recurring invoices'],
+  ['job_reminders', 'Priminimai', 'Напоминания', 'Reminders'],
+  ['job_bank', 'Banko susiejimas', 'Разнесение банка', 'Bank matching'],
+  ['job_digest', 'Suvestinė', 'Сводка', 'Summary'],
+  ['job_tax', 'Mokesčių terminai', 'Налоговые сроки', 'Tax deadlines'],
+  ['trigger_schedule', 'pagal grafiką', 'по расписанию', 'scheduled'],
+  ['trigger_cron', 'pagal grafiką', 'по расписанию', 'scheduled'],
+  ['trigger_manual', 'paleista rankiniu būdu', 'запущено вручную', 'run by hand'],
+  ['failed', 'Operacija nepavyko', 'Операция не удалась', 'Operation failed'],
+];
+
+const build = (i: number) => Object.fromEntries(rows.map(r => [r[0], r[i]]));
+const automation: Namespace = { lt: build(1), ru: build(2), en: build(3) };
+export default automation;

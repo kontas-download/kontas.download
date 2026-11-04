@@ -1,6 +1,7 @@
 import { requireApiAccess, checkOrigin } from '@/lib/access';
 import { apiError } from '@/lib/errors';
 import { NextResponse } from 'next/server';
+import { validEmail } from '@/lib/company-mail';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { isDocLang } from '@/lib/doc-language';
@@ -37,6 +38,9 @@ export async function POST(request: Request) {
     const companyId = await getActiveCompanyId();
     const body = await request.json();
     const { name, code, vatCode, email, phone, address, city, countryName } = body;
+    // Address for letters from the program; empty = the official e-mail. Several addresses may be separated by ; or ,
+    const correspondenceEmail = typeof body.correspondenceEmail === 'string' ? body.correspondenceEmail.trim() : '';
+    if (correspondenceEmail.length > 500 || correspondenceEmail.split(/[;,\s]+/).filter(Boolean).some((x: string) => !validEmail(x))) return NextResponse.json({ error: 'Neteisingas el. paštas korespondencijai' }, { status: 400 });
     if (body.isVatPayer !== undefined && typeof body.isVatPayer !== 'boolean') return NextResponse.json({ error: 'Neteisingas PVM statusas' }, { status: 400 });
     const isVatPayer = body.isVatPayer ?? Boolean(vatCode?.trim());
     // Language of invoices, emails and reminders for this customer: lt, ru, en, or empty for the default (Lithuanian). Omitted = unchanged.
@@ -54,9 +58,9 @@ export async function POST(request: Request) {
     const db = getDb();
     const res = db.prepare(`
       INSERT INTO Client (
-        companyId, name, code, vatCode, isVatPayer, email, phone, address, city, countryName, documentLang,
+        companyId, name, code, vatCode, isVatPayer, email, phone, address, city, countryName, documentLang, correspondenceEmail,
         createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).run(
       companyId,
       name.trim(),
@@ -68,7 +72,8 @@ export async function POST(request: Request) {
       address ? address.trim() : null,
       city ? city.trim() : null,
       countryName ? countryName.trim() : 'Lietuva',
-      documentLang ?? null
+      documentLang ?? null,
+      correspondenceEmail || null
     );
 
     const newClient = db.prepare('SELECT * FROM Client WHERE id = ?').get(res.lastInsertRowid);

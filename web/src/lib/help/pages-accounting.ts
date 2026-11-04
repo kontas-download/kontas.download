@@ -231,18 +231,18 @@ export const accountingPages: HelpPage[] = [
     text: {
       lt: {
         title: 'Tarpusavio skolų suderinimo aktai',
-        summary: 'Atsiskaitymų su kontragentu suderinimo aktas tam tikrai datai.',
-        purpose: ['Suderinimo aktas surenka su kontragentu susijusius pardavimus, pirkimus ir banko operacijas iki pasirinktos datos ir parodo likutį, kurį galima pateikti kontragentui patvirtinti.'],
+        summary: 'Atsiskaitymų su kontrahentu suderinimo aktas tam tikrai datai.',
+        purpose: ['Suderinimo aktas surenka su kontrahentu susijusius pardavimus, pirkimus ir banko operacijas iki pasirinktos datos ir parodo likutį, kurį galima pateikti kontrahentui patvirtinti.'],
         steps: [
           'Atidarykite „Suderinimo aktai“.',
-          'Pasirinkite kontragentą ir datą.',
-          'Peržiūrėkite dokumentų sąrašą ir likutį, atspausdinkite arba išsaugokite PDF per naršyklę ir išsiųskite kontragentui patys.',
+          'Pasirinkite kontrahentą ir datą.',
+          'Peržiūrėkite dokumentų sąrašą ir likutį, atspausdinkite arba išsaugokite PDF per naršyklę ir išsiųskite kontrahentui patys.',
         ],
         rules: [
-          'Įtraukiami aktyvios įmonės dokumentai iki datos imtinai, susieti su kontragentu pagal ID, kodą arba pavadinimą.',
+          'Įtraukiami aktyvios įmonės dokumentai iki datos imtinai, susieti su kontrahentu pagal ID, kodą arba pavadinimą.',
           'Aktas nesiunčiamas automatiškai ir neįrašomas kaip dokumentas.',
         ],
-        mistakes: ['Kontragentas užregistruotas keliais skirtingais pavadinimais ar kodais – dalis dokumentų į aktą gali nepatekti.'],
+        mistakes: ['Kontrahentas užregistruotas keliais skirtingais pavadinimais ar kodais – dalis dokumentų į aktą gali nepatekti.'],
       },
       ru: {
         title: 'Акты сверки взаиморасчётов',

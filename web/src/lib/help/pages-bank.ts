@@ -21,11 +21,11 @@ export const bankPages: HelpPage[] = [
         rules: [
           'CSV: skyriklis ir stulpelių pavadinimai atpažįstami automatiškai (lietuvių, anglų, rusų antraštės; vienas sumos stulpelis arba debetas/kreditas; D/K stulpelis nustato ženklą).',
           'Bet kuri neteisinga eilutė atmeta visą failą – dalinio importo nebūna. Pradinio/galutinio likučio ar apyvartų eilutės atmeta failą.',
-          'camt.053: kryptis imama iš CdtDbtInd, sąskaita – iš IBAN, kontragentas – iš priešingos šalies, paskirtis – iš mokėjimo informacijos. Importuojami tik banko užregistruoti (booked) įrašai; laukiantys praleidžiami ir parodomi.',
+          'camt.053: kryptis imama iš CdtDbtInd, sąskaita – iš IBAN, kontrahentas – iš priešingos šalies, paskirtis – iš mokėjimo informacijos. Importuojami tik banko užregistruoti (booked) įrašai; laukiantys praleidžiami ir parodomi.',
           'camt.053 atmetamas, jei valiuta ne EUR, trūksta sąskaitos ar datos, yra DOCTYPE arba pradinis likutis + operacijos ≠ galutiniam likučiui (apsauga nuo nukirpto ar redaguoto išrašo).',
-          'Dublikatai: CSV – pagal įmonės, datos, sumos, kontragento, paskirties ir nuorodos maišos raktą; camt.053 – pagal banko įrašo nuorodą kartu su IBAN. Pakartotinai importavus tą patį ar persidengiantį išrašą pridedamos tik naujos operacijos.',
+          'Dublikatai: CSV – pagal įmonės, datos, sumos, kontrahento, paskirties ir nuorodos maišos raktą; camt.053 – pagal banko įrašo nuorodą kartu su IBAN. Pakartotinai importavus tą patį ar persidengiantį išrašą pridedamos tik naujos operacijos.',
           'Korespondencijos: gauti pinigai D 2710 / K 2410, išmokėti D 4430 / K 2710. Uždaryti laikotarpiai gerbiami.',
-          'MT940: kryptis imama iš D/C žymos (RC/RD – atšaukimai), sąskaita – iš lauko :25:, kontragentas ir paskirtis – iš :86: (palaikomi ?20…?32 ir /NAME/…/REMI/… variantai); atmetama, jei valiuta ne EUR, nėra sąskaitos ar datos arba pradinis likutis + operacijos ≠ galutiniam likučiui. Dublikatų raktas – banko nuoroda (po //) kartu su sąskaita.',
+          'MT940: kryptis imama iš D/C žymos (RC/RD – atšaukimai), sąskaita – iš lauko :25:, kontrahentas ir paskirtis – iš :86: (palaikomi ?20…?32 ir /NAME/…/REMI/… variantai); atmetama, jei valiuta ne EUR, nėra sąskaitos ar datos arba pradinis likutis + operacijos ≠ galutiniam likučiui. Dublikatų raktas – banko nuoroda (po //) kartu su sąskaita.',
         ],
         mistakes: [
           'Importuojamas tas pats laikotarpis iš skirtingų formatų (CSV ir camt.053) – jų dublikatų raktai skiriasi, todėl operacijos gali dubliuotis.',

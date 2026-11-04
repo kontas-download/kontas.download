@@ -2,7 +2,7 @@ import { requirePageAccess } from '@/lib/access';
 import { todayVilnius } from '@/lib/dates';
 import { getDb } from '@/lib/db';
 import { suggestions } from '@/lib/suggestions';
-import { getActiveCompanyId } from '@/lib/company';
+import { getActiveCompany, getActiveCompanyId } from '@/lib/company';
 import { listTemplates } from '@/lib/recurring';
 import { RecurringClient } from './RecurringClient';
 import { itemCatalog } from '@/lib/item-catalog';
@@ -17,5 +17,5 @@ export default async function RecurringPage() {
   const companyId = await getActiveCompanyId();
   const db = getDb();
   const clients = db.prepare('SELECT id, name FROM Client WHERE companyId = ? ORDER BY name ASC').all(companyId) as { id: number; name: string }[];
-  return <RecurringClient today={todayVilnius()} templates={listTemplates(db, companyId)} clients={clients} catalog={itemCatalog(db, companyId)} suggest={suggestions(db, companyId, ['saleSeries'])} />;
+  return <RecurringClient today={todayVilnius()} templates={listTemplates(db, companyId)} clients={clients} chargesVat={(await getActiveCompany()).effectiveTaxMode === 'STANDARD_VAT'} catalog={itemCatalog(db, companyId)} suggest={suggestions(db, companyId, ['saleSeries'])} />;
 }

@@ -156,8 +156,10 @@ export function InvoicesClient({
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // The company's most used invoice series is the default (suggestions are ordered by use); SF when there are no invoices yet.
+  const defaultSeries = String(suggest.saleSeries?.[0] ?? 'SF').toUpperCase();
   const [formData, setFormData] = useState({
-    series: 'PARD',
+    series: defaultSeries,
     number: '',
     saleDate: new Date().toISOString().split('T')[0],
     payUntil: new Date(new Date().getTime() + 14 * 86400000).toISOString().split('T')[0],
@@ -310,9 +312,9 @@ export function InvoicesClient({
 
   const openCreateModal = () => {
     setEditingSale(null);
-    const nextNum = getNextInvoiceNumber('PARD');
+    const nextNum = getNextInvoiceNumber(defaultSeries);
     setFormData({
-      series: 'PARD',
+      series: defaultSeries,
       number: nextNum,
       saleDate: new Date().toISOString().split('T')[0],
       payUntil: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
@@ -348,7 +350,7 @@ export function InvoicesClient({
       } catch { /* fallback below */ }
     }
     srcItems = srcItems || [];
-    const series = sale.series || 'PARD';
+    const series = sale.series || defaultSeries;
     setEditingSale(null);
     setFormData({
       series,
@@ -396,7 +398,7 @@ export function InvoicesClient({
     }
     existingItems = existingItems || [];
     setFormData({
-      series: sale.series || 'PARD',
+      series: sale.series || defaultSeries,
       number: sale.number || '',
       saleDate: sale.saleDate || new Date().toISOString().split('T')[0],
       payUntil: sale.payUntil || '',
@@ -788,9 +790,9 @@ export function InvoicesClient({
                         <div className="font-semibold text-xs truncate max-w-[200px]" title={sale.clientName}>
                           {sale.clientName || '—'}
                         </div>
-                        {(sale.clientEmail || clientForSale(sale)?.email) && (
+                        {(sale.clientEmail || clientForSale(sale)?.correspondenceEmail || clientForSale(sale)?.email) && (
                           <button type="button" className="block text-xs text-emerald-400 underline" onClick={() => setEmailInvoice(sale)}>
-                            {sale.clientEmail || clientForSale(sale)?.email}
+                            {sale.clientEmail || clientForSale(sale)?.correspondenceEmail || clientForSale(sale)?.email}
                           </button>
                         )}
                         {sale.clientCode && (

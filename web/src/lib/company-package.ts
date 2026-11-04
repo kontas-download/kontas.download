@@ -24,7 +24,7 @@ export const TABLES: Record<string, Spec & { table: string; where: string; order
   obligations: { table: 'CompanyObligation', where: 'companyId=?', order: 'code', columns: t('code,enabled:i,period') },
   obligationsDone: { table: 'ObligationDone', where: 'companyId=?', order: 'code,periodEnd', columns: t('code,periodEnd,doneAt:i,note') },
   chartOfAccounts: { table: 'ChartOfAccount', where: '1=1', order: 'code', columns: t('code,name') },
-  clients: { table: 'Client', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,name,code,vatCode,email,phone,address,city,countryName,createdAt,updatedAt,isVatPayer:i,documentLang') },
+  clients: { table: 'Client', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,name,code,vatCode,email,phone,address,city,countryName,createdAt,updatedAt,isVatPayer:i,documentLang,correspondenceEmail') },
   stockItems: { table: 'StockItem', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,name,code,barcode,warehouseName,stock:n,remainder:n,price:n,cost:n,purchaseDate,clientName') },
   sales: { table: 'Sale', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,series,number,saleDate,payUntil,statusName,warehouseName,clientId:i,clientName,clientCode,clientVatCode,sumWithoutVat:n,vat:n,sumWithVat:n,currencyCode,operationTypeName,notes,createdAt,sellerIsVatPayer:i,sellerVatMode,docType,originalSaleId:i,correctionReason') },
   saleItems: { table: 'SaleItem', where: 'saleId IN (SELECT id FROM Sale WHERE companyId=?)', order: 'id', columns: t('id:i,saleId:i,itemName,itemCode,quantity:n,price:n,priceWithVat:n,vatRate:n,sumWithoutVat:n,sumWithVat:n,warehouseName') },
@@ -43,6 +43,8 @@ export const TABLES: Record<string, Spec & { table: string; where: string; order
   // Employees, monthly payroll runs (draft and posted), their lines and the append-only change log. All keys are optional on import.
   employees: { table: 'Employee', where: 'companyId=?', order: 'id', columns: t('id:i,name,personalCode,position,baseSalary:n,contractType,applyNpd:i,pensionAccumulation:i,accidentRate:n,startDate,endDate,active:i,createdAt,updatedAt,agreementNumber,agreementDate,email,phone,bankAccount,address,notes,employmentKind,clientId:i') },
   // Letters module: templates and the log of sent letters (recipient address and text only, no credentials).
+  // Automation switches (the run log stays in the source database; template links are restored, the rest is per company).
+  automationSettings: { table: 'AutomationSettings', where: 'companyId=?', order: 'companyId', columns: t('recurringEnabled:i,remindersEnabled:i,reminderDays,reminderTemplateId:i,bankMatchEnabled:i,digestEnabled:i,digestWeekday:i,taxEnabled:i,taxDaysBefore:i,notifyEmail,updatedAt') },
   mailSignature: { table: 'CompanyMailSignature', where: 'companyId=?', order: 'companyId', columns: t('enabled:i,includeLogo:i,configJson,text,updatedAt') },
   mailTemplates: { table: 'MailTemplate', where: 'companyId=?', order: 'id', columns: t('id:i,name,subject,body,createdAt,updatedAt') },
   mailMessages: { table: 'MailMessage', where: 'companyId=?', order: 'id', columns: t('batchId,templateId:i,clientId:i,recipient,recipientName,subject,body,status,error,messageId,createdAt') },
@@ -51,7 +53,7 @@ export const TABLES: Record<string, Spec & { table: string; where: string; order
   payrollRunLines: { table: 'PayrollRunLine', where: 'companyId=?', order: 'id', columns: t('id:i,runId:i,employeeId:i,employeeName,employeeCode,gross:n,ytdGrossBefore:n,ytdSodraBaseBefore:n,settingsJson,calcJson,overridesJson,resultJson,sodraBase:n,npd:n,gpm:n,employeeContributions:n,net:n,employerContributions:n') },
   payrollLogs: { table: 'PayrollLog', where: 'companyId=?', order: 'id', columns: t('id:i,runId:i,lineId:i,employeeName,action,field,calculatedValue:n,oldValue:n,newValue:n,reason,actorId:i,createdAt') },
   generalEntries: { table: 'GeneralEntry', where: 'companyId=?', order: 'id', columns: t('id:i,date,docNumber,debitAccount,creditAccount,amount:n,clientId:i,clientName,description,sourceType,sourceId:i,createdAt,updatedAt') },
-  recurringInvoices: { table: 'RecurringInvoice', where: 'companyId=?', order: 'id', columns: t('id:i,name,clientId:i,series,frequency,nextDate,anchorDay:i,endDate,payDays:i,notes,itemsJson,active:i,createdAt:i') },
+  recurringInvoices: { table: 'RecurringInvoice', where: 'companyId=?', order: 'id', columns: t('id:i,name,clientId:i,series,frequency,nextDate,anchorDay:i,endDate,payDays:i,notes,itemsJson,active:i,createdAt:i,autoMode') },
   recurringRuns: { table: 'RecurringRun', where: 'recurringId IN (SELECT id FROM RecurringInvoice WHERE companyId=?)', order: 'recurringId,periodDate', columns: t('recurringId:i,periodDate,saleId:i,createdAt:i') },
   // Delivery and reminder logs keep the recipient address and status only; no credentials exist in these tables.
   invoiceDeliveries: { table: 'InvoiceDelivery', where: 'companyId=?', order: 'createdAt,requestId', columns: t('saleId:i,requestId,recipient,status,messageId,createdAt:i') },
@@ -256,6 +258,7 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
       const mailTemplateIds = new Map<unknown, number>();
       for (const r of rows.mailTemplates) mailTemplateIds.set(r.id, insert('MailTemplate', { ...pick(r, ['id']), companyId }));
       for (const r of rows.mailMessages) insert('MailMessage', { ...r, companyId, templateId: r.templateId == null ? null : mailTemplateIds.get(r.templateId) ?? null, clientId: r.clientId == null ? null : client(r.clientId), actorId: null });
+      for (const r of rows.automationSettings) insert('AutomationSettings', { ...r, companyId, reminderTemplateId: r.reminderTemplateId == null ? null : mailTemplateIds.get(r.reminderTemplateId) ?? null });
       for (const r of rows.employeeLeaves) insert('EmployeeLeave', { ...r, companyId, employeeId: map.employee.get(r.employeeId) });
       for (const r of rows.payrollRuns) map.run.set(r.id, insert('PayrollRun', { ...pick(r, ['id']), companyId, payrollId: r.payrollId == null ? null : map.payroll.get(r.payrollId), verifiedBy: null, createdBy: null }));
       for (const r of rows.payrollRunLines) map.runLine.set(r.id, insert('PayrollRunLine', { ...pick(r, ['id']), companyId, runId: map.run.get(r.runId), employeeId: map.employee.get(r.employeeId) }));

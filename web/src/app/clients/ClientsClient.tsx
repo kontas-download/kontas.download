@@ -57,6 +57,7 @@ export function ClientsClient({ initialClients, suggest = {} }: { initialClients
     isVatPayer: false,
       documentLang: '',
     email: '',
+    correspondenceEmail: '',
     phone: '',
     address: '',
     city: 'Vilnius',
@@ -140,6 +141,7 @@ export function ClientsClient({ initialClients, suggest = {} }: { initialClients
     isVatPayer: false,
       documentLang: '',
       email: '',
+      correspondenceEmail: '',
       phone: '',
       address: '',
       city: 'Vilnius',
@@ -158,6 +160,7 @@ export function ClientsClient({ initialClients, suggest = {} }: { initialClients
       isVatPayer: Boolean(c.isVatPayer),
       documentLang: c.documentLang || '',
       email: c.email || '',
+      correspondenceEmail: c.correspondenceEmail || '',
       phone: c.phone || '',
       address: c.address || '',
       city: c.city || '',
@@ -381,7 +384,8 @@ export function ClientsClient({ initialClients, suggest = {} }: { initialClients
                       {c.city || '—'}
                     </td>
                     <td className="py-2.5 px-3 text-slate-400 truncate max-w-[160px]" title={c.email || ''}>
-                      {c.email ? <a className="text-emerald-400 underline" href={`/invoices?emailClientId=${c.id}`} onClick={e => e.stopPropagation()}>{c.email}</a> : '—'}
+                      {c.email ? <a className="text-emerald-400 underline" href={`/invoices?emailClientId=${c.id}`} onClick={e => e.stopPropagation()}>{c.email}</a> : (c.correspondenceEmail ? '' : '—')}
+                      {c.correspondenceEmail && <div className="truncate text-[10px] text-slate-500" title={t('clients.correspondenceEmail')}>✉ {c.correspondenceEmail}</div>}
                     </td>
                     <td className="py-2.5 px-3 text-slate-400 font-mono">
                       {c.phone || '—'}
@@ -425,7 +429,7 @@ export function ClientsClient({ initialClients, suggest = {} }: { initialClients
             pageSize={pageSize}
             totalItems={filteredAndSorted.length}
             onPageChange={setCurrentPage}
-          onExport={() => downloadCsv('kontragentai', [{header:t('clients.csvName'),key:'name'},{header:t('clients.companyCode'),key:'code'},{header:t('clients.vatCode'),key:'vatCode'},{header:t('clients.address'),key:'address'},{header:t('clients.city'),key:'city'},{header:t('clients.email'),key:'email'},{header:t('clients.phone'),key:'phone'},{header:t('clients.turnover'),key:'totalSalesSum'}], filteredAndSorted)}
+          onExport={() => downloadCsv('kontrahentai', [{header:t('clients.csvName'),key:'name'},{header:t('clients.companyCode'),key:'code'},{header:t('clients.vatCode'),key:'vatCode'},{header:t('clients.address'),key:'address'},{header:t('clients.city'),key:'city'},{header:t('clients.email'),key:'email'},{header:t('clients.phone'),key:'phone'},{header:t('clients.turnover'),key:'totalSalesSum'}], filteredAndSorted)}
             onPageSizeChange={(newSize) => { setPageSize(newSize); setCurrentPage(1); }}
           />
         </div>
@@ -472,6 +476,7 @@ export function ClientsClient({ initialClients, suggest = {} }: { initialClients
                         <a className="truncate text-emerald-400 underline" href={`/invoices?emailClientId=${c.id}`}>{c.email}</a>
                       </div>
                     )}
+                    {c.correspondenceEmail && <div className="truncate pl-5 text-[10px] text-slate-500 font-sans" title={t('clients.correspondenceEmail')}>✉ {c.correspondenceEmail}</div>}
                     {c.phone && (
                       <div className="flex items-center gap-1.5 font-sans">
                         <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
@@ -513,7 +518,7 @@ export function ClientsClient({ initialClients, suggest = {} }: { initialClients
               pageSize={pageSize}
               totalItems={filteredAndSorted.length}
               onPageChange={setCurrentPage}
-          onExport={() => downloadCsv('kontragentai', [{header:t('clients.csvName'),key:'name'},{header:t('clients.companyCode'),key:'code'},{header:t('clients.vatCode'),key:'vatCode'},{header:t('clients.address'),key:'address'},{header:t('clients.city'),key:'city'},{header:t('clients.email'),key:'email'},{header:t('clients.phone'),key:'phone'},{header:t('clients.turnover'),key:'totalSalesSum'}], filteredAndSorted)}
+          onExport={() => downloadCsv('kontrahentai', [{header:t('clients.csvName'),key:'name'},{header:t('clients.companyCode'),key:'code'},{header:t('clients.vatCode'),key:'vatCode'},{header:t('clients.address'),key:'address'},{header:t('clients.city'),key:'city'},{header:t('clients.email'),key:'email'},{header:t('clients.phone'),key:'phone'},{header:t('clients.turnover'),key:'totalSalesSum'}], filteredAndSorted)}
               onPageSizeChange={(newSize) => { setPageSize(newSize); setCurrentPage(1); }}
             />
           </div>
@@ -571,14 +576,20 @@ export function ClientsClient({ initialClients, suggest = {} }: { initialClients
                   />
                 </div>
                 <div>
-                  <label className="flex items-center gap-2 mb-2"><input type="checkbox" checked={formData.isVatPayer} onChange={e => setFormData({ ...formData, isVatPayer: e.target.checked })} />{t('clients.vatPayer')}</label><label className="block text-slate-300 font-semibold mb-1">{t('clients.vatPayerCode')}</label>
+                  {/* Same label row and input line as the company code; the VAT-payer switch goes under the input. */}
+                  <label htmlFor="client-vat-code" className="block text-slate-300 font-semibold mb-1 whitespace-nowrap">{t('clients.vatPayerCode')}</label>
                   <input
+                    id="client-vat-code"
                     type="text"
                     placeholder="LT100000000000"
                     value={formData.vatCode}
                     onChange={(e) => setFormData({ ...formData, vatCode: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 font-mono"
+                    className={`w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 font-mono ${formData.isVatPayer ? '' : 'opacity-60'}`}
                   />
+                  <label className="mt-2 flex items-center gap-2 text-xs font-medium text-slate-300 cursor-pointer">
+                    <input type="checkbox" className="h-4 w-4 accent-emerald-500" checked={formData.isVatPayer} onChange={e => setFormData({ ...formData, isVatPayer: e.target.checked })} />
+                    {t('clients.vatPayer')}
+                  </label>
                 </div>
               </div>
 
@@ -626,6 +637,17 @@ export function ClientsClient({ initialClients, suggest = {} }: { initialClients
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
                   />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-slate-300 font-semibold mb-1">{t('clients.correspondenceEmail')}</label>
+                  <input
+                    type="text"
+                    placeholder={formData.email || 'buhalterija@company.lt'}
+                    value={formData.correspondenceEmail}
+                    onChange={(e) => setFormData({ ...formData, correspondenceEmail: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-500">{t('clients.correspondenceHint')}</p>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-slate-300 font-semibold mb-1">{t('docLang.clientField')}</label>
