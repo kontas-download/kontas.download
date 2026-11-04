@@ -12,6 +12,8 @@ export interface EmployeeRow {
   id: number; companyId: number; name: string; personalCode: string | null; position: string | null; baseSalary: number;
   contractType: 'OPEN' | 'FIXED'; applyNpd: number; pensionAccumulation: number; accidentRate: number | null;
   startDate: string | null; endDate: string | null; active: number;
+  agreementNumber?: string | null; agreementDate?: string | null; email?: string | null; phone?: string | null; bankAccount?: string | null; address?: string | null; notes?: string | null;
+  employmentKind?: 'EMPLOYMENT' | 'SERVICE'; clientId?: number | null;
 }
 interface RunRow {
   id: number; companyId: number; year: number; month: number; status: 'DRAFT' | 'POSTED'; payoutDate: string | null; paramsJson: string; rulesProvisional: number;
@@ -77,13 +79,39 @@ function employeeValues(body: Record<string, unknown>, current?: EmployeeRow) {
     startDate,
     endDate,
     active: flag(body.active, current ? current.active === 1 : true) ? 1 : 0,
+    // Personnel card (not used by the calculation).
+    agreementNumber: body.agreementNumber === undefined ? current?.agreementNumber ?? null : text(body.agreementNumber, 50),
+    agreementDate: body.agreementDate === undefined ? current?.agreementDate ?? null : date(body.agreementDate),
+    email: body.email === undefined ? current?.email ?? null : email(body.email),
+    phone: body.phone === undefined ? current?.phone ?? null : text(body.phone, 50),
+    bankAccount: body.bankAccount === undefined ? current?.bankAccount ?? null : text(body.bankAccount, 50),
+    address: body.address === undefined ? current?.address ?? null : text(body.address, 300),
+    notes: body.notes === undefined ? current?.notes ?? null : text(body.notes, 4000),
+    employmentKind: kind(body.employmentKind ?? current?.employmentKind ?? 'EMPLOYMENT'),
+    clientId: body.clientId === undefined ? current?.clientId ?? null : body.clientId === null || body.clientId === '' ? null : Number(body.clientId),
   };
+}
+const email = (value: unknown) => {
+  const v = text(value, 200);
+  if (v !== null && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) throw new HttpError(400, 'Neteisingas el. pašto adresas');
+  return v;
+};
+const kind = (value: unknown) => {
+  if (value !== 'EMPLOYMENT' && value !== 'SERVICE') throw new HttpError(400, 'Neteisinga sutarties rūšis');
+  return value;
+};
+const CARD_COLUMNS = ['name', 'personalCode', 'position', 'baseSalary', 'contractType', 'applyNpd', 'pensionAccumulation', 'accidentRate', 'startDate', 'endDate', 'active', 'agreementNumber', 'agreementDate', 'email', 'phone', 'bankAccount', 'address', 'notes', 'employmentKind', 'clientId'] as const;
+
+function checkClient(db: Database.Database, companyId: number, clientId: number | null) {
+  if (clientId === null) return;
+  if (!Number.isSafeInteger(clientId) || !db.prepare('SELECT 1 FROM Client WHERE id=? AND companyId=?').get(clientId, companyId)) throw new HttpError(400, 'Kontrahentas nerastas');
 }
 
 export function createEmployee(db: Database.Database, companyId: number, body: Record<string, unknown>): EmployeeRow {
   const v = employeeValues(body);
-  const res = db.prepare('INSERT INTO Employee(companyId,name,personalCode,position,baseSalary,contractType,applyNpd,pensionAccumulation,accidentRate,startDate,endDate,active) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')
-    .run(companyId, v.name, v.personalCode, v.position, v.baseSalary, v.contractType, v.applyNpd, v.pensionAccumulation, v.accidentRate, v.startDate, v.endDate, v.active);
+  checkClient(db, companyId, v.clientId);
+  const res = db.prepare(`INSERT INTO Employee(companyId,${CARD_COLUMNS.join(',')}) VALUES(?,${CARD_COLUMNS.map(() => '?').join(',')})`)
+    .run(companyId, ...CARD_COLUMNS.map(c => v[c]));
   return db.prepare('SELECT * FROM Employee WHERE id=?').get(res.lastInsertRowid) as EmployeeRow;
 }
 
@@ -95,9 +123,51 @@ function employee(db: Database.Database, companyId: number, id: number) {
 
 export function updateEmployee(db: Database.Database, companyId: number, id: number, body: Record<string, unknown>): EmployeeRow {
   const v = employeeValues(body, employee(db, companyId, id));
-  db.prepare("UPDATE Employee SET name=?,personalCode=?,position=?,baseSalary=?,contractType=?,applyNpd=?,pensionAccumulation=?,accidentRate=?,startDate=?,endDate=?,active=?,updatedAt=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND companyId=?")
-    .run(v.name, v.personalCode, v.position, v.baseSalary, v.contractType, v.applyNpd, v.pensionAccumulation, v.accidentRate, v.startDate, v.endDate, v.active, id, companyId);
+  checkClient(db, companyId, v.clientId);
+  db.prepare(`UPDATE Employee SET ${CARD_COLUMNS.map(c => c + '=?').join(',')},updatedAt=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND companyId=?`)
+    .run(...CARD_COLUMNS.map(c => v[c]), id, companyId);
   return employee(db, companyId, id);
+}
+
+export interface EmployeePayRow { source: 'PAYROLL' | 'RUN'; payrollId: number | null; runId: number | null; year: number; month: number; status: string | null; payDate: string | null; position: string | null; gross: number; npd: number | null; gpm: number; sodraEmployee: number; net: number; payOut: number | null; sodraEmployer: number }
+
+// Payroll history of one employee, newest first: payroll documents (imported or entered by hand, matched by personal code, or by
+// name when the row has no code) and this program's payroll runs that are not posted yet (posted runs already appear as a payroll).
+const round2 = (v: number) => Math.round(v * 100) / 100;
+export function getEmployeeCard(db: Database.Database, companyId: number, id: number) {
+  const e = employee(db, companyId, id);
+  const payrolls = db.prepare(`SELECT 'PAYROLL' AS source, p.id AS payrollId, r.id AS runId, p.year, p.month, r.status, pe.payDate, pe.position,
+      pe.grossSalary AS gross, pe.npd, pe.gpm, pe.sodraEmployee, pe.netSalary AS net, pe.payOut, pe.sodraEmployer
+    FROM PayrollEmployee pe JOIN Payroll p ON p.id=pe.payrollId LEFT JOIN PayrollRun r ON r.payrollId=p.id
+    WHERE p.companyId=? AND ((? IS NOT NULL AND pe.employeeCode=?) OR (pe.employeeCode IS NULL AND LOWER(TRIM(pe.employeeName))=LOWER(TRIM(?))))
+    ORDER BY p.year DESC, p.month DESC, pe.id`).all(companyId, e.personalCode, e.personalCode, e.name) as EmployeePayRow[];
+  const drafts = db.prepare(`SELECT 'RUN' AS source, NULL AS payrollId, r.id AS runId, r.year, r.month, r.status, r.payoutDate AS payDate, NULL AS position,
+      l.gross, l.npd, l.gpm, l.employeeContributions AS sodraEmployee, l.net, l.net AS payOut, l.employerContributions AS sodraEmployer
+    FROM PayrollRunLine l JOIN PayrollRun r ON r.id=l.runId WHERE l.companyId=? AND l.employeeId=? AND r.payrollId IS NULL`).all(companyId, id) as EmployeePayRow[];
+  const history = [...payrolls, ...drafts].sort((a, b) => b.year - a.year || b.month - a.month);
+  const years = new Map<number, { year: number; gross: number; gpm: number; sodraEmployee: number; net: number; months: number }>();
+  for (const h of history) {
+    const y = years.get(h.year) ?? { year: h.year, gross: 0, gpm: 0, sodraEmployee: 0, net: 0, months: 0 };
+    y.gross = round2(y.gross + h.gross); y.gpm = round2(y.gpm + h.gpm); y.sodraEmployee = round2(y.sodraEmployee + h.sodraEmployee); y.net = round2(y.net + h.net); y.months++;
+    years.set(h.year, y);
+  }
+  const leave = db.prepare('SELECT periodFrom, periodUntil, days, note FROM EmployeeLeave WHERE companyId=? AND employeeId=? ORDER BY periodFrom DESC').all(companyId, id) as { periodFrom: string; periodUntil: string; days: number; note: string | null }[];
+  // The counterparty that stands for this person: bank payments to / from them and their ledger entries by account.
+  const client = e.clientId ? db.prepare('SELECT id, name, code FROM Client WHERE id=? AND companyId=?').get(e.clientId, companyId) as { id: number; name: string; code: string | null } | undefined : undefined;
+  let bank: { date: string; number: string | null; sum: number; notes: string | null; account: string | null }[] = [], bankTotals = { count: 0, paid: 0, received: 0 }, ledger: { account: string; debit: number; credit: number; count: number }[] = [];
+  if (client) {
+    const match = '(? IS NOT NULL AND clientCode=?) OR LOWER(TRIM(clientName))=LOWER(TRIM(?))';
+    const args = [companyId, client.code, client.code, client.name];
+    bank = db.prepare(`SELECT date, number, sum, notes, correspondenceAccountCode AS account FROM BankTransaction WHERE companyId=? AND (${match}) ORDER BY date DESC, id DESC LIMIT 200`).all(...args) as typeof bank;
+    const t = db.prepare(`SELECT COUNT(*) AS count, ROUND(COALESCE(SUM(CASE WHEN sum<0 THEN -sum END),0),2) AS paid, ROUND(COALESCE(SUM(CASE WHEN sum>0 THEN sum END),0),2) AS received FROM BankTransaction WHERE companyId=? AND (${match})`).get(...args) as typeof bankTotals;
+    bankTotals = t;
+    ledger = db.prepare(`SELECT account, ROUND(SUM(debit),2) AS debit, ROUND(SUM(credit),2) AS credit, COUNT(*) AS count FROM (
+        SELECT debitAccount AS account, amount AS debit, 0 AS credit FROM GeneralEntry WHERE companyId=@c AND (clientId=@client OR (clientId IS NULL AND LOWER(TRIM(clientName))=LOWER(TRIM(@name))))
+        UNION ALL SELECT creditAccount, 0, amount FROM GeneralEntry WHERE companyId=@c AND (clientId=@client OR (clientId IS NULL AND LOWER(TRIM(clientName))=LOWER(TRIM(@name)))))
+      GROUP BY account ORDER BY account`).all({ c: companyId, client: client.id, name: client.name }) as typeof ledger;
+  }
+  const leaveTotal = round2(leave.reduce((n, l) => n + l.days, 0));
+  return { employee: e, history, years: [...years.values()], leave, leaveTotal, client: client ?? null, bank, bankTotals, ledger };
 }
 
 // An employee with payroll lines is kept for the history; deactivate them instead.

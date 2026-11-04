@@ -1,0 +1,88 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const Module = require('node:module');
+const ts = require('typescript');
+const Database = require('better-sqlite3');
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'erp-test-'));
+process.env.DATABASE_URL = 'file:' + path.join(temp, 'test.db');
+process.env.SMTP_ENCRYPTION_KEY = crypto.randomBytes(32).toString('hex');
+const fixture = new Database(process.env.DATABASE_URL.slice(5));
+fixture.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
+fixture.prepare("INSERT INTO Company (id, name, code, email, currencyCode, isDefault, createdAt, updatedAt) VALUES (1, 'UAB Pavyzdys', 'A', 'info@pavyzdys.test', 'EUR', 1, datetime('now'), datetime('now'))").run();
+fixture.close();
+const jar = new Map();
+const sent = [];
+let failFor = null;
+const realLoad = Module._load;
+Module._load = function (name, parent, isMain) {
+  if (name === 'nodemailer') return { createTransport: () => ({ close() {}, sendMail: async m => { if (m.to === failFor) throw new Error('mailbox unavailable'); sent.push(m); return { accepted: [m.to], rejected: [], messageId: '<' + sent.length + '@test>' }; } }) };
+  if (name === 'next/headers') return { cookies: async () => ({ get: key => jar.has(key) ? { value: jar.get(key) } : undefined }) };
+  if (name === 'next/navigation') return { redirect: url => { throw new Error('redirect:' + url); } };
+  if (name.startsWith('@/')) name = path.join(__dirname, '../src', name.slice(2));
+  return realLoad.call(this, name, parent, isMain);
+};
+require.extensions['.ts'] = (mod, filename) => mod._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true, resolveJsonModule: true } }).outputText, filename);
+const auth = require('../src/lib/auth.ts');
+const { getDb } = require('../src/lib/db.ts');
+const { saveMailSettings } = require('../src/lib/company-mail.ts');
+const db = getDb();
+db.prepare("INSERT INTO User(id,email,name,passwordHash,role,createdAt) VALUES(1,'test@example.test','Tester','unused','admin',datetime('now'))").run();
+jar.set('auth_session', auth.createSessionToken({ id: 1 })); jar.set('active_company_id', '1');
+const post = (url, body) => new Request('http://localhost:3000' + url, { method: 'POST', headers: { origin: 'http://localhost:3000', 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+test('letters: templates, personalised group sending to clients and free addresses, failures logged without stopping', async () => {
+  const templates = require('../src/app/api/mail/templates/route.ts');
+  const send = require('../src/app/api/mail/send/route.ts');
+  const preview = require('../src/app/api/mail/preview/route.ts');
+  db.prepare("INSERT INTO Client(id,companyId,name,code,email,createdAt,updatedAt) VALUES(10,1,'UAB Alfa','111','alfa@example.test',datetime('now'),datetime('now')),(11,1,'UAB Beta','222','beta@example.test; beta2@example.test',datetime('now'),datetime('now')),(12,1,'UAB Be pasto','333',NULL,datetime('now'),datetime('now'))").run();
+  db.prepare("INSERT INTO Sale(companyId,series,number,saleDate,payUntil,clientId,clientName,sumWithoutVat,vat,sumWithVat,createdAt) VALUES(1,'PARD','1','2025-01-10','2025-01-20',10,'UAB Alfa',100,0,100,datetime('now'))").run();
+  const created = await (await templates.POST(post('/api/mail/templates', { name: 'Priminimas', subject: 'Skola {client_name}', body: 'Sveiki, {client_name}. Skola: {balance}\n{open_invoices}\n{company_name}' }))).json();
+  assert.equal(created.template.name, 'Priminimas');
+  assert.equal((await templates.POST(post('/api/mail/templates', { name: 'Priminimas', subject: 'x', body: 'y' }))).status, 409, 'unique name');
+
+  const notConfigured = await send.POST(post('/api/mail/send', { clientIds: [10], subject: 'a', body: 'b' }));
+  assert.equal(notConfigured.status, 503, 'company SMTP required');
+  saveMailSettings(1, { host: 'smtp.example.test', port: 587, secure: false, sender: 'info@pavyzdys.test', username: 'u', password: 'p', enabled: true });
+
+  assert.equal((await preview.POST(post('/api/mail/preview', { clientIds: [12], subject: 'a', body: 'b' }))).status, 400, 'a client without e-mail cannot be the only recipient');
+  assert.equal((await preview.POST(post('/api/mail/preview', { addresses: 'ne-adresas', subject: 'a', body: 'b' }))).status, 400);
+  const letters = (await (await preview.POST(post('/api/mail/preview', { clientIds: [10], subject: created.template.subject, body: created.template.body }))).json()).letters;
+  assert.equal(letters[0].subject, 'Skola UAB Alfa');
+  assert.match(letters[0].body, /Skola: 100,00/);
+  assert.match(letters[0].body, /PARD/);
+  assert.equal(sent.length, 0, 'preview sends nothing');
+
+  failFor = 'beta2@example.test';
+  const result = await (await send.POST(post('/api/mail/send', { clientIds: [10, 11], addresses: 'kitas@example.test, ALFA@example.test', subject: created.template.subject, body: created.template.body, templateId: created.template.id }))).json();
+  assert.deepEqual(result.results.map(r => [r.email, r.status]), [['alfa@example.test', 'SENT'], ['beta@example.test', 'SENT'], ['beta2@example.test', 'FAILED'], ['kitas@example.test', 'SENT']], 'duplicates removed, a failure does not stop the batch');
+  assert.equal(sent[1].subject, 'Skola UAB Beta');
+  assert.equal(sent[2].subject, 'Skola ', 'a free address has no client values');
+  assert.equal(sent[0].replyTo, 'info@pavyzdys.test');
+  const log = (await (await send.GET()).json()).messages;
+  assert.equal(log.length, 4);
+  assert.equal(log.find(m => m.status === 'FAILED').error, 'mailbox unavailable');
+});
+
+test('signature configurator: on by default from company details, person and chosen details, inline logo, can be turned off', () => {
+  const sig = require('../src/lib/mail-signature.ts');
+  db.prepare("UPDATE Company SET code='300000000', phone='+37060000000', bankIban='LT000000000000000000' WHERE id=1").run();
+  const plain = sig.signLetter(db, 1, 'Sveiki');
+  assert.match(plain.text, /^Sveiki\n\n-- \nUAB Pavyzdys\nĮm\. k\. 300000000/, 'default: on, built from the company card');
+  assert.equal(plain.html, undefined, 'no logo -> plain text only');
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  db.prepare("INSERT INTO CompanyLogo(companyId,mime,data) VALUES(1,'image/png',?)").run(PNG);
+  const saved = sig.saveSignature(db, 1, { enabled: true, includeLogo: true, config: { personName: 'Jonas <Vadovas>', personTitle: 'Vadybininkas', phone: '+37061111111', website: 'https://pavyzdys.test', extra: 'Darbo laikas I-V 8-17', show: { companyName: true, codes: false, address: false, contacts: true, bank: false } } });
+  assert.equal(saved.text, 'Jonas <Vadovas>\nVadybininkas\nUAB Pavyzdys\nTel. +37061111111, info@pavyzdys.test\nhttps://pavyzdys.test\nDarbo laikas I-V 8-17', 'own phone wins, company e-mail kept, codes and bank hidden');
+  const html = sig.signLetter(db, 1, 'Sveiki');
+  assert.match(html.html, /cid:company-logo@kontas/);
+  assert.match(html.html, /Jonas &lt;Vadovas&gt;/, 'signature text is escaped in HTML');
+  assert.equal(html.attachments[0].cid, 'company-logo@kontas');
+  assert.equal(sig.signaturePreview(db, 1).logoUrl, '/api/companies/1/logo');
+  sig.saveSignature(db, 1, { enabled: false, includeLogo: true, config: saved.config });
+  assert.equal(sig.signLetter(db, 1, 'Sveiki').text, 'Sveiki');
+  assert.equal(sig.signaturePreview(db, 1), null);
+});

@@ -1,8 +1,10 @@
 import { requirePageAccess } from '@/lib/access';
 import React from 'react';
 import { getDb } from '@/lib/db';
+import { suggestions } from '@/lib/suggestions';
 import { getActiveCompany } from '@/lib/company';
 import { InvoicesClient } from './InvoicesClient';
+import { itemCatalog } from '@/lib/item-catalog';
 import { openDocuments } from '@/lib/payments';
 import { pageTitle } from '@/lib/i18n/page-title';
 
@@ -56,6 +58,8 @@ export default async function InvoicesPage() {
       itemsBySaleId={itemsBySaleId} 
       company={company} 
       clientsList={clients}
+      catalog={itemCatalog(db, companyId)}
+      suggest={suggestions(db, companyId, ['saleSeries'])}
     />
   );
 }

@@ -5,6 +5,29 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 
+// One payroll with its employees and the breakdown of additions and deductions (payroll slip view).
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const denied = await requireApiAccess();
+    if (denied) return denied;
+    const { id: idStr } = await context.params;
+    const id = Number(idStr);
+    if (!Number.isSafeInteger(id) || id <= 0) return NextResponse.json({ error: 'Neteisingas ID' }, { status: 400 });
+    const companyId = await getActiveCompanyId();
+    const db = getDb();
+    const payroll = db.prepare('SELECT id, year, month, sumWithVat, postedInJournal FROM Payroll WHERE id = ? AND companyId = ?').get(id, companyId);
+    if (!payroll) return NextResponse.json({ error: 'Įrašas nerastas' }, { status: 404 });
+    const employees = db.prepare('SELECT id, employeeName, employeeCode, position, payDate, grossSalary, npd, gpm, sodraEmployee, netSalary, payOut, sodraEmployer, guaranteeFund FROM PayrollEmployee WHERE payrollId = ? ORDER BY id').all(id);
+    const details = db.prepare('SELECT employeeName, employeeCode, kind, code, name, amount, hours, days, payDate FROM PayrollDetail WHERE payrollId = ? ORDER BY employeeName, kind, CAST(code AS INTEGER), id').all(id);
+    return NextResponse.json({ payroll, employees, details });
+  } catch (err: any) {
+    return apiError(err);
+  }
+}
+
 export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> }
@@ -48,17 +71,23 @@ export async function PUT(
         companyId
       );
 
-      // Replace employees
+      // Replace employees. Slip details the form does not edit (position, pay date, NPD, guarantee fund, paid out) are kept
+      // for an employee that stays on the payroll.
+      type Extra = { employeeName: string; employeeCode: string | null; position: string | null; payDate: string | null; npd: number | null; guaranteeFund: number | null; payOut: number | null };
+      const key = (name: unknown, code: unknown) => `${code ?? ''}|${name ?? ''}`;
+      const extras = new Map((db.prepare('SELECT employeeName, employeeCode, position, payDate, npd, guaranteeFund, payOut FROM PayrollEmployee WHERE payrollId = ?').all(id) as Extra[]).map(e => [key(e.employeeName, e.employeeCode), e]));
       db.prepare('DELETE FROM PayrollEmployee WHERE payrollId = ?').run(id);
 
       const insertEmp = db.prepare(`
         INSERT INTO PayrollEmployee (
           payrollId, employeeName, employeeCode, grossSalary,
-          netSalary, gpm, sodraEmployee, sodraEmployer
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          netSalary, gpm, sodraEmployee, sodraEmployer,
+          position, payDate, npd, guaranteeFund, payOut
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       for (const emp of employees) {
+        const kept = extras.get(key(emp.employeeName || 'Darbuotojas', emp.employeeCode || null));
         insertEmp.run(
           id,
           emp.employeeName || 'Darbuotojas',
@@ -67,7 +96,12 @@ export async function PUT(
           Number(emp.netSalary || 0),
           Number(emp.gpm || 0),
           Number(emp.sodraEmployee || 0),
-          Number(emp.sodraEmployer || 0)
+          Number(emp.sodraEmployer || 0),
+          kept?.position ?? null,
+          kept?.payDate ?? null,
+          kept?.npd ?? null,
+          kept?.guaranteeFund ?? null,
+          kept?.payOut ?? null
         );
       }
     });

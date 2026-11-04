@@ -3,12 +3,24 @@ import { requireApiAccess, checkOrigin } from '@/lib/access';
 import { apiError, HttpError } from '@/lib/errors';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
-import { deleteEmployee, updateEmployee } from '@/lib/payroll-runs';
+import { deleteEmployee, getEmployeeCard, updateEmployee } from '@/lib/payroll-runs';
 
 async function employeeId(context: { params: Promise<{ id: string }> }) {
   const id = Number((await context.params).id);
   if (!Number.isSafeInteger(id) || id <= 0) throw new HttpError(400, 'Neteisingas ID');
   return id;
+}
+
+// Employee card with the payroll history and yearly totals.
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const denied = await requireApiAccess();
+    if (denied) return denied;
+    const id = await employeeId(context);
+    return NextResponse.json(getEmployeeCard(getDb(), await getActiveCompanyId(), id));
+  } catch (err) {
+    return apiError(err);
+  }
 }
 
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {

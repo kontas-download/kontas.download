@@ -2,6 +2,7 @@ import { companyTaxMode } from '@/lib/tax';
 import { requirePageAccess } from '@/lib/access';
 import React from 'react';
 import { getDb } from '@/lib/db';
+import { suggestions, purchaseCatalog } from '@/lib/suggestions';
 import { getActiveCompanyId } from '@/lib/company';
 import { PurchasesClient } from './PurchasesClient';
 import { pageTitle } from '@/lib/i18n/page-title';
@@ -30,5 +31,5 @@ export default async function PurchasesPage() {
   const accounts=db.prepare("SELECT code,name FROM ChartOfAccount WHERE code NOT LIKE '44%' AND code NOT IN ('2410','2444') ORDER BY code").all() as {code:string;name:string}[];
   const warehouses=(db.prepare("SELECT DISTINCT COALESCE(warehouseName,'Pagrindinis') AS name FROM StockItem WHERE companyId=? ORDER BY name").all(companyId) as {name:string}[]).map(w=>w.name);
   const mode=companyTaxMode(companyId,new Date().toISOString().slice(0,10));
-  return <PurchasesClient warehouses={warehouses} accounts={accounts} companyMode={mode} itemsByPurchaseId={itemsByPurchaseId} initialPurchases={purchases} clientsList={clients} companyId={companyId} />;
+  return <PurchasesClient warehouses={warehouses} accounts={accounts} companyMode={mode} itemsByPurchaseId={itemsByPurchaseId} initialPurchases={purchases} clientsList={clients} companyId={companyId} suggest={suggestions(db, companyId, ['purchaseSeries'])} catalog={purchaseCatalog(db, companyId)} />;
 }

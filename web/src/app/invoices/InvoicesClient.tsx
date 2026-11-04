@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { SuggestionLists } from '@/components/SuggestionLists';
+import type { Suggestions } from '@/lib/suggestions';
 import { 
   Search, 
   Printer, 
@@ -21,6 +23,7 @@ import {
 import { InvoiceDeliveryDialog } from '@/components/InvoiceDeliveryDialog';
 import { CreditNoteDialog } from '@/components/CreditNoteDialog';
 import { useI18n } from '@/lib/i18n/client';
+import { findCatalogItem, type CatalogItem } from '@/lib/item-catalog';
 import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
 import { askConfirm } from '@/components/ConfirmHost';
@@ -42,12 +45,16 @@ export function InvoicesClient({
   initialSales, 
   itemsBySaleId,
   company,
-  clientsList = []
+  clientsList = [],
+  catalog = [],
+  suggest = {}
 }: { 
   initialSales: any[];
   itemsBySaleId: Record<number, any[]>;
   company?: any;
   clientsList?: any[];
+  catalog?: CatalogItem[];
+  suggest?: Suggestions;
 }) {
   const { t, lang } = useI18n();
   const statusLabel = (name: string) => name === 'Apmokėta' ? t('invoices.statusPaid') : name === 'Neapmokėta' ? t('invoices.statusUnpaid') : name;
@@ -162,7 +169,7 @@ export function InvoicesClient({
     clientVatCode: '',
     notes: '',
     items: [
-      { itemName: 'Paslauga', itemCode: '', quantity: 1, price: 100, vatRate: defaultVatRate }
+      { itemName: '', itemCode: '', quantity: 1, price: 0, vatRate: defaultVatRate }
     ] as InvoiceItem[]
   });
 
@@ -317,7 +324,7 @@ export function InvoicesClient({
       clientVatCode: '',
       notes: '',
       items: [
-        { itemName: 'Paslaugos suteikimas', itemCode: 'PASL-01', quantity: 1, price: 100, vatRate: defaultVatRate }
+        { itemName: '', itemCode: '', quantity: 1, price: 0, vatRate: defaultVatRate }
       ]
     });
     setErrorMsg('');
@@ -435,7 +442,9 @@ export function InvoicesClient({
 
   const handleItemChange = (index: number, field: keyof InvoiceItem, value: any) => {
     const updated = [...formData.items];
-    updated[index] = { ...updated[index], [field]: value };
+    // Picking a known item or service from the catalog fills its code and latest price.
+    const hit = field === 'itemName' ? findCatalogItem(catalog, String(value)) : undefined;
+    updated[index] = hit ? { ...updated[index], itemName: hit.name, itemCode: hit.code || '', price: hit.price } : { ...updated[index], [field]: value };
     setFormData({ ...formData, items: updated });
   };
 
@@ -525,6 +534,7 @@ export function InvoicesClient({
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <SuggestionLists lists={{ 'sug-sale-series': suggest.saleSeries }} />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -945,6 +955,7 @@ export function InvoicesClient({
                   <input
                     type="text"
                     required
+                    list="sug-sale-series"
                     value={formData.series}
                     onChange={(e) => handleSeriesChange(e.target.value.toUpperCase())}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono uppercase focus:outline-none focus:border-emerald-500"
@@ -1073,6 +1084,7 @@ export function InvoicesClient({
                 </div>
 
                 <div className="space-y-2">
+                  <datalist id="invoice-items-datalist">{catalog.map(c => <option key={c.name} value={c.name}>{`€${c.price.toFixed(2)}${c.code ? ' · ' + c.code : ''}`}</option>)}</datalist>
                   {formData.items.map((it, idx) => {
                     const rowNoVat = (Number(it.quantity) || 1) * (Number(it.price) || 0);
                     const rowWithVat = rowNoVat * (1 + (Number(it.vatRate) || 0) / 100);
@@ -1084,6 +1096,7 @@ export function InvoicesClient({
                             type="text"
                             required
                             placeholder={t('invoices.namePlaceholder')}
+                            list="invoice-items-datalist"
                             value={it.itemName}
                             onChange={(e) => handleItemChange(idx, 'itemName', e.target.value)}
                             className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"

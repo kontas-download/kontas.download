@@ -2,6 +2,8 @@ import nodemailer from 'nodemailer';
 import { HttpError } from './errors';
 import { invoiceFilename, type InvoiceDocument } from './invoice-document';
 import { companyMail, decryptPassword, validEmail } from './company-mail';
+import { getDb } from './db';
+import { signLetter } from './mail-signature';
 export { validEmail } from './company-mail';
 export function mailConfiguration(companyId:number) {
   const settings=companyMail(companyId);
@@ -15,7 +17,9 @@ export async function sendInvoiceEmail(doc: InvoiceDocument, pdf: Buffer, to: st
   const config=mailConfiguration(doc.companyId);
   const transport=nodemailer.createTransport(config.transport);
   try {
-    const result=await transport.sendMail({from:{name:doc.seller.name,address:config.from},to,replyTo:validEmail(doc.seller.email)?doc.seller.email:undefined,subject,text,attachments:[{filename:invoiceFilename(doc),content:pdf,contentType:'application/pdf'}],disableFileAccess:true,disableUrlAccess:true});
+    // The company signature (with the inline logo when chosen) is added to invoice and reminder letters too.
+    const signed=signLetter(getDb(),doc.companyId,text);
+    const result=await transport.sendMail({from:{name:doc.seller.name,address:config.from},to,replyTo:validEmail(doc.seller.email)?doc.seller.email:undefined,subject,text:signed.text,html:signed.html,attachments:[{filename:invoiceFilename(doc),content:pdf,contentType:'application/pdf'},...signed.attachments],disableFileAccess:true,disableUrlAccess:true});
     if (!result.accepted?.length || result.rejected?.length) throw new Error('Recipient rejected');
     return result.messageId;
   } finally { transport.close(); }

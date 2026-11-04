@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { SuggestionLists } from '@/components/SuggestionLists';
+import type { Suggestions } from '@/lib/suggestions';
 import { useState } from 'react';
 import { Users, Wallet } from '@/components/icons';
 import { useI18n } from '@/lib/i18n/client';
@@ -24,7 +26,7 @@ const btn = 'rounded border border-slate-600 px-3 py-1 text-sm text-slate-100 ho
 const blankEmployee = { name: '', personalCode: '', position: '', baseSalary: '', contractType: 'OPEN', applyNpd: true, pensionAccumulation: false, accidentRate: '', startDate: '', endDate: '', active: true };
 type EmployeeForm = typeof blankEmployee;
 
-export function PayrollClient({ initialEmployees, initialRuns, companyId }: { initialEmployees: EmployeeDto[]; initialRuns: RunSummary[]; companyId: number }) {
+export function PayrollClient({ initialEmployees, initialRuns, companyId, suggest = {} }: { initialEmployees: EmployeeDto[]; initialRuns: RunSummary[]; companyId: number; suggest?: Suggestions }) {
   const { t, money, date } = useI18n();
   const [employees, setEmployees] = useState(initialEmployees);
   const [runs, setRuns] = useState(initialRuns);
@@ -89,6 +91,7 @@ export function PayrollClient({ initialEmployees, initialRuns, companyId }: { in
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
+      <SuggestionLists lists={{ 'sug-positions': suggest.positions }} />
       <header>
         <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2"><Wallet className="w-6 h-6 text-emerald-400" /><span>{t('payroll.rTitle')}</span></h1>
         <p className="text-sm text-slate-400 mt-1">{t('payroll.rSubtitle')}</p>
@@ -105,7 +108,7 @@ export function PayrollClient({ initialEmployees, initialRuns, companyId }: { in
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-slate-300">
             <label className="flex flex-col gap-1">{t('payroll.rName')}<input className={input} value={form.name} onChange={e => set({ name: e.target.value })} /></label>
             <label className="flex flex-col gap-1">{t('payroll.rCode')}<input className={input} value={form.personalCode} onChange={e => set({ personalCode: e.target.value })} /></label>
-            <label className="flex flex-col gap-1">{t('payroll.rPosition')}<input className={input} value={form.position} onChange={e => set({ position: e.target.value })} /></label>
+            <label className="flex flex-col gap-1">{t('payroll.rPosition')}<input className={input} list="sug-positions" value={form.position} onChange={e => set({ position: e.target.value })} /></label>
             <label className="flex flex-col gap-1">{t('payroll.rBaseSalary')}<input className={input} type="number" step="0.01" min="0" value={form.baseSalary} onChange={e => set({ baseSalary: e.target.value })} /></label>
             <label className="flex flex-col gap-1">{t('payroll.rContract')}<select className={input} value={form.contractType} onChange={e => set({ contractType: e.target.value })}><option value="OPEN">{t('payroll.rContractOpen')}</option><option value="FIXED">{t('payroll.rContractFixed')}</option></select></label>
             <label className="flex flex-col gap-1">{t('payroll.rAccident')}<input className={input} type="number" step="0.01" min="0" value={form.accidentRate} onChange={e => set({ accidentRate: e.target.value })} /></label>

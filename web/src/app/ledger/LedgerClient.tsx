@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { SuggestionLists } from '@/components/SuggestionLists';
+import type { Suggestions } from '@/lib/suggestions';
 import { 
   BookOpenCheck, 
   Search, 
@@ -22,11 +24,13 @@ import { askConfirm } from '@/components/ConfirmHost';
 export function LedgerClient({ 
   initialEntries, 
   totalCount,
-  accountsList 
+  accountsList,
+  suggest = {}
 }: { 
   initialEntries: any[]; 
   totalCount: number;
   accountsList: any[];
+  suggest?: Suggestions;
 }) {
   const { t, lang } = useI18n();
   const [entries, setEntries] = useState(initialEntries);
@@ -226,6 +230,7 @@ export function LedgerClient({
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <SuggestionLists lists={{ 'sug-clients': suggest.clients, 'sug-entry-descriptions': suggest.entryDescriptions }} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -600,6 +605,7 @@ export function LedgerClient({
                   <input
                     type="text"
                     placeholder={t('ledger.placeholderClient')}
+                    list="sug-clients"
                     value={formData.clientName}
                     onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
@@ -609,12 +615,13 @@ export function LedgerClient({
 
               <div>
                 <label className="block text-slate-300 font-semibold mb-1">{t('ledger.description')}</label>
-                <textarea
-                  rows={2}
+                <input
+                  type="text"
+                  list="sug-entry-descriptions"
                   placeholder={t('ledger.placeholderDescription')}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500 resize-none"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
                 />
               </div>
 

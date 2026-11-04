@@ -12,8 +12,12 @@ import {
   Search,
   Calendar,
   Filter,
-  RotateCcw
+  RotateCcw,
+  FileText,
+  BookOpen
 } from '@/components/icons';
+import Link from 'next/link';
+import { PayrollSlipDialog } from './PayrollSlipDialog';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
@@ -40,7 +44,7 @@ function rich(text: string, nodes: Record<string, React.ReactNode>) {
 // Estimate rates in percent from the rules registry (provided by the server page).
 export interface PayrollRules { gpm: number; sodraEmployee: number; sodraEmployer: number }
 
-export function PayrollsClient({ initialPayrolls, payrollRules }: { initialPayrolls: any[]; payrollRules: PayrollRules }) {
+export function PayrollsClient({ initialPayrolls, payrollRules, employeesList = [] }: { initialPayrolls: any[]; payrollRules: PayrollRules; employeesList?: { name: string; personalCode: string | null }[] }) {
   const { t, lang } = useI18n();
   const gpmRate = payrollRules.gpm / 100;
   const sodraEeRate = payrollRules.sodraEmployee / 100;
@@ -65,6 +69,8 @@ export function PayrollsClient({ initialPayrolls, payrollRules }: { initialPayro
 
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [slipId, setSlipId] = useState<number | null>(null);
+  const [pageError, setPageError] = useState('');
   const [editingPayroll, setEditingPayroll] = useState<any | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -184,31 +190,31 @@ export function PayrollsClient({ initialPayrolls, payrollRules }: { initialPayro
     setIsModalOpen(true);
   };
 
-  const openEditModal = (p: any) => {
-    setEditingPayroll(p);
-    const grossVal = Number(p.totalGross || p.sumWithVat || 1500);
-    const gpm = Math.round(grossVal * gpmRate * 100) / 100;
-    const sodraEe = Math.round(grossVal * sodraEeRate * 100) / 100;
-    const sodraEr = Math.round(grossVal * sodraErRate * 100) / 100;
-    const net = Math.round((grossVal - gpm - sodraEe) * 100) / 100;
-
-    setFormData({
-      year: p.year,
-      month: p.month,
-      employees: [
-        { 
-          employeeName: 'Darbuotojas', 
-          employeeCode: '', 
-          grossSalary: grossVal, 
-          netSalary: Number(p.totalNet || net), 
-          gpm, 
-          sodraEmployee: sodraEe, 
-          sodraEmployer: sodraEr 
-        }
-      ]
-    });
-    setErrorMsg('');
-    setIsModalOpen(true);
+  // The form edits the payroll's real employee rows as stored; nothing is estimated, so saving unchanged keeps the payroll as it is.
+  const openEditModal = async (p: any) => {
+    setErrorMsg(''); setPageError('');
+    try {
+      const res = await fetch(`/api/payrolls/${p.id}`);
+      if (!res.ok) throw new Error();
+      const slip = await res.json() as { employees: EmployeeLine[] };
+      setEditingPayroll(p);
+      setFormData({
+        year: p.year,
+        month: p.month,
+        employees: slip.employees.map(e => ({
+          employeeName: e.employeeName,
+          employeeCode: e.employeeCode || '',
+          grossSalary: Number(e.grossSalary) || 0,
+          netSalary: Number(e.netSalary) || 0,
+          gpm: Number(e.gpm) || 0,
+          sodraEmployee: Number(e.sodraEmployee) || 0,
+          sodraEmployer: Number(e.sodraEmployer) || 0,
+        })),
+      });
+      setIsModalOpen(true);
+    } catch {
+      setPageError(t('payroll.updateFailed'));
+    }
   };
 
   const handleAddEmployee = () => {
@@ -250,6 +256,9 @@ export function PayrollsClient({ initialPayrolls, payrollRules }: { initialPayro
   const handleEmpFieldChange = (idx: number, field: keyof EmployeeLine, val: any) => {
     const updated = [...formData.employees];
     updated[idx] = { ...updated[idx], [field]: val };
+    // Picking an employee from the personnel list fills the personal code.
+    const person = field === 'employeeName' ? employeesList.find(e => e.name.toLowerCase() === String(val).trim().toLowerCase()) : undefined;
+    if (person?.personalCode) updated[idx].employeeCode = person.personalCode;
     setFormData({ ...formData, employees: updated });
   };
 
@@ -306,6 +315,7 @@ export function PayrollsClient({ initialPayrolls, payrollRules }: { initialPayro
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <datalist id="sug-employees">{employeesList.map(e => <option key={e.name} value={e.name}>{e.personalCode || ''}</option>)}</datalist>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -317,14 +327,26 @@ export function PayrollsClient({ initialPayrolls, payrollRules }: { initialPayro
             {rich(t('payroll.totalCount', { count: '{count}' }), { count: <strong className="text-white font-mono">{payrolls.length}</strong> })}
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2 self-start">
+        <Link href="/payrolls/references" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-700 text-slate-200 hover:bg-slate-800 font-bold text-xs transition-colors">
+          <BookOpen className="w-4 h-4" />
+          <span>{t('payroll.refsLink')}</span>
+        </Link>
         <button
           onClick={openCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors shadow-sm self-start"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" />
           <span>{t('payroll.new')}</span>
         </button>
+        </div>
       </div>
+
+      {pageError && (
+        <div role="alert" className="flex items-center gap-2 rounded-lg border border-rose-800 bg-rose-950/40 px-3 py-2 text-xs text-rose-300">
+          <AlertCircle className="w-4 h-4 shrink-0" />{pageError}
+        </div>
+      )}
 
       {/* Filter Bar */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
@@ -449,7 +471,7 @@ export function PayrollsClient({ initialPayrolls, payrollRules }: { initialPayro
                   {t('payroll.colNet')}
                 </SortableTh>
                 <th className="py-2.5 px-3 text-center">{t('payroll.colStatus')}</th>
-                <th className="py-2.5 px-3 text-center w-20">{t('payroll.colActions')}</th>
+                <th className="py-2.5 px-3 text-center w-28">{t('payroll.colActions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
@@ -474,9 +496,22 @@ export function PayrollsClient({ initialPayrolls, payrollRules }: { initialPayro
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                       {t('payroll.statusCalculated')}
                     </span>
+                    {p.postedInJournal === 1 && (
+                      <span title={t('payroll.postedInJournalHint')} className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                        {t('payroll.postedInJournal')}
+                      </span>
+                    )}
                   </td>
                   <td className="py-3 px-3 text-center">
                     <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={() => setSlipId(p.id)}
+                        className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-emerald-400 transition-colors"
+                        title={t('payroll.slip')}
+                        aria-label={t('payroll.slip')}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() => openEditModal(p)}
                         className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-emerald-400 transition-colors"
@@ -515,6 +550,8 @@ export function PayrollsClient({ initialPayrolls, payrollRules }: { initialPayro
           onPageSizeChange={(newSize) => { setPageSize(newSize); setCurrentPage(1); }}
         />
       </div>
+
+      {slipId !== null && <PayrollSlipDialog payrollId={slipId} onClose={() => setSlipId(null)} />}
 
       {/* Modal: Create/Edit Payroll */}
       {isModalOpen && (
@@ -591,6 +628,7 @@ export function PayrollsClient({ initialPayrolls, payrollRules }: { initialPayro
                             type="text"
                             required
                             placeholder={t('payroll.namePlaceholder')}
+                            list="sug-employees"
                             value={emp.employeeName}
                             onChange={(e) => handleEmpFieldChange(idx, 'employeeName', e.target.value)}
                             className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"

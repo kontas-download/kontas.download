@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { SuggestionLists } from '@/components/SuggestionLists';
+import type { PurchaseCatalogItem, Suggestions } from '@/lib/suggestions';
 import { PurchaseXmlImport } from '@/components/PurchaseXmlImport';
 import { CreditNoteDialog } from '@/components/CreditNoteDialog';
 import { 
@@ -28,7 +30,9 @@ export function PurchasesClient({
   warehouses,
   itemsByPurchaseId,
   clientsList = [],
-  companyId
+  companyId,
+  suggest = {},
+  catalog = []
 }: { 
   initialPurchases: any[];
   companyMode: string;
@@ -37,6 +41,8 @@ export function PurchasesClient({
   itemsByPurchaseId: Record<number,any[]>;
   clientsList?: any[];
   companyId: number;
+  suggest?: Suggestions;
+  catalog?: PurchaseCatalogItem[];
 }) {
   const { t, lang } = useI18n();
   const num = (n: number) => n.toLocaleString(LOCALES[lang], { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -290,6 +296,7 @@ export function PurchasesClient({
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <SuggestionLists lists={{ 'sug-purchase-series': suggest.purchaseSeries, 'sug-purchase-items': catalog.map(c => ({ value: c.name, label: '€' + c.price.toFixed(2) + (c.code ? ' · ' + c.code : '') })) }} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -575,6 +582,7 @@ export function PurchasesClient({
                   <label className="block text-slate-400 font-semibold mb-1">{t('purchases.series')}</label>
                   <input
                     type="text"
+                    list="sug-purchase-series"
                     value={formData.series}
                     onChange={(e) => setFormData({ ...formData, series: e.target.value.toUpperCase() })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono uppercase focus:outline-none focus:border-emerald-500"
@@ -669,6 +677,7 @@ export function PurchasesClient({
                             type="text"
                             required
                             placeholder={t('purchases.itemPlaceholder')}
+                            list="sug-purchase-items"
                             value={it.itemName}
                             onChange={(e) => handleItemChange(idx, 'itemName', e.target.value)}
                             className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"

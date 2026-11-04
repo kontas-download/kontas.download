@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { SuggestionLists } from '@/components/SuggestionLists';
+import type { Suggestions } from '@/lib/suggestions';
 import { BankPaymentsPanel } from '@/components/BankPaymentsPanel';
 import { 
   Search, 
@@ -29,7 +31,7 @@ function rich(text: string, nodes: Record<string, React.ReactNode>) {
   });
 }
 
-export function BankClient({ initialTransactions, totalCount, companyId }: { initialTransactions: any[]; totalCount: number; companyId: number }) {
+export function BankClient({ initialTransactions, totalCount, companyId, suggest = {} }: { initialTransactions: any[]; totalCount: number; companyId: number; suggest?: Suggestions }) {
   const { t: tr, lang } = useI18n(); // `t` is used below for transaction rows
   const [transactions, setTransactions] = useState(initialTransactions);
 
@@ -260,6 +262,7 @@ export function BankClient({ initialTransactions, totalCount, companyId }: { ini
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <SuggestionLists lists={{ 'sug-clients': suggest.clients, 'sug-bank-names': suggest.bankNames, 'sug-accounts': suggest.accounts }} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -618,6 +621,7 @@ export function BankClient({ initialTransactions, totalCount, companyId }: { ini
                   <input
                     type="text"
                     placeholder="UAB Partneris"
+                    list="sug-clients"
                     value={formData.clientName}
                     onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
@@ -640,6 +644,7 @@ export function BankClient({ initialTransactions, totalCount, companyId }: { ini
                   <label className="block text-slate-300 font-semibold mb-1">{tr('bank.formBank')}</label>
                   <input
                     type="text"
+                    list="sug-bank-names"
                     value={formData.accountingBankInternalName}
                     placeholder="Bank"
                     onChange={(e) => setFormData({ ...formData, accountingBankInternalName: e.target.value })}
@@ -650,6 +655,7 @@ export function BankClient({ initialTransactions, totalCount, companyId }: { ini
                   <label className="block text-slate-300 font-semibold mb-1">{tr('bank.formAccount')}</label>
                   <input
                     type="text"
+                    list="sug-accounts"
                     value={formData.correspondenceAccountCode}
                     onChange={(e) => setFormData({ ...formData, correspondenceAccountCode: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono focus:outline-none focus:border-emerald-500"

@@ -1,6 +1,8 @@
 'use client';
 
 import { DocLanguageSelect } from '@/components/DocLanguageSelect';
+import { SuggestionLists } from '@/components/SuggestionLists';
+import type { Suggestions } from '@/lib/suggestions';
 import React, { useState, useMemo } from 'react';
 import { 
   Search, 
@@ -24,7 +26,7 @@ import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
 import { askConfirm } from '@/components/ConfirmHost';
 
-export function ClientsClient({ initialClients }: { initialClients: any[] }) {
+export function ClientsClient({ initialClients, suggest = {} }: { initialClients: any[]; suggest?: Suggestions }) {
   const { t, lang } = useI18n();
   const [clients, setClients] = useState(initialClients);
 
@@ -217,6 +219,7 @@ export function ClientsClient({ initialClients }: { initialClients: any[] }) {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <SuggestionLists lists={{ 'sug-cities': suggest.cities }} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -595,6 +598,7 @@ export function ClientsClient({ initialClients }: { initialClients: any[] }) {
                   <input
                     type="text"
                     placeholder="Vilnius"
+                    list="sug-cities"
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"

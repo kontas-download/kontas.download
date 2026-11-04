@@ -12,16 +12,19 @@ import { migrateUsers } from './user-schema';
 import { migrateFixedAssets } from './assets-schema';
 import { migrateInventory, migrateInventoryGuards, migratePurchaseWarehouse } from './inventory-schema';
 import { migratePayroll, migratePayrollPayoutDate } from './payroll-schema';
+import { migrateHr, migrateHrContacts, migrateHrLinks } from './hr-schema';
+import { migrateMail } from './mail-schema';
+import { migrateMailSignature } from './mail-signature';
 import Database from 'better-sqlite3';
 import path from 'node:path';
 let dbInstance: Database.Database | null = null;
 export function getDb() {
   if (!dbInstance) {
     const configured = process.env.DATABASE_URL;
-    let dbPath = configured?.startsWith('file:') ? configured.slice(5) : path.join(process.cwd(), 'prisma', 'dev.db');
-    if (process.platform !== 'win32' && /^[a-zA-Z]:/.test(dbPath)) {
-      dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-    }
+    let dbPath = configured?.startsWith('file:') ? configured.slice(5) : path.join(process.cwd(), 'prisma', 'dev.db');
+    if (process.platform !== 'win32' && /^[a-zA-Z]:/.test(dbPath)) {
+      dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
+    }
     const db = new Database(dbPath);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
@@ -59,6 +62,11 @@ export function getDb() {
     migrateAuditActor(db);
     migrateDeliveryArchiveStatus(db);
     migratePurchaseWarehouse(db);
+    migrateHr(db);
+    migrateHrContacts(db);
+    migrateHrLinks(db);
+    migrateMail(db);
+    migrateMailSignature(db);
     dbInstance = db;
   }
   return dbInstance;

@@ -33,10 +33,20 @@ export const TABLES: Record<string, Spec & { table: string; where: string; order
   bankTransactions: { table: 'BankTransaction', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,date,number,clientName,clientCode,sum:n,correspondenceAccountCode,accountingBankInternalName,notes,importHash,importBatch') },
   paymentAllocations: { table: 'PaymentAllocation', where: 'companyId=?', order: 'id', columns: t('id:i,bankTransactionId:i,saleId:i,purchaseId:i,amount:n,createdAt:i') },
   manualSettlements: { table: 'ManualSettlement', where: 'companyId=?', order: 'id', columns: t('id:i,saleId:i,purchaseId:i,amount:n,date,method,note,createdAt:i') },
-  payrolls: { table: 'Payroll', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,year:i,month:i,sumWithVat:n,createdAt') },
-  payrollEmployees: { table: 'PayrollEmployee', where: 'payrollId IN (SELECT id FROM Payroll WHERE companyId=?)', order: 'id', columns: t('id:i,payrollId:i,employeeName,employeeCode,grossSalary:n,netSalary:n,gpm:n,sodraEmployee:n,sodraEmployer:n') },
+  payrolls: { table: 'Payroll', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,year:i,month:i,sumWithVat:n,createdAt,postedInJournal:i') },
+  payrollEmployees: { table: 'PayrollEmployee', where: 'payrollId IN (SELECT id FROM Payroll WHERE companyId=?)', order: 'id', columns: t('id:i,payrollId:i,employeeName,employeeCode,grossSalary:n,netSalary:n,gpm:n,sodraEmployee:n,sodraEmployer:n,position,payDate,npd:n,guaranteeFund:n,payOut:n') },
+  // Breakdown of a payroll by payroll code (additions and deductions per employee) and the personnel reference books.
+  payrollDetails: { table: 'PayrollDetail', where: 'payrollId IN (SELECT id FROM Payroll WHERE companyId=?)', order: 'id', columns: t('id:i,payrollId:i,employeeName,employeeCode,kind,code,name,amount:n,hours:n,days:n,payDate') },
+  hrPositions: { table: 'HrPosition', where: 'companyId=?', order: 'name', columns: t('name') },
+  payrollCodes: { table: 'PayrollCode', where: 'companyId=?', order: 'kind,code', columns: t('kind,code,name,printName,category,sortOrder:i') },
+  workShifts: { table: 'WorkShift', where: 'companyId=?', order: 'name', columns: t('name,weekJson') },
   // Employees, monthly payroll runs (draft and posted), their lines and the append-only change log. All keys are optional on import.
-  employees: { table: 'Employee', where: 'companyId=?', order: 'id', columns: t('id:i,name,personalCode,position,baseSalary:n,contractType,applyNpd:i,pensionAccumulation:i,accidentRate:n,startDate,endDate,active:i,createdAt,updatedAt') },
+  employees: { table: 'Employee', where: 'companyId=?', order: 'id', columns: t('id:i,name,personalCode,position,baseSalary:n,contractType,applyNpd:i,pensionAccumulation:i,accidentRate:n,startDate,endDate,active:i,createdAt,updatedAt,agreementNumber,agreementDate,email,phone,bankAccount,address,notes,employmentKind,clientId:i') },
+  // Letters module: templates and the log of sent letters (recipient address and text only, no credentials).
+  mailSignature: { table: 'CompanyMailSignature', where: 'companyId=?', order: 'companyId', columns: t('enabled:i,includeLogo:i,configJson,text,updatedAt') },
+  mailTemplates: { table: 'MailTemplate', where: 'companyId=?', order: 'id', columns: t('id:i,name,subject,body,createdAt,updatedAt') },
+  mailMessages: { table: 'MailMessage', where: 'companyId=?', order: 'id', columns: t('batchId,templateId:i,clientId:i,recipient,recipientName,subject,body,status,error,messageId,createdAt') },
+  employeeLeaves: { table: 'EmployeeLeave', where: 'companyId=?', order: 'id', columns: t('employeeId:i,periodFrom,periodUntil,days:n,note') },
   payrollRuns: { table: 'PayrollRun', where: 'companyId=?', order: 'id', columns: t('id:i,year:i,month:i,status,payoutDate,paramsJson,rulesProvisional:i,verifiedAt,verifiedBy:i,payrollId:i,createdBy:i,createdAt,updatedAt') },
   payrollRunLines: { table: 'PayrollRunLine', where: 'companyId=?', order: 'id', columns: t('id:i,runId:i,employeeId:i,employeeName,employeeCode,gross:n,ytdGrossBefore:n,ytdSodraBaseBefore:n,settingsJson,calcJson,overridesJson,resultJson,sodraBase:n,npd:n,gpm:n,employeeContributions:n,net:n,employerContributions:n') },
   payrollLogs: { table: 'PayrollLog', where: 'companyId=?', order: 'id', columns: t('id:i,runId:i,lineId:i,employeeName,action,field,calculatedValue:n,oldValue:n,newValue:n,reason,actorId:i,createdAt') },
@@ -152,7 +162,7 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
   const ids = (key: string) => new Set(rows[key].map(r => r.id as number));
   const unique = (key: string) => { const s = ids(key); if (s.size !== rows[key].length || s.has(undefined as unknown as number) || s.has(null as unknown as number)) problems.push(problem('duplicateId', `Skyrius ${key}: identifikatorių nėra arba jie kartojasi`, { table: key })); return s; };
   const clientIds = unique('clients'), saleIds = unique('sales'), purchaseIds = unique('purchases'), bankIds = unique('bankTransactions'), payrollIds = unique('payrolls'), recurringIds = unique('recurringInvoices');
-  unique('saleItems'); unique('purchaseItems'); unique('payrollEmployees'); unique('generalEntries'); unique('paymentAllocations'); unique('manualSettlements'); unique('stockItems'); const stockIds = ids('stockItems'), movementIds = unique('inventoryMovements'), assetIds = unique('fixedAssets'); unique('inventoryLayers'); unique('fixedAssetPostings'); unique('fixedAssetChanges'); const employeeIds = unique('employees'), runIds = unique('payrollRuns'); unique('payrollRunLines'); unique('payrollLogs');
+  unique('saleItems'); unique('purchaseItems'); unique('payrollEmployees'); unique('payrollDetails'); unique('generalEntries'); unique('paymentAllocations'); unique('manualSettlements'); unique('stockItems'); const stockIds = ids('stockItems'), movementIds = unique('inventoryMovements'), assetIds = unique('fixedAssets'); unique('inventoryLayers'); unique('fixedAssetPostings'); unique('fixedAssetChanges'); const employeeIds = unique('employees'), runIds = unique('payrollRuns'); unique('payrollRunLines'); unique('payrollLogs');
   const saleById = new Map(rows.sales.map(s => [s.id, s])), purchaseById = new Map(rows.purchases.map(p => [p.id, p]));
   const broken = (table: string, index: number, field: string) => problems.push(problem('brokenLink', `${table}[${index}].${field}: nuoroda į neegzistuojantį įrašą`, { table, index, field }));
   rows.sales.forEach((s, i) => { if (s.originalSaleId != null && (!saleById.has(s.originalSaleId) || (saleById.get(s.originalSaleId)!.docType ?? 'SF') !== 'SF' || s.docType !== 'KS')) broken('sales', i, 'originalSaleId'); });
@@ -167,7 +177,9 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
   rows.saleItems.forEach((r, i) => { if (!saleIds.has(r.saleId as number)) broken('saleItems', i, 'saleId'); });
   rows.purchaseItems.forEach((r, i) => { if (!purchaseIds.has(r.purchaseId as number)) broken('purchaseItems', i, 'purchaseId'); });
   rows.payrollEmployees.forEach((r, i) => { if (!payrollIds.has(r.payrollId as number)) broken('payrollEmployees', i, 'payrollId'); });
+  rows.payrollDetails.forEach((r, i) => { if (!payrollIds.has(r.payrollId as number)) broken('payrollDetails', i, 'payrollId'); });
   rows.payrollRuns.forEach((r, i) => { if (r.payrollId != null && !payrollIds.has(r.payrollId as number)) broken('payrollRuns', i, 'payrollId'); if (r.status === 'POSTED' && r.payrollId == null) broken('payrollRuns', i, 'payrollId'); });
+  rows.employeeLeaves.forEach((r, i) => { if (!employeeIds.has(r.employeeId as number)) broken('employeeLeaves', i, 'employeeId'); });
   rows.payrollRunLines.forEach((r, i) => { if (!runIds.has(r.runId as number)) broken('payrollRunLines', i, 'runId'); if (!employeeIds.has(r.employeeId as number)) broken('payrollRunLines', i, 'employeeId'); });
   for (const key of ['paymentAllocations', 'manualSettlements']) rows[key].forEach((r, i) => {
     if (key === 'paymentAllocations' && !bankIds.has(r.bankTransactionId as number)) broken(key, i, 'bankTransactionId');
@@ -235,9 +247,16 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
       for (const r of rows.bankTransactions) map.bank.set(r.id, insert('BankTransaction', { ...pick(r, ['id']), externalId: null, companyId }));
       for (const r of rows.payrolls) map.payroll.set(r.id, insert('Payroll', { ...pick(r, ['id']), externalId: null, companyId }));
       for (const r of rows.payrollEmployees) map.payrollEmployee.set(r.id, insert('PayrollEmployee', { ...pick(r, ['id']), payrollId: map.payroll.get(r.payrollId) }));
+      for (const r of rows.payrollDetails) insert('PayrollDetail', { ...pick(r, ['id']), payrollId: map.payroll.get(r.payrollId) });
+      for (const key of ['hrPositions', 'payrollCodes', 'workShifts'] as const) for (const r of rows[key]) insert(TABLES[key].table, { ...r, companyId });
       // Payroll runs: users are not in the package, so verifiedBy/createdBy/actorId are cleared; lines are inserted while the run is
       // still unlocked by the POSTED triggers (they only guard updates and deletes). Log rows of deleted runs/lines keep a null link.
-      for (const r of rows.employees) map.employee.set(r.id, insert('Employee', { ...pick(r, ['id']), companyId }));
+      for (const r of rows.employees) map.employee.set(r.id, insert('Employee', { ...pick(r, ['id']), companyId, clientId: r.clientId == null ? null : client(r.clientId) }));
+      for (const r of rows.mailSignature) insert('CompanyMailSignature', { ...r, companyId });
+      const mailTemplateIds = new Map<unknown, number>();
+      for (const r of rows.mailTemplates) mailTemplateIds.set(r.id, insert('MailTemplate', { ...pick(r, ['id']), companyId }));
+      for (const r of rows.mailMessages) insert('MailMessage', { ...r, companyId, templateId: r.templateId == null ? null : mailTemplateIds.get(r.templateId) ?? null, clientId: r.clientId == null ? null : client(r.clientId), actorId: null });
+      for (const r of rows.employeeLeaves) insert('EmployeeLeave', { ...r, companyId, employeeId: map.employee.get(r.employeeId) });
       for (const r of rows.payrollRuns) map.run.set(r.id, insert('PayrollRun', { ...pick(r, ['id']), companyId, payrollId: r.payrollId == null ? null : map.payroll.get(r.payrollId), verifiedBy: null, createdBy: null }));
       for (const r of rows.payrollRunLines) map.runLine.set(r.id, insert('PayrollRunLine', { ...pick(r, ['id']), companyId, runId: map.run.get(r.runId), employeeId: map.employee.get(r.employeeId) }));
       for (const r of rows.payrollLogs) insert('PayrollLog', { ...pick(r, ['id']), companyId, runId: r.runId == null ? null : map.run.get(r.runId) ?? null, lineId: r.lineId == null ? null : map.runLine.get(r.lineId) ?? null, actorId: null });

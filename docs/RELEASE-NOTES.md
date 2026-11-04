@@ -6,6 +6,22 @@
 
 Pagrindinė dokumentacijos kalba – lietuvių. Jei lietuviškas ir angliškas tekstai skiriasi, viršesnis lietuviškas.
 
+### 0.5.0 – personalas, laiškai su šablonais ir parašu, automatinis užpildymas
+
+Archyvas: `kontas-download-0.5.0.zip`, šalia – kontrolinės sumos failas `kontas-download-0.5.0.zip.sha256`. Atnaujinti iš 0.4.0: `update.ps1` / `update.sh`.
+
+- Skyrius „Darbuotojai“: darbuotojo kortelė (sutartis, santykių rūšis, kontaktai, banko sąskaita, DU nustatymai, pastabos), darbo užmokestis pagal mėnesius su metų sumomis, kasmetinės atostogos pagal darbo metus, atsiskaitymai pagal susietą kontrahentą (banko operacijos, žurnalas pagal sąskaitas).
+- DU žiniaraščiai: išklotinė (priskaitymai ir išskaitos pagal DU kodą, NPD, garantinis fondas, išmokėta suma); redagavimo forma įkelia tikras darbuotojų eilutes. Žiniaraščiai, kurių įrašai jau yra perkeltame bendrajame žurnale, nekuriami antrą kartą. DU žinynai: pareigos, DU kodai, darbo laiko žymėjimai, pamainos.
+- Modulis „Laiškai“: laiškai kontrahentams ar bet kokiu adresu, šablonai su įterpiamais laukais (kontrahentas, skola, neapmokėtos sąskaitos ir kt.), grupinis siuntimas, peržiūra, išsiųstų laiškų žurnalas.
+- Laiškų parašas (įjungtas pagal nutylėjimą) su konfiguratoriumi ir logotipu; pridedamas prie laiškų, sąskaitų ir priminimų, matomas peržiūroje.
+- Automatinis užpildymas formose iš jau įvestų duomenų: prekių ir paslaugų katalogas su paskutine kaina sąskaitose ir šablonuose, serijos, kontrahentai, sandėliai, miestai, sąskaitų planas, pareigos, darbuotojai.
+- Vieningas tamsus SMTP, apskaitos kontrolės ir sąskaitos siuntimo langų stilius; periodinio šablono eilutės su stulpelių antraštėmis.
+
+Kontrolinė suma:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.0.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.0.zip.sha256).Split(' ')[0]` – turi būti `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.0.zip.sha256` – turi būti `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.0.zip.sha256` – turi būti `OK`.
+
 ### 0.4.0 – atnaujinimai viena komanda
 
 Archyvas: `kontas-download-0.4.0.zip`, šalia – kontrolinės sumos failas `kontas-download-0.4.0.zip.sha256`.
@@ -132,6 +148,22 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 
 Основной язык документации – литовский; при расхождении текстов приоритет у литовского.
 
+### 0.5.0 – кадры, письма с шаблонами и подписью, автозаполнение
+
+Архив: `kontas-download-0.5.0.zip`, рядом – файл контрольной суммы `kontas-download-0.5.0.zip.sha256`. Обновление с 0.4.0: `update.ps1` / `update.sh`.
+
+- Раздел «Работники»: карточка (договор, вид отношений, контакты, банковский счёт, настройки зарплаты, заметки), зарплата по месяцам с итогами по годам, ежегодный отпуск по рабочим годам, расчёты по связанному контрагенту (банковские операции, проводки по счетам).
+- Ведомости: расшифровка (начисления и удержания по кодам, НПД, гарантийный фонд, сумма к выплате); форма редактирования загружает настоящие строки работников. Ведомости, проводки которых уже есть в перенесённом журнале, не проводятся повторно. Справочники: должности, коды зарплаты, обозначения табеля, смены.
+- Модуль «Письма»: письма контрагентам или на любой адрес, шаблоны с подстановками (контрагент, долг, неоплаченные счета и др.), групповая рассылка, предпросмотр, журнал отправленных.
+- Подпись в письмах (включена по умолчанию) с конфигуратором и логотипом; добавляется к письмам, счетам и напоминаниям, видна в предпросмотре.
+- Автозаполнение в формах из уже введённых данных: каталог товаров и услуг с последней ценой в счетах и шаблонах, серии, контрагенты, склады, города, план счетов, должности, работники.
+- Единый тёмный стиль окон SMTP, контроля учёта и отправки счёта; заголовки колонок в строках периодического шаблона.
+
+Контрольная сумма:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.0.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.0.zip.sha256).Split(' ')[0]` – должно быть `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.0.zip.sha256` – должно быть `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.0.zip.sha256` – должно быть `OK`.
+
 ### 0.4.0 – обновление одной командой
 
 Архив: `kontas-download-0.4.0.zip`, рядом – файл контрольной суммы `kontas-download-0.4.0.zip.sha256`.
@@ -257,6 +289,22 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 ## English
 
 The main documentation language is Lithuanian; if the texts differ, the Lithuanian one prevails.
+
+### 0.5.0 – personnel, letters with templates and signature, autocomplete
+
+Archive: `kontas-download-0.5.0.zip`, with the checksum file `kontas-download-0.5.0.zip.sha256` next to it. Updating from 0.4.0: `update.ps1` / `update.sh`.
+
+- Employees section: employee card (contract, relationship type, contacts, bank account, payroll settings, notes), pay by month with yearly totals, annual leave by work year, settlements by the linked counterparty (bank transactions, journal by account).
+- Payrolls: breakdown (additions and deductions by payroll code, NPD, guarantee fund, amount paid out); the edit form loads the real employee rows. Payrolls whose entries are already in an imported general journal are not posted again. Reference books: positions, payroll codes, time-card markings, shifts.
+- Letters module: letters to counterparties or any address, templates with placeholders (counterparty, amount owed, unpaid invoices and more), group sending, preview, log of sent letters.
+- E-mail signature (on by default) with a configurator and the logo; added to letters, invoices and reminders, shown in previews.
+- Autocomplete in forms from data already entered: item and service catalog with the latest price on invoices and templates, series, counterparties, warehouses, cities, chart of accounts, positions, employees.
+- One dark style for the SMTP, accounting control and invoice sending windows; column headers on recurring template lines.
+
+Checksum:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.0.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.0.zip.sha256).Split(' ')[0]` – must be `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.0.zip.sha256` – must be `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.0.zip.sha256` – must be `OK`.
 
 ### 0.4.0 – one-command updates
 

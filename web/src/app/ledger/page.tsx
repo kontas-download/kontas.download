@@ -1,6 +1,7 @@
 import { requirePageAccess } from '@/lib/access';
 import React from 'react';
 import { getDb } from '@/lib/db';
+import { suggestions } from '@/lib/suggestions';
 import { getActiveCompanyId } from '@/lib/company';
 import { LedgerClient } from './LedgerClient';
 import { pageTitle } from '@/lib/i18n/page-title';
@@ -27,6 +28,7 @@ export default async function LedgerPage() {
       initialEntries={entries} 
       totalCount={totalCount?.cnt || 0}
       accountsList={accounts}
+      suggest={suggestions(db, companyId, ['clients', 'entryDescriptions'])}
     />
   );
 }

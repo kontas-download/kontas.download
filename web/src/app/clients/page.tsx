@@ -1,6 +1,7 @@
 import { requirePageAccess } from '@/lib/access';
 import React from 'react';
 import { getDb } from '@/lib/db';
+import { suggestions } from '@/lib/suggestions';
 import { getActiveCompanyId } from '@/lib/company';
 import { ClientsClient } from './ClientsClient';
 import { pageTitle } from '@/lib/i18n/page-title';
@@ -24,5 +25,5 @@ export default async function ClientsPage() {
     ORDER BY totalSalesSum DESC, c.name ASC
   `).all(companyId, companyId) as any[];
 
-  return <ClientsClient initialClients={clients} />;
+  return <ClientsClient initialClients={clients} suggest={suggestions(db, companyId, ['cities'])} />;
 }

@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { SuggestionLists } from '@/components/SuggestionLists';
+import type { Suggestions } from '@/lib/suggestions';
 import { 
   Package, 
   Search, 
@@ -18,7 +20,7 @@ import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
 import { askConfirm } from '@/components/ConfirmHost';
 
-export function StockClient({ initialStock }: { initialStock: any[] }) {
+export function StockClient({ initialStock, suggest = {} }: { initialStock: any[]; suggest?: Suggestions }) {
   const { t, lang } = useI18n();
   const money2 = (n: number) => n.toLocaleString(LOCALES[lang], { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const [stock, setStock] = useState(initialStock);
@@ -226,6 +228,7 @@ export function StockClient({ initialStock }: { initialStock: any[] }) {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
+      <SuggestionLists lists={{ 'sug-warehouses': suggest.warehouses, 'sug-clients': suggest.clients }} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -524,6 +527,7 @@ export function StockClient({ initialStock }: { initialStock: any[] }) {
                   <label className="block text-slate-300 font-semibold mb-1">{t('stock.warehouse')}</label>
                   <input
                     type="text"
+                    list="sug-warehouses"
                     value={formData.warehouseName}
                     onChange={(e) => setFormData({ ...formData, warehouseName: e.target.value })}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
@@ -569,6 +573,7 @@ export function StockClient({ initialStock }: { initialStock: any[] }) {
                 <input
                   type="text"
                   placeholder={t('stock.supplierPlaceholder')}
+                  list="sug-clients"
                   value={formData.clientName}
                   onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"

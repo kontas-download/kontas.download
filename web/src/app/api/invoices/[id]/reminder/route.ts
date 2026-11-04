@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { signaturePreview } from '@/lib/mail-signature';
 import { requireApiAccess, checkOrigin } from '@/lib/access';
 import { getActiveCompanyId } from '@/lib/company';
 import { getDb } from '@/lib/db';
@@ -30,6 +31,7 @@ export async function GET(request: Request, context: Context) {
       text: draft.text,
       balance: open.balance,
       configured,
+      signature: signaturePreview(getDb(), companyId),
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return apiError(error);

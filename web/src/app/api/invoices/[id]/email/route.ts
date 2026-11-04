@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { signaturePreview } from '@/lib/mail-signature';
 import { requireApiAccess, checkOrigin } from '@/lib/access';
 import { getActiveCompanyId } from '@/lib/company';
 import { getDb } from '@/lib/db';
@@ -14,7 +15,7 @@ export async function GET(request:Request,context:Context) {
   try { const denied=await requireApiAccess();if(denied)return denied;
     const doc=invoiceDocument(Number((await context.params).id),await getActiveCompanyId(),new URL(request.url).searchParams.get('lang'));
     let configured=true;try{mailConfiguration(doc.companyId);}catch{configured=false;}
-    return NextResponse.json({...invoiceEmailDraft(doc),configured,invoiceNumber:doc.number},{headers:{'Cache-Control':'no-store'}});
+    return NextResponse.json({...invoiceEmailDraft(doc),configured,invoiceNumber:doc.number,signature:signaturePreview(getDb(),doc.companyId)},{headers:{'Cache-Control':'no-store'}});
   }catch(error){return apiError(error);}
 }
 export async function POST(request:Request,context:Context) {

@@ -28,5 +28,6 @@ export default async function PayrollsPage() {
   const today = todayVilnius();
   const payrollRules: PayrollRules = { gpm: rules.number('payroll.gpm.rate', today), sodraEmployee: rules.number('payroll.sodra.employee', today), sodraEmployer: rules.number('payroll.sodra.employer', today) };
 
-  return <PayrollsClient initialPayrolls={payrolls} payrollRules={payrollRules} />;
+  const employeesList = db.prepare('SELECT name, personalCode FROM Employee WHERE companyId=? ORDER BY active DESC, name COLLATE NOCASE').all(companyId) as { name: string; personalCode: string | null }[];
+  return <PayrollsClient initialPayrolls={payrolls} payrollRules={payrollRules} employeesList={employeesList} />;
 }

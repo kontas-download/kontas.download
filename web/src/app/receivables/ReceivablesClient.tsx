@@ -1,11 +1,12 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { SignaturePreview } from '@/components/SignaturePreview';
 import { DocLanguageSelect } from '@/components/DocLanguageSelect';
 import { useT } from '@/lib/i18n/client';
 import { askConfirm } from '@/components/ConfirmHost';
 
 interface Row { saleId: number; label: string; date: string; dueDate: string | null; clientName: string; clientEmail: string; balance: number; daysOverdue: number; bucket: string; lastReminder: number | null; reminders: number; }
-interface Draft { saleId: number; label: string; to: string; subject: string; text: string; configured: boolean; requestId: string; lang: string; }
+interface Draft { saleId: number; label: string; to: string; subject: string; text: string; configured: boolean; requestId: string; lang: string; signature: { text: string; logoUrl: string | null } | null; }
 const BUCKETS = ['NOT_DUE', 'D1_30', 'D31_60', 'D61_90', 'D90_PLUS'];
 
 interface Overpaid { id: number; label: string; clientName: string; excess: number; }
@@ -25,7 +26,7 @@ export function ReceivablesClient({ asOf, rows: initial, overpaid = [] }: { asOf
       const res = await fetch(`/api/invoices/${row.saleId}/reminder${lang ? `?lang=${lang}` : ''}`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { setError(data.error || t('receivables.errReminder')); return; }
-      setDraft({ saleId: row.saleId, label: row.label, to: data.to, subject: data.subject, text: data.text, configured: data.configured, requestId: crypto.randomUUID(), lang: data.lang });
+      setDraft({ saleId: row.saleId, label: row.label, to: data.to, subject: data.subject, text: data.text, configured: data.configured, requestId: crypto.randomUUID(), lang: data.lang, signature: data.signature ?? null });
     } finally { setBusy(false); }
   }
   async function settle(row: Row) {
@@ -98,6 +99,7 @@ export function ReceivablesClient({ asOf, rows: initial, overpaid = [] }: { asOf
             <label className="block text-xs text-slate-300">{t('receivables.recipient')}<input value={draft.to} onChange={e => setDraft({ ...draft, to: e.target.value })} className="block w-full bg-slate-950 border border-slate-700 rounded p-2" /></label>
             <label className="block text-xs text-slate-300">{t('receivables.subject')}<input value={draft.subject} maxLength={200} onChange={e => setDraft({ ...draft, subject: e.target.value })} className="block w-full bg-slate-950 border border-slate-700 rounded p-2" /></label>
             <label className="block text-xs text-slate-300">{t('receivables.text')}<textarea value={draft.text} rows={9} onChange={e => setDraft({ ...draft, text: e.target.value })} className="block w-full bg-slate-950 border border-slate-700 rounded p-2" /></label>
+            {draft.signature && <div className="rounded-lg bg-white p-3"><SignaturePreview signature={draft.signature} /></div>}
             <p className="text-xs text-slate-400">{t('receivables.attachNote')}</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => { setDraft(null); setError(''); }} className="px-4 py-2 rounded border border-slate-700">{t('receivables.cancel')}</button>
