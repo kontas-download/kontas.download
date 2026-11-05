@@ -1,4 +1,5 @@
 import { purchaseWarehouse } from '@/lib/purchases';
+import { normalizePurchaseExtras, writePurchaseExtras } from '@/lib/purchase-recognition';
 import { companyTaxMode, purchaseDebitAccount, purchaseTax, taxMode } from '@/lib/tax';
 import { calculateLine, totalLines } from '@/lib/money';
 import { restoreLineCodes, snapshotLineCodes } from '@/lib/tax-line-codes';
@@ -50,6 +51,19 @@ export async function PUT(
     const warehouseName=body.warehouseName===undefined?snapshot.warehouseName:purchaseWarehouse(db,companyId,body.warehouseName);
 
 
+    // Own-funds / receipt fields: only the keys present in the body change, the rest keep their stored values.
+    const extraKeys = ['paidBy', 'paidByName', 'reimbursedAt', 'evidenceType', 'paymentMethod', 'cardLast4', 'cashRegisterNo', 'receiptNo', 'documentTime'];
+    const extras = extraKeys.some(k => body[k] !== undefined)
+      ? (() => {
+        const current = db.prepare(`SELECT ${extraKeys.join(',')} FROM Purchase WHERE id=? AND companyId=?`).get(id, companyId) as Record<string, unknown>;
+        const merged = { ...current, ...Object.fromEntries(extraKeys.filter(k => body[k] !== undefined).map(k => [k, body[k]])) };
+        const { values, errors } = normalizePurchaseExtras(merged);
+        if (Object.keys(errors).length) return NextResponse.json({ error: Object.values(errors)[0], fields: errors }, { status: 400 });
+        return values;
+      })()
+      : null;
+    if (extras instanceof NextResponse) return extras;
+
     let droppedTaxCodes: { itemName: string; taxCode: string }[] = [];
     const updateTx = db.transaction(() => {
       db.prepare(`
@@ -82,6 +96,7 @@ export async function PUT(
         companyId
       );
 
+      if (extras) writePurchaseExtras(db, companyId, id, extras);
       // Replace items
       const codesBefore = snapshotLineCodes(db, 'PURCHASE', id);
       db.prepare('DELETE FROM PurchaseItem WHERE purchaseId = ?').run(id);

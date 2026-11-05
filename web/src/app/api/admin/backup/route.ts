@@ -7,6 +7,7 @@ import { requireAdminApi, checkOrigin } from '@/lib/access';
 import { getDb } from '@/lib/db';
 import { apiError } from '@/lib/errors';
 import { runBackup, listR2Backups } from '@/lib/r2-backup';
+import { createDocumentsArchive, documentsRootFor } from '@/lib/document-files';
 
 // Whole-database snapshot for administrators.
 // - GET: Downloads consistent SQLite backup directly, or ?r2=1 / ?list=1 for Cloudflare R2 operations
@@ -45,7 +46,19 @@ export async function GET(request?: Request) {
       }
     }
 
-    // 3. Direct streaming download of SQLite snapshot
+    // 3. Download of the stored originals of purchase documents (tar.gz); the database snapshot does not contain them
+    if (url.searchParams.has('documents')) {
+      const archive = createDocumentsArchive(documentsRootFor(getDb().name));
+      if (!archive) return NextResponse.json({ error: 'Originalių dokumentų dar nėra' }, { status: 404 });
+      const stream = fs.createReadStream(archive);
+      stream.on('close', () => fs.rm(archive, { force: true }, () => {}));
+      const docsName = 'kontas-documents-' + new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15) + '.tar.gz';
+      return new NextResponse(Readable.toWeb(stream) as ReadableStream, {
+        headers: { 'Content-Type': 'application/gzip', 'Content-Length': String(fs.statSync(archive).size), 'Content-Disposition': `attachment; filename="${docsName}"`, 'Cache-Control': 'no-store' },
+      });
+    }
+
+    // 4. Direct streaming download of SQLite snapshot
     for (const entry of fs.readdirSync(os.tmpdir())) {
       if (!entry.startsWith('kontas-backup-')) continue;
       const stale = path.join(os.tmpdir(), entry);

@@ -31,20 +31,28 @@ export interface ImportPreview {
 
 const norm = (value: string) => value.replace(/\s+/g, '').toUpperCase();
 
-function matchSupplier(db: Database.Database, companyId: number, inv: UblInvoice) {
-  const { regNumber, vatCode } = inv.supplier;
+export interface PartyCodes { regNumber?: string | null; vatCode?: string | null }
+
+// Supplier lookup shared with the document recognition: company code first, then VAT code.
+export function findSupplierId(db: Database.Database, companyId: number, party: PartyCodes): number | null {
+  const regNumber = party.regNumber?.trim();
+  const vatCode = party.vatCode ? norm(party.vatCode) : '';
   const row = (regNumber && db.prepare('SELECT id FROM Client WHERE companyId=? AND code=?').get(companyId, regNumber))
-    || (vatCode && db.prepare('SELECT id FROM Client WHERE companyId=? AND UPPER(REPLACE(vatCode,\' \',\'\'))=?').get(companyId, vatCode));
+    || (vatCode && db.prepare("SELECT id FROM Client WHERE companyId=? AND UPPER(REPLACE(vatCode,' ',''))=?").get(companyId, vatCode));
   return row ? (row as { id: number }).id : null;
 }
 
-function buyerMatches(db: Database.Database, companyId: number, inv: UblInvoice): boolean | null {
+// Does the buyer on a document match our company? null = nothing to compare.
+export function buyerMatchesCompany(db: Database.Database, companyId: number, buyer: PartyCodes): boolean | null {
   const c = db.prepare('SELECT code, vatCode FROM Company WHERE id=?').get(companyId) as { code: string | null; vatCode: string | null };
   const checks: boolean[] = [];
-  if (c.vatCode && inv.buyer.vatCode) checks.push(norm(c.vatCode) === norm(inv.buyer.vatCode));
-  if (c.code && inv.buyer.regNumber) checks.push(norm(c.code) === norm(inv.buyer.regNumber));
+  if (c.vatCode && buyer.vatCode) checks.push(norm(c.vatCode) === norm(buyer.vatCode));
+  if (c.code && buyer.regNumber) checks.push(norm(c.code) === norm(buyer.regNumber));
   return checks.length ? checks.some(Boolean) : null;
 }
+
+const matchSupplier = (db: Database.Database, companyId: number, inv: UblInvoice) => findSupplierId(db, companyId, inv.supplier);
+const buyerMatches = (db: Database.Database, companyId: number, inv: UblInvoice) => buyerMatchesCompany(db, companyId, inv.buyer);
 
 const SUPPLIER_SQL = '(clientId=? OR (clientId IS NULL AND clientName=?))';
 const ORIGINAL_COLUMNS = 'id,number,series,purchaseDate,sumWithoutVat,vat,sumWithVat';

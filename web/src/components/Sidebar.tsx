@@ -37,6 +37,7 @@ const operationItems = [
   { name: 'nav.sales', href: '/invoices', icon: Receipt },
   { name: 'nav.recurring', href: '/recurring', icon: Receipt },
   { name: 'nav.purchases', href: '/purchases', icon: ShoppingCart },
+  { name: 'docs.navTitle', href: '/purchase-documents', icon: FileCheck2 },
   { name: 'nav.clients', href: '/clients', icon: Users },
   { name: 'nav.stock', href: '/stock', icon: Package },
   { name: 'nav.bank', href: '/bank', icon: Landmark },
@@ -73,6 +74,7 @@ export function Sidebar() {
   // Menu entries of optional add-ons; the list is empty unless an add-on is installed and visible to this user.
   const [profile, setProfile] = useState<{ name: string; email: string; role: string } | null>(null);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [awaitingDocuments, setAwaitingDocuments] = useState(0);
   const [extraItems, setExtraItems] = useState<{ name: string; href: string }[]>([]);
   const onLogin = pathname === '/login';
   useEffect(() => {
@@ -82,6 +84,12 @@ export function Sidebar() {
   useEffect(() => {
     if (pathname === '/login') return;
     fetch('/api/extensions/nav').then(r => r.ok ? r.json() : { items: [] }).then(d => setExtraItems(Array.isArray(d.items) ? d.items : [])).catch(() => setExtraItems([]));
+  }, [pathname]);
+
+  // Badge of received purchase documents that still wait for a person; refreshed on every navigation.
+  useEffect(() => {
+    if (pathname === '/login') return;
+    fetch('/api/purchase-documents/counts').then(r => r.ok ? r.json() : null).then(d => setAwaitingDocuments(d && Number.isFinite(d.awaiting) ? d.awaiting : 0)).catch(() => setAwaitingDocuments(0));
   }, [pathname]);
 
   // Do not render sidebar on login page
@@ -123,6 +131,9 @@ export function Sidebar() {
               <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
               <span className="truncate">{t(item.name)}</span>
             </div>
+            {item.href === '/purchase-documents' && awaitingDocuments > 0 && (
+              <span aria-label={t('docs.navBadge', { count: awaitingDocuments })} className="ml-2 min-w-5 rounded-full bg-amber-500 px-1.5 text-center text-[10px] font-bold leading-5 text-slate-950">{awaitingDocuments}</span>
+            )}
           </Link>
         );
       })}

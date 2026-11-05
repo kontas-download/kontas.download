@@ -461,7 +461,7 @@ export function CompaniesClient({ initialCompanies, activeCompanyId, isAdmin }: 
         </div>
       )}
       {controlCompany && <AccountingControlDialog company={controlCompany} onClose={() => setControlCompany(null)} />}
-      {smtpCompany && <CompanySmtpDialog company={smtpCompany} onClose={() => setSmtpCompany(null)} />}
+      {smtpCompany && <CompanySmtpDialog company={smtpCompany} isActive={smtpCompany.id === activeId} onClose={() => setSmtpCompany(null)} />}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-800">

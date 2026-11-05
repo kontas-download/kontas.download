@@ -6,6 +6,23 @@
 
 Pagrindinė dokumentacijos kalba – lietuvių. Jei lietuviškas ir angliškas tekstai skiriasi, viršesnis lietuviškas.
 
+### 0.5.2 – gauti dokumentai, atpažinimas, priėmimas el. paštu
+
+Archyvas: `kontas-download-0.5.2.zip`, šalia – kontrolinės sumos failas `kontas-download-0.5.2.zip.sha256`. Atnaujinti iš 0.4.0, 0.5.0 ar 0.5.1: `update.ps1` / `update.sh`.
+
+- Skyrius „Gauti dokumentai“: pirkimų dokumentų (nuotraukų ir PDF) atpažinimas įmonės pačios prisijungimo raktu – raktas laikomas tik jūsų įmonės nustatymuose. Atpažintas juodraštis peržiūrimas formoje šalia originalo ir tik jūsų patvirtinus tampa pirkimo įrašu.
+- Rankinis duomenų įvedimas be atpažinimo: dokumentą galima užpildyti ranka, o originalas lieka matomas šalia.
+- Kasos kvitai: kvito numeris ir kasos aparato duomenys, kvitui rodoma 0 % PVM atskaita.
+- Apmokėjimas: nurodoma, kas sumokėjo – įmonė ar asmuo; asmens sumokėtos išlaidos kaupiamos ir atlyginamos atskirai.
+- Originalai įtraukiami į atsargines kopijas, nuotolinę saugyklą ir įmonės duomenų eksportą.
+- Pagalbos puslapis apie dokumentų atpažinimą ir dalinimasis nuotrauka iš telefono (programa įdiegiama kaip PWA).
+- Priėmimas iš pašto dėžutės (IMAP): dokumentai, atsiųsti į atskirą paštą, patenka į „Gautus dokumentus“ be jokių DNS pakeitimų.
+
+Kontrolinė suma:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.2.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.2.zip.sha256).Split(' ')[0]` – turi būti `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.2.zip.sha256` – turi būti `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.2.zip.sha256` – turi būti `OK`.
+
 ### 0.5.1 – automatizavimas, el. paštas korespondencijai, apžvalgos laikotarpiai
 
 Archyvas: `kontas-download-0.5.1.zip`, šalia – kontrolinės sumos failas `kontas-download-0.5.1.zip.sha256`. Atnaujinti iš 0.4.0 ar 0.5.0: `update.ps1` / `update.sh`.
@@ -164,6 +181,23 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 
 Основной язык документации – литовский; при расхождении текстов приоритет у литовского.
 
+### 0.5.2 – входящие документы, распознавание, приём по e-mail
+
+Архив: `kontas-download-0.5.2.zip`, рядом – файл контрольной суммы `kontas-download-0.5.2.zip.sha256`. Обновление с 0.4.0, 0.5.0 или 0.5.1: `update.ps1` / `update.sh`.
+
+- Раздел «Входящие документы»: распознавание документов закупок (фото и PDF) с помощью собственного ключа компании – ключ хранится только в настройках вашей компании. Распознанный черновик проверяется в форме рядом с оригиналом и становится записью закупки только после вашего подтверждения.
+- Ручной ввод без распознавания: документ можно заполнить вручную, оригинал остаётся рядом.
+- Кассовые чеки: номер чека и данные кассового аппарата, для чека показывается вычет PVM 0 %.
+- Оплата: указывается, кто заплатил – компания или физическое лицо; расходы, оплаченные лицом, учитываются и возмещаются отдельно.
+- Оригиналы включаются в резервные копии, удалённое хранилище и экспорт данных компании.
+- Страница помощи по распознаванию документов и отправка фото с телефона (приложение устанавливается как PWA).
+- Приём из почтового ящика (IMAP): документы, присланные на отдельную почту, попадают во «Входящие документы» без изменений DNS.
+
+Контрольная сумма:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.2.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.2.zip.sha256).Split(' ')[0]` – должно быть `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.2.zip.sha256` – должно быть `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.2.zip.sha256` – должно быть `OK`.
+
 ### 0.5.1 – автоматизация, e-mail для корреспонденции, периоды на главной
 
 Архив: `kontas-download-0.5.1.zip`, рядом – файл контрольной суммы `kontas-download-0.5.1.zip.sha256`. Обновление с 0.4.0 или 0.5.0: `update.ps1` / `update.sh`.
@@ -321,6 +355,23 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 ## English
 
 The main documentation language is Lithuanian; if the texts differ, the Lithuanian one prevails.
+
+### 0.5.2 – received documents, recognition, intake by e-mail
+
+Archive: `kontas-download-0.5.2.zip`, with the checksum file `kontas-download-0.5.2.zip.sha256` next to it. Updating from 0.4.0, 0.5.0 or 0.5.1: `update.ps1` / `update.sh`.
+
+- "Received documents" section: purchase documents (photos and PDFs) are recognised with the company's own access key, which is stored only in your company's settings. The recognised draft is reviewed in a form next to the original and becomes a purchase record only after you confirm it.
+- Manual entry without recognition: a document can be filled in by hand, with the original still visible next to it.
+- Cash register receipts: receipt number and cash register details; a receipt shows a 0 % VAT deduction.
+- Payment: who paid is recorded – the company or a person; expenses paid by a person are tracked and reimbursed separately.
+- Originals are included in backups, remote storage and the company data export.
+- A help page about document recognition and sharing a photo from a phone (the app installs as a PWA).
+- Mailbox intake (IMAP): documents sent to a dedicated mailbox land in "Received documents" without any DNS changes.
+
+Checksum:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.2.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.2.zip.sha256).Split(' ')[0]` – must be `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.2.zip.sha256` – must be `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.2.zip.sha256` – must be `OK`.
 
 ### 0.5.1 – automation, correspondence e-mail, overview periods
 

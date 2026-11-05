@@ -5,6 +5,7 @@ export const purchasePages: HelpPage[] = [
     slug: 'purchases',
     group: 'operations',
     appHref: '/purchases',
+    related: ['document-recognition'],
     sources: ['lt-vat-law', 'lt-gov-780', 'lt-financial-accounting-law', 'eu-vat-directive'],
     text: {
       lt: {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/lib/i18n/client';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
@@ -13,6 +13,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shared, setShared] = useState(false);
+  // Set by the share target when the phone share arrived without a session.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reads the query string after hydration
+  useEffect(() => { setShared(new URLSearchParams(window.location.search).get('shared') === '1'); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +57,8 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-white tracking-tight">kontas.download</h1>
           <p className="text-sm text-slate-400">{t('login.subtitle')}</p>
         </div>
+
+        {shared && <p role="status" className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-200">{t('login.shareNotice')}</p>}
 
         {/* Error Alert */}
         {error && (

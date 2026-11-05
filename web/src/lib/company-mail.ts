@@ -8,11 +8,17 @@ function key() {
   if(!value || !/^[a-f0-9]{64}$/i.test(value)) throw new HttpError(503,'Norėdami išsaugoti SMTP, nustatykite serverio SMTP_ENCRYPTION_KEY (64 hex simboliai).');
   return Buffer.from(value,'hex');
 }
-function encrypt(password:string,companyId:number) {
+export function encryptSecret(password:string,companyId:number) {
   const iv=randomBytes(12),cipher=createCipheriv('aes-256-gcm',key(),iv);
   cipher.setAAD(Buffer.from(String(companyId)));
   const encrypted=Buffer.concat([cipher.update(password,'utf8'),cipher.final()]);
   return [iv,cipher.getAuthTag(),encrypted].map(b=>b.toString('base64')).join('.');
+}
+// Shared by every per-company secret (SMTP password, recognition API key): same key source, AAD bound to the company.
+export function decryptSecret(encrypted:string,companyId:number,failure='Nepavyko nuskaityti išsaugotos paslapties. Patikrinkite šifravimo raktą.') {
+  if(!encrypted)return '';
+  try {const [iv,tag,data]=encrypted.split('.').map(s=>Buffer.from(s,'base64'));const cipher=createDecipheriv('aes-256-gcm',key(),iv);cipher.setAAD(Buffer.from(String(companyId)));cipher.setAuthTag(tag);return Buffer.concat([cipher.update(data),cipher.final()]).toString('utf8');}
+  catch {throw new HttpError(503,failure);}
 }
 export function decryptPassword(settings:MailSettings) {
   if(!settings.passwordEncrypted)return '';
@@ -29,7 +35,7 @@ export function saveMailSettings(companyId:number,body:Record<string,unknown>) {
   const {host,port,secure,sender,username,password,enabled,clearPassword}=body;
   if(typeof host!=='string'||!host.trim()||host.length>253||/[\s/@?#]/.test(host)||!Number.isInteger(port)||Number(port)<1||Number(port)>65535||typeof secure!=='boolean'||!validEmail(sender)||typeof username!=='string'||username.length>254||/[\r\n]/.test(username)||typeof enabled!=='boolean'||(password!==undefined&&(typeof password!=='string'||password.length>4096))||(clearPassword!==undefined&&typeof clearPassword!=='boolean'))throw new HttpError(400,'Patikrinkite SMTP serverį, prievadą, adresą ir prisijungimo duomenis.');
   const previous=companyMail(companyId);
-  const secret=clearPassword?'':typeof password==='string'&&password?encrypt(password,companyId):previous?.passwordEncrypted||'';
+  const secret=clearPassword?'':typeof password==='string'&&password?encryptSecret(password,companyId):previous?.passwordEncrypted||'';
   if(enabled && Boolean(username)!==Boolean(secret))throw new HttpError(400,'Nurodykite SMTP naudotojo vardą ir slaptažodį kartu.');
   if(enabled && previous?.username!==undefined && previous.username!==username && secret && !password)throw new HttpError(400,'Keičiant naudotojo vardą įveskite naują slaptažodį.');
   getDb().prepare('INSERT INTO CompanyMailSettings(companyId,host,port,secure,sender,username,passwordEncrypted,enabled) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(companyId) DO UPDATE SET host=excluded.host,port=excluded.port,secure=excluded.secure,sender=excluded.sender,username=excluded.username,passwordEncrypted=excluded.passwordEncrypted,enabled=excluded.enabled').run(companyId,host.trim(),port,Number(secure),sender,username,secret,Number(enabled));

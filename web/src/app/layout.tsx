@@ -30,7 +30,7 @@ export default async function RootLayout({
         <I18nProvider lang={lang}>
           <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-emerald-600 focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-white no-print">{t('common.skipToContent')}</a>
           <Sidebar />
-          <main id="main" className="flex-1 overflow-y-auto bg-slate-950 min-h-screen">
+          <main id="main" className="min-w-0 flex-1 overflow-x-clip bg-slate-950 min-h-screen">
             {children}
           </main>
           <Toaster />

@@ -3,13 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
 import { codesFor } from './tax-codes';
+import { documentsRootFor } from './document-files';
 
 // Company export package: one JSON file with everything that belongs to one company, so it can be restored as a NEW company.
-// Deliberately excluded: SMTP settings (CompanyMailSettings, encrypted passwords), users, sessions, login attempts,
+// Deliberately excluded: SMTP settings (CompanyMailSettings, encrypted passwords), the document mailbox settings (CompanyDocumentInbox, same rule), users, sessions, login attempts,
 // the PDF invoice archive and supplier XML originals (evidence stays in the source database and its backups).
+// Included: the purchase document originals (PurchaseDocument rows and the files themselves, base64 under data.documentFiles).
 export const PACKAGE_FORMAT = 'kontas-company';
 export const PACKAGE_VERSION = 1;
-export const MAX_PACKAGE_BYTES = 50 * 1024 * 1024;
+export const MAX_PACKAGE_BYTES = 120 * 1024 * 1024;
 const MAX_ROWS = 500_000;
 const MAX_TEXT = 1_000_000;
 
@@ -28,7 +30,9 @@ export const TABLES: Record<string, Spec & { table: string; where: string; order
   stockItems: { table: 'StockItem', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,name,code,barcode,warehouseName,stock:n,remainder:n,price:n,cost:n,purchaseDate,clientName') },
   sales: { table: 'Sale', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,series,number,saleDate,payUntil,statusName,warehouseName,clientId:i,clientName,clientCode,clientVatCode,sumWithoutVat:n,vat:n,sumWithVat:n,currencyCode,operationTypeName,notes,createdAt,sellerIsVatPayer:i,sellerVatMode,docType,originalSaleId:i,correctionReason') },
   saleItems: { table: 'SaleItem', where: 'saleId IN (SELECT id FROM Sale WHERE companyId=?)', order: 'id', columns: t('id:i,saleId:i,itemName,itemCode,quantity:n,price:n,priceWithVat:n,vatRate:n,sumWithoutVat:n,sumWithVat:n,warehouseName') },
-  purchases: { table: 'Purchase', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,series,number,purchaseDate,clientId:i,clientName,clientCode,sumWithoutVat:n,vat:n,sumWithVat:n,currencyCode,notes,createdAt,buyerVatMode,deductionPercent:n,deductibleVat:n,debitAccount,warehouseName,docType,originalPurchaseId:i,correctionReason') },
+  purchases: { table: 'Purchase', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,series,number,purchaseDate,clientId:i,clientName,clientCode,sumWithoutVat:n,vat:n,sumWithVat:n,currencyCode,notes,createdAt,buyerVatMode,deductionPercent:n,deductibleVat:n,debitAccount,warehouseName,docType,originalPurchaseId:i,correctionReason,paidBy,paidByName,reimbursedAt,evidenceType,paymentMethod,cardLast4,cashRegisterNo,receiptNo,documentTime') },
+  // Originals of purchase documents (the files travel in data.documentFiles); confirmedBy is not exported (users are not in the package).
+  purchaseDocuments: { table: 'PurchaseDocument', where: 'companyId=?', order: 'id', columns: t('purchaseId:i,fileName,mimeType,size:i,sha256,storagePath,source,sender,receivedAt,status,extractedJson,error,model,createdAt,confirmedAt') },
   purchaseItems: { table: 'PurchaseItem', where: 'purchaseId IN (SELECT id FROM Purchase WHERE companyId=?)', order: 'id', columns: t('id:i,purchaseId:i,itemName,itemCode,quantity:n,price:n,sumWithoutVat:n,sumWithVat:n,vatRate:n') },
   bankTransactions: { table: 'BankTransaction', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,date,number,clientName,clientCode,sum:n,correspondenceAccountCode,accountingBankInternalName,notes,importHash,importBatch') },
   paymentAllocations: { table: 'PaymentAllocation', where: 'companyId=?', order: 'id', columns: t('id:i,bankTransactionId:i,saleId:i,purchaseId:i,amount:n,createdAt:i') },
@@ -74,7 +78,9 @@ export const TABLES: Record<string, Spec & { table: string; where: string; order
 };
 
 type Row = Record<string, unknown>;
-export interface PackageData { company: Row; accountingLock: { lockedThrough: string | null; reason: string } | null; [table: string]: unknown }
+export interface DocumentFile { sha256: string; data: string }
+export interface PackageData { company: Row; accountingLock: { lockedThrough: string | null; reason: string } | null; documentFiles?: DocumentFile[]; [table: string]: unknown }
+const STORAGE_PATH = /^\d+\/\d{4}\/([0-9a-f]{64})\.(pdf|jpg|png|webp)$/;
 export interface CompanyPackage { format: string; version: number; exportedAt: string; appVersion: string; checksum: string; data: PackageData }
 
 // Keys sorted at every level; arrays keep their order. The checksum is the SHA-256 of this text.
@@ -98,6 +104,18 @@ export function exportCompany(db: Database.Database, companyId: number): Company
       const sql = `SELECT ${Object.keys(spec.columns).map(c => '"' + c + '"').join(',')} FROM ${spec.table} WHERE ${spec.where} ORDER BY ${spec.order}`;
       data[key] = spec.where.includes('?') ? db.prepare(sql).all(companyId) : db.prepare(sql).all();
     }
+    // Files of the exported documents, one entry per distinct hash; a row whose file is missing on disk is exported without it.
+    const root = documentsRootFor(db.name);
+    const files = new Map<string, string>();
+    for (const row of data.purchaseDocuments as Row[]) {
+      const sha = String(row.sha256), rel = String(row.storagePath);
+      if (files.has(sha) || !STORAGE_PATH.test(rel)) continue;
+      const full = path.resolve(root, rel);
+      if (!full.startsWith(path.resolve(root) + path.sep) || !fs.existsSync(full)) continue;
+      const bytes = fs.readFileSync(full);
+      if (crypto.createHash('sha256').update(bytes).digest('hex') === sha) files.set(sha, bytes.toString('base64'));
+    }
+    data.documentFiles = [...files].map(([sha256, content]) => ({ sha256, data: content }));
     return data;
   };
   // A read transaction gives one consistent snapshot even while others write.
@@ -141,13 +159,23 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
   if (!data || typeof data !== 'object' || Array.isArray(data)) { problems.push(problem('badFormat', 'Pakete nėra duomenų')); return result(); }
   if (typeof pkg.checksum !== 'string' || pkg.checksum !== packageChecksum(data)) { problems.push(problem('badChecksum', 'Kontrolinė suma nesutampa: failas pažeistas (kontrolinė suma saugo nuo failo gedimo, o ne nuo tyčinio klastojimo)')); return result(); }
 
-  for (const key of Object.keys(data)) if (key !== 'company' && key !== 'accountingLock' && !Object.hasOwn(TABLES, key)) problems.push(problem('unknownTable', `Nežinomas skyrius ${key}`, { table: key }));
+  for (const key of Object.keys(data)) if (key !== 'company' && key !== 'accountingLock' && key !== 'documentFiles' && !Object.hasOwn(TABLES, key)) problems.push(problem('unknownTable', `Nežinomas skyrius ${key}`, { table: key }));
   const company = data.company;
   if (!company || typeof company !== 'object' || Array.isArray(company)) problems.push(problem('badFormat', 'Pakete nėra įmonės'));
   else checkRows('company', [company], COMPANY_COLUMNS, problems);
   const lock = data.accountingLock;
   if (lock !== null && lock !== undefined && (typeof lock !== 'object' || (lock.lockedThrough !== null && typeof lock.lockedThrough !== 'string') || typeof lock.reason !== 'string')) problems.push(problem('badValue', 'accountingLock: neteisinga reikšmė', { table: 'accountingLock', index: 0, field: 'lockedThrough' }));
   if (lock && typeof lock === 'object' && typeof lock.lockedThrough === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(lock.lockedThrough)) problems.push(problem('badValue', 'accountingLock: neteisinga data', { table: 'accountingLock', index: 0, field: 'lockedThrough' }));
+  // Document files: every entry must be base64 whose SHA-256 equals the stated hash (the originals are evidence and must not change).
+  const documentFiles = new Map<string, Buffer>();
+  const filesField = data.documentFiles ?? [];
+  if (!Array.isArray(filesField)) problems.push(problem('badTable', 'Skyrius documentFiles turi būti masyvas', { table: 'documentFiles' }));
+  else filesField.forEach((f, index) => {
+    const ok = f && typeof f === 'object' && typeof f.sha256 === 'string' && /^[0-9a-f]{64}$/.test(f.sha256) && typeof f.data === 'string';
+    const bytes = ok ? Buffer.from(f.data, 'base64') : null;
+    if (!bytes || crypto.createHash('sha256').update(bytes).digest('hex') !== f.sha256) problems.push(problem('badDocumentFile', `documentFiles[${index}]: failas pažeistas arba kontrolinė suma nesutampa`, { table: 'documentFiles', index }));
+    else documentFiles.set(f.sha256, bytes);
+  });
   const rows: Record<string, Row[]> = {};
   for (const [key, spec] of Object.entries(TABLES)) rows[key] = checkRows(key, data[key] ?? [], spec.columns, problems);
   if (problems.length) return result();
@@ -176,6 +204,14 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
   });
   rows.inventoryLayers.forEach((r, i) => { if (!stockIds.has(r.stockItemId as number)) broken('inventoryLayers', i, 'stockItemId'); if (!movementIds.has(r.movementId as number)) broken('inventoryLayers', i, 'movementId'); });
   for (const key of ['fixedAssetPostings', 'fixedAssetChanges']) rows[key].forEach((r, i) => { if (!assetIds.has(r.assetId as number)) broken(key, i, 'assetId'); });
+  const seenDocuments = new Set<string>();
+  rows.purchaseDocuments.forEach((r, i) => {
+    const match = typeof r.storagePath === 'string' ? STORAGE_PATH.exec(r.storagePath) : null;
+    if (!match || match[1] !== r.sha256) problems.push(problem('badValue', `purchaseDocuments[${i}].storagePath: neteisingas failo kelias`, { table: 'purchaseDocuments', index: i, field: 'storagePath' }));
+    if (r.purchaseId != null && !purchaseIds.has(r.purchaseId as number)) broken('purchaseDocuments', i, 'purchaseId');
+    if (seenDocuments.has(String(r.sha256))) problems.push(problem('duplicateId', `purchaseDocuments[${i}]: dokumentas pakete kartojasi`, { table: 'purchaseDocuments', index: i, field: 'sha256' }));
+    seenDocuments.add(String(r.sha256));
+  });
   rows.saleItems.forEach((r, i) => { if (!saleIds.has(r.saleId as number)) broken('saleItems', i, 'saleId'); });
   rows.purchaseItems.forEach((r, i) => { if (!purchaseIds.has(r.purchaseId as number)) broken('purchaseItems', i, 'purchaseId'); });
   rows.payrollEmployees.forEach((r, i) => { if (!payrollIds.has(r.payrollId as number)) broken('payrollEmployees', i, 'payrollId'); });
@@ -210,6 +246,7 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
 
   const counts: Record<string, number> = Object.fromEntries(Object.entries(rows).map(([k, v]) => [k, v.length]));
   let companyId = 0, accountsAdded = 0;
+  const writtenFiles: string[] = [];
   try {
     db.transaction(() => {
       const auditStart = (db.prepare('SELECT COALESCE(MAX(id),0) AS id FROM AccountingAudit').get() as { id: number }).id;
@@ -270,6 +307,22 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
       for (const r of rows.sales.filter(isCredit)) map.sale.set(r.id, insert('Sale', { ...pick(r, ['id']), externalId: null, clientId: client(r.clientId), originalSaleId: r.originalSaleId == null ? null : map.sale.get(r.originalSaleId), companyId }));
       for (const r of rows.purchases.filter(isCredit)) map.purchase.set(r.id, insert('Purchase', { ...pick(r, ['id']), externalId: null, clientId: client(r.clientId), originalPurchaseId: r.originalPurchaseId == null ? null : map.purchase.get(r.originalPurchaseId), companyId }));
       for (const r of rows.saleItems) map.saleItem.set(r.id, insert('SaleItem', { ...pick(r, ['id']), saleId: map.sale.get(r.saleId) }));
+      // Originals: rows are restored under the NEW company id (the files live in <companyId>/<year>/<sha256>.<ext>); the bytes are written
+      // after the rows, only on a real import, and a file that is already stored is verified, never overwritten.
+      const companyRoot = path.resolve(documentsRootFor(db.name));
+      let documentsWithoutFile = 0;
+      for (const r of rows.purchaseDocuments) {
+        const storagePath = String(r.storagePath).replace(/^\d+\//, `${companyId}/`);
+        insert('PurchaseDocument', { ...r, companyId, storagePath, purchaseId: r.purchaseId == null ? null : map.purchase.get(r.purchaseId) ?? null, confirmedBy: null });
+        const bytes = documentFiles.get(String(r.sha256));
+        if (!bytes) { documentsWithoutFile++; continue; }
+        if (!options.commit) continue;
+        const full = path.resolve(companyRoot, storagePath);
+        if (!full.startsWith(companyRoot + path.sep)) throw new Error('DOCUMENT_PATH');
+        fs.mkdirSync(path.dirname(full), { recursive: true });
+        try { fs.writeFileSync(full, bytes, { flag: 'wx' }); writtenFiles.push(full); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
+      }
+      if (documentsWithoutFile) warnings.push(problem('documentFilesMissing', `${documentsWithoutFile} dokumentų originalų failų pakete nėra: įrašai perkelti be failų`, { count: documentsWithoutFile }));
       for (const r of rows.purchaseItems) map.purchaseItem.set(r.id, insert('PurchaseItem', { ...pick(r, ['id']), purchaseId: map.purchase.get(r.purchaseId) }));
       // Inventory goes in after the documents: posted documents are locked against new lines once their movements exist. Users are not
       // part of the package, so the actor columns are cleared. The ledger rows posted by the triggers are replaced with the source journal below.
@@ -333,6 +386,8 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
       if (!options.commit) throw new Rollback();
     }).immediate();
   } catch (error) {
+    // A failed import leaves no orphan originals behind.
+    for (const file of writtenFiles) fs.rmSync(file, { force: true });
     if (!(error instanceof Rollback)) {
       problems.push(problem('database', 'Duomenų bazė atmetė importą: ' + (error instanceof Error ? error.message : String(error)), { detail: error instanceof Error ? error.message : String(error) }));
       return result({ companyName: newName, counts });

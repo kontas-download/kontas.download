@@ -7,6 +7,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
 import { getDb } from '@/lib/db';
+import { documentsRootFor, listDocumentFiles } from '@/lib/document-files';
 
 const R2_BRIDGE_URL = process.env.R2_BRIDGE_URL || '';
 
@@ -39,6 +40,8 @@ export interface BackupManifest {
     size: number;
     latest: string;
   } | null;
+  // Originals of purchase documents: write-once files, only the ones missing in the bucket are uploaded.
+  documents?: { total: number; uploaded: number; alreadyStored: number; failed: number; prefix: string };
   storage: string;
   bucket: string;
 }
@@ -145,6 +148,28 @@ export function createFilesArchive(): Buffer | null {
   return null;
 }
 
+// Uploads the original files of purchase documents to backups/documents/<storagePath>. The names are content hashes and the files
+// never change, so a key that already exists with the same size is skipped. A failed file is counted and retried by the next backup.
+export async function backupDocuments(): Promise<NonNullable<BackupManifest['documents']>> {
+  const prefix = 'backups/documents/';
+  const files = listDocumentFiles(documentsRootFor(getDb().name));
+  const existing = new Map((await listR2Backups(prefix)).map(o => [o.key, o.size]));
+  const root = documentsRootFor(getDb().name);
+  let uploaded = 0, alreadyStored = 0, failed = 0;
+  for (const file of files) {
+    const key = prefix + file.rel;
+    if (existing.get(key) === file.size) { alreadyStored++; continue; }
+    try {
+      await uploadToR2(key, fs.readFileSync(path.join(root, file.rel)));
+      uploaded++;
+    } catch (error) {
+      failed++;
+      console.error('Document backup failed', file.rel, error);
+    }
+  }
+  return { total: files.length, uploaded, alreadyStored, failed, prefix };
+}
+
 export async function runBackup(label = 'manual'): Promise<BackupManifest> {
   const now = new Date();
   const dateStr = now.toISOString().slice(0, 10);
@@ -184,7 +209,10 @@ export async function runBackup(label = 'manual'): Promise<BackupManifest> {
     await uploadToR2(`backups/files/latest.tar.gz`, filesBuffer, 'application/gzip');
   }
 
-  // 4. Manifest
+  // 4. Originals of purchase documents (not part of the database file)
+  const documents = await backupDocuments();
+
+  // 5. Manifest
   const companyCount = (db.prepare('SELECT COUNT(*) as n FROM Company').get() as { n: number }).n;
   const salesCount = (db.prepare('SELECT COUNT(*) as n FROM Sale').get() as { n: number }).n;
   const purchasesCount = (db.prepare('SELECT COUNT(*) as n FROM Purchase').get() as { n: number }).n;
@@ -211,6 +239,7 @@ export async function runBackup(label = 'manual'): Promise<BackupManifest> {
       size: filesBuffer!.length,
       latest: `/storage/backups/files/latest.tar.gz`,
     } : null,
+    documents,
     storage: 'cloudflare-r2',
     bucket: 'kontas-storage',
   };

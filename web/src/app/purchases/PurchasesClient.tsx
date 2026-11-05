@@ -22,6 +22,10 @@ import { useI18n } from '@/lib/i18n/client';
 import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
 import { askConfirm } from '@/components/ConfirmHost';
+import Link from 'next/link';
+
+// Own-funds payment, evidence type and cash receipt fields of a purchase (empty string = not set).
+const EMPTY_EXTRAS = { paidBy: '', paidByName: '', reimbursedAt: '', evidenceType: '', paymentMethod: '', cardLast4: '', cashRegisterNo: '', receiptNo: '', documentTime: '' };
 
 export function PurchasesClient({ 
   initialPurchases,
@@ -83,6 +87,7 @@ export function PurchasesClient({
     deductionPercent: companyMode==='STANDARD_VAT'?100:0,
     debitAccount: '',
     warehouseName: 'Pagrindinis',
+    ...EMPTY_EXTRAS,
     // Default line rate here and in the new/added rows below: a form suggestion, not a legal parameter (the stored rate is
     // classified for i.SAF and FR0600 through the rules registry, lib/rules).
     items: [
@@ -187,6 +192,7 @@ export function PurchasesClient({
       deductionPercent: companyMode==='STANDARD_VAT'?100:0,
     debitAccount: '',
       warehouseName: 'Pagrindinis',
+      ...EMPTY_EXTRAS,
       items: [
         { itemName: t('purchases.defaultItem'), itemCode: '', quantity: 1, price: 50, vatRate: 21 }
       ]
@@ -207,6 +213,8 @@ export function PurchasesClient({
       deductionPercent: p.deductionPercent ?? ((p.buyerVatMode || companyMode)==='STANDARD_VAT'?100:0),
       debitAccount: p.debitAccount || '',
       warehouseName: p.warehouseName || 'Pagrindinis',
+      paidBy: p.paidBy || '', paidByName: p.paidByName || '', reimbursedAt: p.reimbursedAt || '', evidenceType: p.evidenceType || '', paymentMethod: p.paymentMethod || '',
+      cardLast4: p.cardLast4 || '', cashRegisterNo: p.cashRegisterNo || '', receiptNo: p.receiptNo || '', documentTime: p.documentTime || '',
       items: (itemsMap[p.id] || []).map(it=>({...it,vatRate:it.vatRate ?? (it.sumWithoutVat ? Math.round((it.sumWithVat/it.sumWithoutVat-1)*10000)/100 : 0)}))
     });
     setErrorMsg('');
@@ -262,7 +270,7 @@ export function PurchasesClient({
         const res = await fetch('/api/purchases', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...formData, companyId })
+          body: JSON.stringify({ ...formData, ...Object.fromEntries(Object.keys(EMPTY_EXTRAS).map(k => [k, undefined])), companyId })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || t('purchases.errCreate'));
@@ -315,6 +323,11 @@ export function PurchasesClient({
           <Plus className="w-4 h-4" />
           <span>{t('purchases.addNew')}</span>
         </button>
+      </div>
+
+      <div className="flex flex-wrap gap-4 text-sm font-semibold">
+        <Link href="/purchase-documents" className="text-emerald-300 underline">{t('docs.receivedDocumentsLink')}</Link>
+        <Link href="/purchases/reimbursements" className="text-emerald-300 underline">{t('docs.reimbursementsLink')}</Link>
       </div>
 
       <PurchaseXmlImport companyId={companyId} warehouses={warehouses} />
@@ -491,6 +504,8 @@ export function PurchasesClient({
                     {p.clientCode && (
                       <div className="text-[10px] text-slate-400 font-mono">{t('purchases.codeLabel', { code: p.clientCode })}</div>
                     )}
+                    {p.paidBy === 'PERSON' && <div className={`text-[10px] font-sans ${p.reimbursedAt ? 'text-emerald-400' : 'text-amber-300'}`}>{p.reimbursedAt ? t('docs.reimbursedOn', { name: p.paidByName, date: p.reimbursedAt }) : t('docs.paidByPersonOwed', { name: p.paidByName })}</div>}
+                    {p.evidenceType === 'RECEIPT' && <div className="text-[10px] text-slate-400 font-sans">{t('docs.evidenceReceipt')}</div>}
                   </td>
                   <td className="py-2.5 px-3 text-right text-slate-300">
                     €{Number(p.sumWithoutVat || 0).toFixed(2)}
@@ -503,6 +518,7 @@ export function PurchasesClient({
                   </td>
                   <td className="py-2.5 px-3 text-center">
                     <div className="flex items-center justify-center gap-1">
+                      {p.documentId && <a href={`/api/purchase-documents/${p.documentId}/file`} target="_blank" rel="noreferrer" className="px-1.5 py-0.5 hover:bg-slate-800 rounded text-[10px] font-bold text-sky-300" title={t('docs.openOriginal')}>{t('docs.originalShort')}</a>}
                       {p.docType !== 'KS' && (
                         <button
                           onClick={() => setCreditPurchase(p)}
@@ -736,6 +752,31 @@ export function PurchasesClient({
                 <label className="block text-xs text-slate-300">{t('purchases.deductionPercent')}<input type="number" min="0" max="100" step="0.01" value={formData.deductionPercent} disabled={(editingPurchase?.buyerVatMode || companyMode)!=='STANDARD_VAT'} onChange={e=>setFormData({...formData,deductionPercent:Number(e.target.value)})} className="block bg-slate-900 border border-slate-700 rounded p-2"/><span className="text-slate-400">{t('purchases.deductionHint')}</span></label>
                 <label className="block text-xs text-slate-300">{t('purchases.debitAccount')}<select value={formData.debitAccount} onChange={e=>setFormData({...formData,debitAccount:e.target.value})} className="block bg-slate-900 border border-slate-700 rounded p-2 max-w-full"><option value="">{t('purchases.defaultAccount')}</option>{accounts.map(a=><option key={a.code} value={a.code}>{a.code} — {a.name}</option>)}</select><span className="text-slate-400">{t('purchases.debitHint')}</span></label>
                 {warehouses.length > 0 && <label className="block text-xs text-slate-300">{t('purchases.warehouse')}<select value={formData.warehouseName} onChange={e=>setFormData({...formData,warehouseName:e.target.value})} className="block bg-slate-900 border border-slate-700 rounded p-2 max-w-full"><option value="Pagrindinis">Pagrindinis</option>{warehouses.filter(w=>w!=='Pagrindinis').map(w=><option key={w} value={w}>{w}</option>)}</select><span className="text-slate-400">{t('purchases.warehouseHint')}</span></label>}
+                {editingPurchase && (
+                  <fieldset className="rounded-xl border border-slate-800 p-3 space-y-3">
+                    <legend className="px-1 text-xs font-bold text-slate-300">{t('docs.extrasTitle')}</legend>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <label className="block text-xs text-slate-300">{t('docs.evidenceType')}
+                        <select value={formData.evidenceType} onChange={e => setFormData({ ...formData, evidenceType: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2"><option value="">—</option><option value="INVOICE">{t('docs.evidenceInvoice')}</option><option value="RECEIPT">{t('docs.evidenceReceipt')}</option></select>
+                      </label>
+                      <label className="block text-xs text-slate-300">{t('docs.paymentMethod')}
+                        <select value={formData.paymentMethod} onChange={e => setFormData({ ...formData, paymentMethod: e.target.value, cardLast4: e.target.value === 'CARD' ? formData.cardLast4 : '' })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2"><option value="">—</option>{['CARD', 'CASH', 'TRANSFER', 'OTHER'].map(m => <option key={m} value={m}>{t(`docs.pay_${m}`)}</option>)}</select>
+                      </label>
+                      <label className="block text-xs text-slate-300">{t('docs.cardLast4')}<input value={formData.cardLast4} maxLength={4} disabled={formData.paymentMethod !== 'CARD'} onChange={e => setFormData({ ...formData, cardLast4: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2 disabled:opacity-40" /></label>
+                      <label className="block text-xs text-slate-300">{t('docs.cashRegisterNo')}<input value={formData.cashRegisterNo} onChange={e => setFormData({ ...formData, cashRegisterNo: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2" /></label>
+                      <label className="block text-xs text-slate-300">{t('docs.receiptNo')}<input value={formData.receiptNo} onChange={e => setFormData({ ...formData, receiptNo: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2" /></label>
+                      <label className="block text-xs text-slate-300">{t('docs.time')}<input value={formData.documentTime} placeholder="HH:MM" onChange={e => setFormData({ ...formData, documentTime: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2" /></label>
+                      <label className="block text-xs text-slate-300">{t('docs.paidBy')}
+                        <select value={formData.paidBy} onChange={e => setFormData({ ...formData, paidBy: e.target.value, ...(e.target.value === 'PERSON' ? {} : { paidByName: '', reimbursedAt: '' }) })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2"><option value="">—</option><option value="COMPANY">{t('docs.paidByCompany')}</option><option value="PERSON">{t('docs.paidByPerson')}</option></select>
+                      </label>
+                      {formData.paidBy === 'PERSON' && <>
+                        <label className="block text-xs text-slate-300">{t('docs.paidByName')}<input value={formData.paidByName} onChange={e => setFormData({ ...formData, paidByName: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2" /></label>
+                        <label className="block text-xs text-slate-300">{t('docs.reimbursedAt')}<input type="date" value={formData.reimbursedAt} onChange={e => setFormData({ ...formData, reimbursedAt: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2" /></label>
+                      </>}
+                    </div>
+                    {editingPurchase.documentId && <a href={`/api/purchase-documents/${editingPurchase.documentId}/file`} target="_blank" rel="noreferrer" className="inline-block text-xs font-semibold text-emerald-300 underline">{t('docs.openOriginal')}</a>}
+                  </fieldset>
+                )}
                 {/* Totals */}
                 <div className="flex justify-end pt-2 text-right">
                   <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1 w-64">

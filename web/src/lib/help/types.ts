@@ -19,6 +19,8 @@ export interface HelpPage {
   group: HelpGroup;
   // Screen of the application described by the page.
   appHref?: string;
+  // Slugs of related help pages, shown as links under the title.
+  related?: string[];
   // Ids from `helpSources`.
   sources: string[];
   text: Record<Lang, HelpPageText>;

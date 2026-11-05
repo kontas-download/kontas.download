@@ -54,6 +54,9 @@ export default async function HelpTopicPage({ params }: { params: Promise<{ slug
                 {t('help.openInApp')}<ArrowRight className="w-3.5 h-3.5" />
               </Link>
             )}
+            {page.related?.map(slug => helpPage(slug)).filter(related => related !== undefined).map(related => (
+              <p key={related.slug} className="mt-3 text-sm"><Link href={`/help/${related.slug}`} className="text-emerald-400 hover:underline">{related.text[lang].title}</Link></p>
+            ))}
           </header>
 
           <nav aria-label={t('help.onThisPage')} className="rounded-xl border border-slate-800 bg-slate-900 p-4">

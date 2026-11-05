@@ -2,13 +2,16 @@
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/i18n/client';
 import { MailSignatureSection } from './MailSignatureSection';
+import { RecognitionSettingsSection } from './RecognitionSettingsSection';
+import { DocumentInboxSection } from './DocumentInboxSection';
 const empty={host:'',port:587,secure:false,sender:'',username:'',password:'',enabled:false,hasPassword:false,clearPassword:false};
-export function CompanySmtpDialog({company,onClose}:{company:{id:number;name:string;email?:string|null};onClose:()=>void}) {
+// Document recognition settings belong to the active company (the settings API works on it), so the section is shown for that company only.
+export function CompanySmtpDialog({company,onClose,isActive=false}:{company:{id:number;name:string;email?:string|null};onClose:()=>void;isActive?:boolean}) {
   const t=useT();
   const [form,setForm]=useState(empty),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState(false);
   useEffect(()=>{let cancelled=false;(async()=>{try{const r=await fetch(`/api/companies/${company.id}/smtp`);const data=await r.json();if(!r.ok)throw Error(data.error);if(!cancelled)setForm({...empty,...data,sender:data.sender||company.email||''});}catch(e){if(!cancelled)setError(e instanceof Error?e.message:t('common.error'));}finally{if(!cancelled)setLoading(false);}})();return()=>{cancelled=true;};},[company.id,company.email,t]);
   async function save(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');setSaved(false);try{const r=await fetch(`/api/companies/${company.id}/smtp`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});const data=await r.json();if(!r.ok)throw Error(data.error);setForm({...empty,...data});setSaved(true);}catch(e){setError(e instanceof Error?e.message:t('common.error'));}finally{setBusy(false);}}
-  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={t('companies.smtpTitle')}><form onSubmit={save} className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4">
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={t('companies.smtpTitle')}><form onSubmit={save} className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 space-y-4">
     <h2 className="font-bold text-lg text-white">SMTP — {company.name}</h2><p className="text-sm text-slate-400">{t('companies.smtpIntro')}</p>
     {error&&<p role="alert" className="rounded-lg border border-rose-800 bg-rose-950/40 p-2 text-sm text-rose-300">{error}</p>}{saved&&<p role="status" className="text-sm text-emerald-400">{t('companies.settingsSaved')}</p>}
     <fieldset disabled={loading||busy} className="space-y-3 disabled:opacity-50">
@@ -22,6 +25,7 @@ export function CompanySmtpDialog({company,onClose}:{company:{id:number;name:str
       {form.hasPassword&&<label className="flex items-center gap-2 text-sm text-slate-200"><input type="checkbox" className="h-4 w-4 accent-emerald-500" checked={form.clearPassword} onChange={e=>setForm({...form,clearPassword:e.target.checked,password:''})}/> {t('companies.smtpClearPassword')}</label>}
     </fieldset>
     <MailSignatureSection companyId={company.id} />
+    {isActive?<><RecognitionSettingsSection /><DocumentInboxSection /></>:<p className="text-xs text-slate-400">{t('docs.settingsActiveOnly')}</p>}
     <div className="flex justify-end gap-3"><button type="button" disabled={busy} onClick={onClose} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800">{t('common.close')}</button><button disabled={loading||busy} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-40">{busy?t('companies.saving'):t('common.save')}</button></div>
   </form></div>;
 }

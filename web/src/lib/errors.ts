@@ -1,5 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { RECOGNITION_EXACT, RECOGNITION_PATTERNS } from './recognition-messages';
+import { INBOX_EXACT, INBOX_PATTERNS } from './document-inbox-messages';
 
 export type ErrorLang = 'lt' | 'ru' | 'en';
 
@@ -8,6 +10,8 @@ export class HttpError extends Error {
 }
 
 const EXACT_ERRORS: Record<string, { ru: string; en: string }> = {
+  ...RECOGNITION_EXACT,
+  ...INBOX_EXACT,
   'Reikia prisijungti': { ru: 'Требуется вход в систему', en: 'Sign-in required' },
   'Prieiga uždrausta': { ru: 'Доступ запрещён', en: 'Access denied' },
   'Prieinama tik administratoriui': { ru: 'Доступно только администратору', en: 'Available to administrators only' },
@@ -77,6 +81,8 @@ const EXACT_ERRORS: Record<string, { ru: string; en: string }> = {
 };
 
 const PATTERN_ERRORS: { re: RegExp; ru: (...m: string[]) => string; en: (...m: string[]) => string }[] = [
+  ...RECOGNITION_PATTERNS,
+  ...INBOX_PATTERNS,
   {
     re: /^Nepakanka atsargų: „(.+)“ likutis (.+), reikia (.+)$/,
     ru: (_, item, bal, req) => `Недостаточно запасов: остаток «${item}» ${bal}, требуется ${req}`,

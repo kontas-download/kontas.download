@@ -15,4 +15,10 @@ export function startAutomationScheduler() {
   };
   setTimeout(tick, 60_000).unref?.();
   setInterval(tick, 30 * 60_000).unref?.();
+  // Mailboxes for received purchase documents: every enabled one is read every 5 minutes, at any hour.
+  const pollMail = () => {
+    import('./document-inbox-runtime').then(m => m.pollEnabledInboxes()).catch(err => console.error('[document-inbox]', err instanceof Error ? err.message : err));
+  };
+  setTimeout(pollMail, 90_000).unref?.();
+  setInterval(pollMail, 5 * 60_000).unref?.();
 }

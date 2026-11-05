@@ -134,6 +134,15 @@ export const helpSources: HelpSource[] = [
     url: 'https://deklaravimas.vmi.lt/lt/Formu_sarasas.aspx', issuer: 'Valstybinė mokesčių inspekcija (VMI)', portal: false, verifiedOn: VERIFIED,
   },
   {
+    id: 'lt-archives-ve73',
+    title: {
+      lt: 'Popierinių dokumentų atrankos ir išsaugojimo elektronine forma tvarka (Lietuvos vyriausiojo archyvaro 2019 m. įsakymas Nr. VE-73)',
+      ru: 'Порядок отбора и сохранения бумажных документов в электронной форме (приказ Главного архивариуса Литвы 2019 г. № VE-73; Popierinių dokumentų atrankos ir išsaugojimo elektronine forma tvarka)',
+      en: 'Procedure for selecting and keeping paper documents in electronic form (Order No. VE-73 of 2019 of the Chief Archivist of Lithuania; Popierinių dokumentų atrankos ir išsaugojimo elektronine forma tvarka)',
+    },
+    url: ETAR, issuer: 'Lietuvos vyriausiasis archyvaras / Teisės aktų registras', portal: true, verifiedOn: VERIFIED,
+  },
+  {
     id: 'eu-vat-directive',
     title: {
       lt: 'Tarybos direktyva 2006/112/EB dėl pridėtinės vertės mokesčio bendros sistemos',

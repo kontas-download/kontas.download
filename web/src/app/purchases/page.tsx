@@ -16,7 +16,8 @@ export default async function PurchasesPage() {
 
   const purchases = db.prepare(`
     SELECT p.*,
-      (SELECT COUNT(*) FROM PurchaseItem WHERE purchaseId = p.id) as itemCount
+      (SELECT COUNT(*) FROM PurchaseItem WHERE purchaseId = p.id) as itemCount,
+      (SELECT MIN(d.id) FROM PurchaseDocument d WHERE d.purchaseId = p.id AND d.companyId = p.companyId) as documentId
     FROM Purchase p
     WHERE p.companyId = ?
     ORDER BY p.purchaseDate DESC, p.id DESC

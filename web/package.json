@@ -1,6 +1,6 @@
 {
   "name": "kontas-download",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "scripts": {
     "postinstall": "node -e \"try{require('./scripts/ensure-local-extensions.cjs')}catch(e){}\"",
@@ -15,22 +15,27 @@
     "rules:audit": "node scripts/rules-audit.cjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
     "@phosphor-icons/react": "^2.1.10",
     "@prisma/client": "^7.10.1",
     "better-sqlite3": "^13.0.3",
     "clsx": "^2.1.1",
     "fast-xml-parser": "^5.11.2",
     "geist": "^1.8.2",
+    "imapflow": "^2.10.2",
+    "mailparser": "^3.14.2",
     "next": "16.4.3",
     "nodemailer": "^10.2.1",
     "pdfmake": "^0.3.13",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/better-sqlite3": "^9.6.0",
+    "@types/mailparser": "^3.9.0",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.2",
     "@types/pdfmake": "^0.3.3",
