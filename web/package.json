@@ -1,6 +1,6 @@
 {
   "name": "kontas-download",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "private": true,
   "scripts": {
     "postinstall": "node -e \"try{require('./scripts/ensure-local-extensions.cjs')}catch(e){}\"",
@@ -22,6 +22,7 @@
     "clsx": "^2.1.1",
     "fast-xml-parser": "^5.11.2",
     "geist": "^1.8.2",
+    "heic-convert": "^2.1.0",
     "imapflow": "^2.10.2",
     "mailparser": "^3.14.2",
     "next": "16.4.3",
@@ -29,6 +30,7 @@
     "pdfmake": "^0.3.13",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "sharp": "^0.35.5",
     "tailwind-merge": "^3.7.0",
     "zod": "^4.6.7"
   },

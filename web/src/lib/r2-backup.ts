@@ -8,6 +8,7 @@ import os from 'node:os';
 import { execSync } from 'node:child_process';
 import { getDb } from '@/lib/db';
 import { documentsRootFor, listDocumentFiles } from '@/lib/document-files';
+import { hydrateDocuments } from '@/lib/document-remote';
 
 const R2_BRIDGE_URL = process.env.R2_BRIDGE_URL || '';
 
@@ -152,6 +153,7 @@ export function createFilesArchive(): Buffer | null {
 // never change, so a key that already exists with the same size is skipped. A failed file is counted and retried by the next backup.
 export async function backupDocuments(): Promise<NonNullable<BackupManifest['documents']>> {
   const prefix = 'backups/documents/';
+  hydrateDocuments(documentsRootFor(getDb().name));
   const files = listDocumentFiles(documentsRootFor(getDb().name));
   const existing = new Map((await listR2Backups(prefix)).map(o => [o.key, o.size]));
   const root = documentsRootFor(getDb().name);

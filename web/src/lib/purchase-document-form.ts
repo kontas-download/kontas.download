@@ -1,8 +1,22 @@
 // Form model of the purchase document review screen: conversion from the server draft, the payload for the confirmation and the
 // client-side validation that mirrors the server checks (lib/purchase-recognition.ts, validateEdit). Messages are i18n keys of the
 // `docs` namespace so the same checks are testable without a browser. Pure functions, no imports from the server code.
+import { convertLine } from './foreign-currency';
 
-export interface FormLine { itemName: string; quantity: string; net: string; vat: string; gross: string; vatRate: string; taxCode: string; suggestedTaxCode: string | null; suggestedFromPurchaseId: number | null }
+export interface FormLine {
+  itemName: string; quantity: string; net: string; vat: string; gross: string; vatRate: string; taxCode: string; suggestedTaxCode: string | null; suggestedFromPurchaseId: number | null;
+  // Optional stock mapping ('' = none, EXISTING = a stock card, NEW = create a card with this code) and optional fixed asset card; both stay off until the person turns them on.
+  stockMode: '' | 'EXISTING' | 'NEW'; stockItemId: string; stockCode: string;
+  assetCreate: boolean; assetCategory: string; assetLife: string; assetCommissioning: string; assetCode: string;
+}
+export const emptyLine = (over: Partial<FormLine> = {}): FormLine => ({
+  itemName: '', quantity: '1', net: '', vat: '', gross: '', vatRate: '21', taxCode: '', suggestedTaxCode: null, suggestedFromPurchaseId: null,
+  stockMode: '', stockItemId: '', stockCode: '', assetCreate: false, assetCategory: '', assetLife: '', assetCommissioning: '', assetCode: '', ...over,
+});
+// Where the expense account in the form came from; USER = typed or picked by the person (never overwritten automatically).
+export type AccountSource = 'HISTORY' | 'MODEL' | 'USER';
+export interface AccountInfo { purchaseId?: number; number?: string; date?: string; reason?: string }
+export interface AccountHistoryHint { account: string; purchaseId: number; number: string; date: string }
 export interface ReviewForm {
   clientId: string;
   supplier: { name: string; code: string; vatCode: string; address: string };
@@ -10,15 +24,19 @@ export interface ReviewForm {
   series: string; number: string; issueDate: string; dueDate: string; documentTime: string; cashRegisterNo: string; receiptNo: string;
   paymentMethod: string; cardLast4: string; paidBy: '' | 'COMPANY' | 'PERSON'; paidByName: string;
   lines: FormLine[]; totals: { net: string; vat: string; gross: string };
-  deductionPercent: string; debitAccount: string; amountsInEur: boolean;
+  deductionPercent: string; debitAccount: string; accountSource: AccountSource | null; accountInfo: AccountInfo | null; amountsInEur: boolean;
+  // Document currency (ISO code). Not EUR and not `amountsInEur`: amounts are in that currency and `rate` (units per 1 EUR) converts them.
+  currency: string; rate: string; rateDate: string; rateSource: '' | 'ECB' | 'MANUAL';
+  // Supplier credit note: registered against the chosen original purchase. `creditReference` is the invoice number printed on the document.
+  isCredit: boolean; creditOriginalId: string; creditReference: string;
 }
 export interface FieldProblem { key: string; params?: Record<string, string | number> }
-export interface ValidationContext { extractedSupplierCode: string | null; docKind: string | null; currency: string | null; allowedTaxCodes: string[]; companyVatPayer: boolean }
+export interface ValidationContext { extractedSupplierCode: string | null; docKind: string | null; currency: string | null; allowedTaxCodes: string[]; companyVatPayer: boolean; fixedAssetAccounts?: string[] }
 
 type Draft = {
   supplier?: { clientId?: unknown; name?: unknown; code?: unknown; vatCode?: unknown; address?: unknown };
   series?: unknown; number?: unknown; issueDate?: unknown; dueDate?: unknown; documentTime?: unknown; cashRegisterNo?: unknown; receiptNo?: unknown;
-  evidenceType?: unknown; paymentMethod?: unknown; cardLast4?: unknown; paidBy?: unknown; paidByName?: unknown; deductionPercent?: unknown; debitAccount?: unknown; amountsInEur?: unknown;
+  evidenceType?: unknown; paymentMethod?: unknown; cardLast4?: unknown; paidBy?: unknown; paidByName?: unknown; deductionPercent?: unknown; debitAccount?: unknown; accountSource?: unknown; accountInfo?: unknown; amountsInEur?: unknown; docKind?: unknown; referencedDocument?: unknown; currency?: unknown; foreign?: { rate?: unknown; rateDate?: unknown } | null;
   lines?: { itemName?: unknown; quantity?: unknown; net?: unknown; vat?: unknown; gross?: unknown; vatRate?: unknown; taxCode?: unknown; suggestedTaxCode?: unknown; suggestedFromPurchaseId?: unknown }[];
   totals?: { net?: unknown; vat?: unknown; gross?: unknown };
 };
@@ -43,14 +61,38 @@ export function draftToForm(draft: Draft): ReviewForm {
     series: s(draft.series), number: s(draft.number), issueDate: s(draft.issueDate), dueDate: s(draft.dueDate), documentTime: s(draft.documentTime),
     cashRegisterNo: s(draft.cashRegisterNo), receiptNo: s(draft.receiptNo), paymentMethod: s(draft.paymentMethod), cardLast4: s(draft.cardLast4),
     paidBy: draft.paidBy === 'COMPANY' || draft.paidBy === 'PERSON' ? draft.paidBy : '', paidByName: s(draft.paidByName),
-    lines: (draft.lines || []).map(l => ({
+    lines: (draft.lines || []).map(l => emptyLine({
       itemName: s(l.itemName), quantity: s(l.quantity ?? 1), net: s(l.net), vat: s(l.vat), gross: s(l.gross), vatRate: s(l.vatRate), taxCode: s(l.taxCode),
       suggestedTaxCode: typeof l.suggestedTaxCode === 'string' ? l.suggestedTaxCode : null, suggestedFromPurchaseId: typeof l.suggestedFromPurchaseId === 'number' ? l.suggestedFromPurchaseId : null,
     })),
     totals: { net: s(draft.totals?.net), vat: s(draft.totals?.vat), gross: s(draft.totals?.gross) },
     deductionPercent: draft.evidenceType === 'RECEIPT' && !s(draft.deductionPercent) ? '0' : s(draft.deductionPercent),
     debitAccount: s(draft.debitAccount), amountsInEur: draft.amountsInEur === true,
+    currency: s(draft.currency).trim().toUpperCase() || 'EUR', rate: s(draft.foreign?.rate), rateDate: s(draft.foreign?.rateDate), rateSource: '',
+    isCredit: draft.docKind === 'CREDIT_NOTE', creditOriginalId: '', creditReference: s(draft.referencedDocument),
+    ...accountOrigin(draft),
   };
+}
+
+function accountOrigin(draft: Draft): { accountSource: AccountSource | null; accountInfo: AccountInfo | null } {
+  const source = draft.accountSource === 'HISTORY' || draft.accountSource === 'MODEL' ? draft.accountSource : null;
+  const info = draft.accountInfo && typeof draft.accountInfo === 'object' ? draft.accountInfo as AccountInfo : null;
+  return s(draft.debitAccount) && source ? { accountSource: source, accountInfo: info } : { accountSource: null, accountInfo: null };
+}
+
+// The person chose the expense account (or cleared it): from now on it is never replaced automatically.
+export function setDebitAccount(form: ReviewForm, debitAccount: string): ReviewForm {
+  return { ...form, debitAccount, accountSource: 'USER', accountInfo: null };
+}
+
+// The supplier of the form changed (picked, found by code, or switched to "new"): re-fill the expense account unless the person set it.
+// The supplier's own history wins; without history the recognition suggestion for the document stays; without both an auto-filled value is cleared.
+export function refillAccountForSupplier(form: ReviewForm, history: AccountHistoryHint | null, model: { code: string; reason: string } | null): ReviewForm {
+  if (form.accountSource === 'USER') return form;
+  if (form.debitAccount && form.accountSource === null) return form;
+  if (history) return { ...form, debitAccount: history.account, accountSource: 'HISTORY', accountInfo: { purchaseId: history.purchaseId, number: history.number, date: history.date } };
+  if (model) return { ...form, debitAccount: model.code, accountSource: 'MODEL', accountInfo: { reason: model.reason } };
+  return { ...form, debitAccount: '', accountSource: null, accountInfo: null };
 }
 
 // A cash receipt without the buyer's details gives no VAT deduction: switching to a receipt fills an empty deduction with 0 so the
@@ -63,17 +105,39 @@ export function applyEvidenceType(form: ReviewForm, evidenceType: 'INVOICE' | 'R
 }
 
 const num = (v: string) => parseNumber(v) ?? undefined;
+// Amounts are in a foreign currency that has to be converted (the person did not already type EUR).
+export const isForeign = (form: ReviewForm) => !!form.currency && form.currency.trim().toUpperCase() !== 'EUR' && !form.amountsInEur;
+// EUR totals of a foreign currency document, converted line by line exactly as the server does; null while a line or the rate is incomplete.
+export function eurTotals(form: ReviewForm): { net: number; vat: number; gross: number } | null {
+  const rate = parseNumber(form.rate);
+  if (rate === null || rate <= 0 || !form.lines.length) return null;
+  let net = 0, vat = 0, gross = 0;
+  for (const l of form.lines) {
+    const n = parseNumber(l.net), v = parseNumber(l.vatRate);
+    if (n === null || v === null) return null;
+    const c = convertLine({ net: n, vatRate: v }, rate);
+    net += c.net; vat += c.vat; gross += c.gross;
+  }
+  return { net: r2(net), vat: r2(vat), gross: r2(gross) };
+}
 // Body of POST /api/purchase-documents/:id/confirm. Empty optional fields are omitted, not sent as empty strings.
 export function formToPayload(form: ReviewForm) {
   const opt = (v: string) => (v.trim() ? v.trim() : undefined);
   return {
     supplier: { clientId: form.clientId ? Number(form.clientId) : undefined, name: form.supplier.name.trim(), code: form.supplier.code.trim(), vatCode: form.supplier.vatCode.trim(), address: form.supplier.address.trim(), create: !form.clientId },
     series: form.series.trim(), number: form.number.trim(), issueDate: form.issueDate, dueDate: opt(form.dueDate),
-    lines: form.lines.map(l => ({ itemName: l.itemName.trim(), quantity: num(l.quantity), net: num(l.net), vat: num(l.vat), gross: num(l.gross), vatRate: num(l.vatRate), taxCode: l.taxCode })),
+    lines: form.lines.map(l => ({
+      itemName: l.itemName.trim(), quantity: num(l.quantity), net: num(l.net), vat: num(l.vat), gross: num(l.gross), vatRate: num(l.vatRate), taxCode: l.taxCode,
+      stock: l.stockMode === 'EXISTING' ? { itemId: Number(l.stockItemId) } : l.stockMode === 'NEW' ? { create: true, code: l.stockCode.trim() } : undefined,
+      asset: l.assetCreate ? { create: true, category: l.assetCategory, usefulLifeMonths: num(l.assetLife), commissioningDate: opt(l.assetCommissioning), code: opt(l.assetCode) } : undefined,
+    })),
     totals: { net: num(form.totals.net), vat: num(form.totals.vat), gross: num(form.totals.gross) },
     evidenceType: form.evidenceType, documentTime: opt(form.documentTime), cashRegisterNo: opt(form.cashRegisterNo), receiptNo: opt(form.receiptNo),
     paymentMethod: opt(form.paymentMethod), cardLast4: opt(form.cardLast4), paidBy: opt(form.paidBy), paidByName: form.paidBy === 'PERSON' ? opt(form.paidByName) : undefined,
-    deductionPercent: num(form.deductionPercent), debitAccount: opt(form.debitAccount), amountsInEur: form.amountsInEur,
+    deductionPercent: num(form.deductionPercent), debitAccount: opt(form.debitAccount), accountSource: form.debitAccount.trim() ? form.accountSource ?? undefined : undefined, amountsInEur: form.amountsInEur,
+    docKind: form.isCredit ? 'CREDIT_NOTE' : 'INVOICE', credit: form.isCredit ? { originalPurchaseId: form.creditOriginalId ? Number(form.creditOriginalId) : undefined } : undefined,
+    currency: form.currency.trim().toUpperCase() || 'EUR',
+    foreign: isForeign(form) ? { currency: form.currency.trim().toUpperCase(), rate: num(form.rate), rateDate: opt(form.rateDate) } : undefined,
   };
 }
 
@@ -85,8 +149,15 @@ export function validateForm(form: ReviewForm, ctx: ValidationContext): Record<s
   if (!form.clientId && ctx.extractedSupplierCode?.trim() && !form.supplier.code.trim()) add('supplier.code', 'docs.v_supplierCode');
   if (!validDate(form.issueDate)) add('issueDate', 'docs.v_issueDate');
   if (form.dueDate && !validDate(form.dueDate)) add('dueDate', 'docs.v_dueDate');
-  if (ctx.docKind === 'CREDIT_NOTE') add('docKind', 'docs.v_creditNote');
-  if (ctx.currency && ctx.currency.toUpperCase() !== 'EUR' && !form.amountsInEur) add('currency', 'docs.v_currency', { currency: ctx.currency });
+  if (form.isCredit && !form.creditOriginalId) add('credit.original', 'docs.v_creditOriginal');
+  if (form.isCredit && isForeign(form)) add('currency', 'docs.v_creditForeign');
+  if (ctx.currency && ctx.currency.toUpperCase() !== 'EUR' && !form.amountsInEur && (form.currency || 'EUR').toUpperCase() === 'EUR') add('currency', 'docs.v_currency', { currency: ctx.currency });
+  if (form.currency && !/^[A-Za-z]{3}$/.test(form.currency.trim())) add('foreign.currency', 'docs.v_currencyCode');
+  else if (isForeign(form)) {
+    const rate = parseNumber(form.rate);
+    if (rate === null || rate <= 0) add('foreign.rate', 'docs.v_rate');
+    if (form.rateDate && !validDate(form.rateDate)) add('foreign.rateDate', 'docs.v_rateDate');
+  }
   if (!form.number.trim() && !form.receiptNo.trim()) add('number', 'docs.v_number');
   if (form.documentTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(form.documentTime)) add('documentTime', 'docs.v_time');
   if (form.paidBy === 'PERSON' && !form.paidByName.trim()) add('paidByName', 'docs.v_paidByName');
@@ -106,6 +177,14 @@ export function validateForm(form: ReviewForm, ctx: ValidationContext): Record<s
     if (gross === null) add(k('gross'), 'docs.v_lineGross', { n });
     if (rate === null || rate < 0 || rate > 100) add(k('vatRate'), 'docs.v_lineRate', { n });
     if (!ctx.allowedTaxCodes.includes(l.taxCode)) add(k('taxCode'), 'docs.v_lineTaxCode', { n });
+    if (l.stockMode === 'EXISTING' && !l.stockItemId) add(k('stock'), 'docs.v_stockPick', { n });
+    if (l.stockMode === 'NEW' && !l.stockCode.trim()) add(k('stock'), 'docs.v_stockCode', { n });
+    if (l.assetCreate) {
+      if (!(ctx.fixedAssetAccounts || []).includes(form.debitAccount.trim())) add(k('asset'), 'docs.v_assetAccount', { n });
+      else if (l.stockMode) add(k('asset'), 'docs.v_assetStock', { n });
+      else if (!l.assetCategory) add(k('asset'), 'docs.v_assetCategory', { n });
+      else if (l.assetLife.trim() && (!/^\d+$/.test(l.assetLife.trim()) || Number(l.assetLife) < 1 || Number(l.assetLife) > 1200)) add(k('asset'), 'docs.v_assetLife', { n });
+    }
     if (net !== null && vat !== null && gross !== null) {
       if (!near(net + vat, gross)) add(k('gross'), 'docs.v_lineSum', { n });
       else if (rate !== null && !near(vat, r2(net * rate / 100))) add(k('vat'), 'docs.v_lineVatRate', { n, rate });

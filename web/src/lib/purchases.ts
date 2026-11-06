@@ -17,7 +17,8 @@ export function purchaseWarehouse(db: Database.Database, companyId: number, valu
 }
 
 // Creates a purchase with its lines and posting in one transaction. Shared by the purchase API and the XML import.
-export function createPurchase(companyId: number, body: any) {
+// `currencyCode`: the document currency when the purchase holds EUR amounts converted from it (set by the received documents only).
+export function createPurchase(companyId: number, body: any, options: { currencyCode?: string } = {}) {
   validateBody(body, 'purchases', companyId);
   const { series, number, purchaseDate, clientId, clientName, clientCode, notes, items = [] } = body;
   if (!number || !purchaseDate) throw new HttpError(400, 'Numeris ir data privalomi');
@@ -35,7 +36,7 @@ export function createPurchase(companyId: number, body: any) {
         companyId, series, number, purchaseDate, clientId, clientName,
         clientCode, sumWithoutVat, vat, sumWithVat, currencyCode, notes, buyerVatMode, deductionPercent, deductibleVat, debitAccount, warehouseName,
         createdAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'EUR', ?, ?, ?, ?, ?, ?, datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `).run(
       companyId,
       series || '',
@@ -47,6 +48,7 @@ export function createPurchase(companyId: number, body: any) {
       sumWithoutVat,
       vat,
       sumWithVat,
+      options.currencyCode || 'EUR',
       notes || null,
       mode, deductionPercent, deductibleVat, debitAccount, warehouseName
     );

@@ -9,8 +9,11 @@ export async function localizeDocuments<T extends { error?: string | null }>(row
 
 export async function localizePreview<T extends { document: { error?: string | null }; warnings: string[]; missing: Record<string, string> }>(preview: T): Promise<T> {
   const lang = await currentErrorLang();
+  // XML e-invoice: the issues and warnings of the UBL preview are server texts as well.
+  const xml = (preview as { xml?: { issues: string[]; warnings: string[] } }).xml;
   return {
     ...preview,
+    ...(xml ? { xml: { ...xml, issues: xml.issues.map(i => translateServerError(i, lang)), warnings: xml.warnings.map(w => translateServerError(w, lang)) } } : {}),
     document: preview.document.error ? { ...preview.document, error: translateServerError(preview.document.error, lang) } : preview.document,
     warnings: preview.warnings.map(w => translateServerError(w, lang)),
     missing: Object.fromEntries(Object.entries(preview.missing).map(([k, v]) => [k, translateServerError(v, lang)])),

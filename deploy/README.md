@@ -73,3 +73,8 @@ Sąskaitoms ir priminimams siųsti serveriui reikia prieigos prie SMTP serverio 
 ## Saugumas
 
 Išorėje atidaryti tik 80 ir 443 prievadai (Caddy); programa pasiekiama tik Docker tinkle. Įjunkite automatinius OS atnaujinimus ir užkardą. Neviešinkite failo `.env` ir katalogo `data`. Daugiau: [../web/SECURITY.md](../web/SECURITY.md).
+
+
+## Diegimas į Cloudflare (`deploy-all` / `deploy-code`)
+
+`python scripts/cloudflare_containers.py deploy-all` (arba `deploy-code`) atlieka: privalomą atsarginę kopiją (D1 + konteineris) → kodo diegimą → patikrą. Gyvų duomenų jis **nekeičia**; vietinė `web/prisma/dev.db` į D1 nesinchronizuojama. Be sėkmingos kopijos diegimas nevyksta. Reikalingi kintamieji (aplinkoje arba `scripts/.deploy.env`, pavyzdys `scripts/.deploy.env.example`): `KONTAS_ADMIN_EMAIL`, `KONTAS_ADMIN_PASSWORD`, `INTERNAL_BRIDGE_KEY`. Aiškiai pasirinkus `--skip-d1-backup`, D1 kopija praleidžiama (su įspėjimu). Pavojinga komanda `sync-d1 --from-local-dev-db` reikalauja interaktyviai įvesti domeną, daro kopiją ir sustoja, jei gyvų įrašų daugiau nei vietinių (be `--allow-data-loss`).

@@ -2,11 +2,13 @@ import { simpleParser } from 'mailparser';
 import { getDb } from './db';
 import { HttpError } from './errors';
 import { encryptSecret, decryptSecret, validEmail } from './company-mail';
-import { detectMime, getRecognitionSettings, storeDocument } from './purchase-recognition';
+import { detectMime, getRecognitionSettings, looksLikeUblInvoice, storeDocument } from './purchase-recognition';
+import { parseUblInvoice } from './ubl-invoice';
 
 // Purchase documents received by e-mail. The company points the program at any IMAP mailbox; every few minutes the program
 // reads new messages, accepts only the allowed senders and stores PDF / image attachments as received documents (source EMAIL).
-// Nothing is confirmed automatically: the documents wait in "Gauti dokumentai" like uploaded ones. The IMAP client is injected,
+// An XML e-invoice (UBL) is stored as a queue item read by the UBL reader (no recognition); a PDF of the same invoice in the same message
+// becomes its visual original. Nothing is confirmed automatically: the documents wait in "Gauti dokumentai" like uploaded ones. The IMAP client is injected,
 // so tests use a fake and this module never imports the network library.
 
 export const MAX_ATTACHMENTS = 10;
@@ -82,6 +84,21 @@ const folderName = (value: unknown, label: string, required: boolean) => {
 };
 function validHost(host: unknown): host is string { return typeof host === 'string' && !!host.trim() && host.length <= 253 && !/[\s/@?#]/.test(host); }
 
+// Cloudflare Containers sleep when idle, so the Worker's 15-minute cron wakes the container only when this marker in R2 says some mailbox
+// is enabled (db/ is a private prefix). Published after every settings change and every poll; a no-op elsewhere.
+export const INBOX_MARKER_KEY = 'db/document-inbox.json';
+export async function publishInboxMarker(): Promise<void> {
+  const bridge = process.env.R2_BRIDGE_URL;
+  if (process.env.APP_ENV !== 'cloudflare-containers' || !bridge) return;
+  const enabled = (getDb().prepare('SELECT COUNT(*) AS n FROM CompanyDocumentInbox WHERE enabled=1').get() as { n: number }).n;
+  const res = await fetch(`${bridge}?key=${encodeURIComponent(INBOX_MARKER_KEY)}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', ...(process.env.INTERNAL_BRIDGE_KEY ? { 'x-d1-bridge-key': process.env.INTERNAL_BRIDGE_KEY } : {}) },
+    body: JSON.stringify({ enabled, updatedAt: new Date().toISOString() }),
+  });
+  if (!res.ok) throw new Error(`R2 marker upload failed (${res.status})`);
+}
+
 export function saveInboxSettings(companyId: number, body: Record<string, unknown>) {
   const { enabled, host, port, secure, username, password, clearPassword } = body;
   if (typeof enabled !== 'boolean') throw new HttpError(400, 'Nurodykite, ar dėžutė įjungta');
@@ -105,6 +122,7 @@ export function saveInboxSettings(companyId: number, body: Record<string, unknow
       lastUid=CASE WHEN CompanyDocumentInbox.host=excluded.host AND CompanyDocumentInbox.username=excluded.username AND CompanyDocumentInbox.folder=excluded.folder THEN CompanyDocumentInbox.lastUid ELSE 0 END,
       lastUidValidity=CASE WHEN CompanyDocumentInbox.host=excluded.host AND CompanyDocumentInbox.username=excluded.username AND CompanyDocumentInbox.folder=excluded.folder THEN CompanyDocumentInbox.lastUidValidity ELSE NULL END`)
     .run(companyId, enabled ? 1 : 0, typeof host === 'string' ? host.trim() : '', port, Number(secure), username.trim(), secret, folder, processedFolder, allowed.join('\n'));
+  publishInboxMarker().catch(err => console.error('[document-inbox] marker', err instanceof Error ? err.message : err));
   return getInboxSettings(companyId);
 }
 
@@ -147,12 +165,10 @@ export interface PollResult { messages: number; imported: number; skipped: numbe
 const running = new Set<number>();
 export const pollInProgress = (companyId: number) => running.has(companyId);
 
-const HEIC_LINE = 'HEIC formato nuotraukos nepalaikomos';
-const XML_LINE = 'XML e-sąskaita: importuokite per XML importą';
-const imageExt = /\.(pdf|jpe?g|png|webp)$/i;
-const isHeicAttachment = (name: string, type: string) => /\.(heic|heif)$/i.test(name) || /^image\/(heic|heif)/i.test(type);
+const XML_LINE = 'XML e-sąskaita nepriimta';
+const imageExt = /\.(pdf|jpe?g|png|webp|heic|heif)$/i;
 const isXmlAttachment = (name: string, type: string) => /\.xml$/i.test(name) || /^(application|text)\/xml/i.test(type);
-const looksLikeUbl = (content: Buffer) => /urn:oasis:names:specification:ubl:schema:xsd:(Invoice|CreditNote)-2|<(\w+:)?Invoice[\s>]/.test(content.subarray(0, 4096).toString('utf8'));
+const stem = (name: string) => name.replace(/\.[^.]+$/, '').trim().toLowerCase();
 
 function log(companyId: number, uidValidity: string, uid: number, m: { messageId: string | null; sender: string | null; subject: string | null; status: string; detail: string[] }) {
   getDb().prepare('INSERT OR IGNORE INTO DocumentInboxMessage(companyId,uidValidity,uid,messageId,sender,subject,status,detail) VALUES(?,?,?,?,?,?,?,?)')
@@ -175,24 +191,52 @@ async function handleMessage(companyId: number, uidValidity: string, uid: number
 
   const detail: string[] = [];
   let stored = 0, duplicates = 0, errors = 0, used = 0;
+  interface Entry { name: string; content: Buffer; kind: 'xml' | 'doc' }
+  const entries: Entry[] = [];
   for (const attachment of parsed.attachments) {
     const name = (attachment.filename || 'priedas').slice(0, 200);
     const type = attachment.contentType || '';
     const content = attachment.content;
     const inline = attachment.related || attachment.contentDisposition === 'inline';
     if (inline && /^image\//i.test(type) && content.length < MIN_INLINE_IMAGE) continue;
-    if (isHeicAttachment(name, type)) { detail.push(`${HEIC_LINE}: ${name}`); continue; }
-    if (isXmlAttachment(name, type)) { if (looksLikeUbl(content)) detail.push(`${XML_LINE} (${name})`); continue; }
+    if (isXmlAttachment(name, type) || (!imageExt.test(name) && looksLikeUblInvoice(content))) {
+      if (!looksLikeUblInvoice(content)) continue;
+      // An e-invoice the UBL reader cannot map is not queued (a PDF of the same message still is).
+      const result = parseUblInvoice(content.toString('utf8'));
+      if (!result.invoice) { detail.push(`${XML_LINE} (${name})${result.issues[0] ? `: ${result.issues[0]}` : ''}`.slice(0, 400)); continue; }
+      entries.push({ name, content, kind: 'xml' });
+      continue;
+    }
     if (!imageExt.test(name) && !detectMime(content)) continue; // not a document type the program reads (signature files, calendar invites, ...)
+    entries.push({ name, content, kind: 'doc' });
+  }
+  // A PDF of the same invoice (same file name, or the only PDF next to the only XML) is the XML's visual original, not a second queue item.
+  const xmls = entries.filter(e => e.kind === 'xml');
+  const pdfs = entries.filter(e => e.kind === 'doc' && detectMime(e.content) === 'application/pdf');
+  const visualOf = new Map<Entry, Entry>();
+  const taken = new Set<Entry>();
+  for (const x of xmls) {
+    const same = pdfs.find(p => !taken.has(p) && stem(p.name) === stem(x.name));
+    if (same) { visualOf.set(x, same); taken.add(same); }
+  }
+  if (xmls.length === 1 && pdfs.length === 1 && !visualOf.size) { visualOf.set(xmls[0], pdfs[0]); taken.add(pdfs[0]); }
+  // XML first, so a PDF released by a failed XML is still visited.
+  for (const entry of [...xmls, ...entries.filter(e => e.kind === 'doc')]) {
+    if (taken.has(entry)) continue;
     if (++used > MAX_ATTACHMENTS) { detail.push(`Per daug priedų: apdorota tik pirmieji ${MAX_ATTACHMENTS}`); break; }
+    const visual = visualOf.get(entry);
     try {
-      const row = storeDocument(companyId, { buffer: content, fileName: name, source: 'EMAIL', sender });
+      const row = storeDocument(companyId, { buffer: entry.content, fileName: entry.name, source: 'EMAIL', sender, ...(visual ? { visual: { buffer: visual.content, fileName: visual.name } } : {}) });
       stored++;
-      if (recognizing && deps.recognize) await deps.recognize(companyId, row.id).catch(() => undefined); // a failed recognition is saved on the document itself
+      if (visual && !row.visualSha256) detail.push(`Dublikatas: ${visual.name}`);
+      // XML needs no recognition; the PDF/image documents are recognized when the company has it on.
+      if (entry.kind === 'doc' && recognizing && deps.recognize) await deps.recognize(companyId, row.id).catch(() => undefined); // a failed recognition is saved on the document itself
     } catch (error) {
-      if (typeof (error as { existingId?: unknown }).existingId === 'number') { duplicates++; detail.push(`Dublikatas: ${name}`); continue; }
+      if (typeof (error as { existingId?: unknown }).existingId === 'number') { duplicates++; detail.push(`Dublikatas: ${entry.name}`); continue; }
       errors++;
-      detail.push(`${name} | ${error instanceof Error ? error.message : 'Klaida'}`);
+      detail.push(`${entry.name} | ${error instanceof Error ? error.message : 'Klaida'}`);
+      // The XML could not be stored: its PDF is then read as an ordinary document (visited later by this loop).
+      if (visual) { taken.delete(visual); }
     }
   }
   if (stored) detail.unshift(`Išsaugota dokumentų: ${stored}`);
@@ -258,6 +302,7 @@ export async function pollAllInboxes(deps: InboxDeps): Promise<{ companyId: numb
   for (const companyId of ids) {
     try { await pollInbox(companyId, deps); out.push({ companyId, ok: true }); } catch { out.push({ companyId, ok: false }); }
   }
+  await publishInboxMarker().catch(err => console.error('[document-inbox] marker', err instanceof Error ? err.message : err));
   return out;
 }
 

@@ -36,7 +36,7 @@ export const INBOX_PATTERNS: { re: RegExp; ru: Ru; en: Ru }[] = [
   { re: /^DMARC patikra nepavyko: laiškas galėjo būti suklastotas \((.+)\)$/, ru: (_, s) => `Проверка DMARC не пройдена: письмо могло быть подделано (${s})`, en: (_, s) => `DMARC check failed: the message may be forged (${s})` },
   { re: /^Išsaugota dokumentų: (\d+)$/, ru: (_, n) => `Сохранено документов: ${n}`, en: (_, n) => `Documents stored: ${n}` },
   { re: /^Dublikatas: (.+)$/, ru: (_, f) => `Дубликат: ${f}`, en: (_, f) => `Duplicate: ${f}` },
-  { re: /^XML e-sąskaita: importuokite per XML importą \((.+)\)$/, ru: (_, f) => `XML-счёт: импортируйте через XML-импорт (${f})`, en: (_, f) => `XML e-invoice: import it through the XML import (${f})` },
+  { re: /^XML e-sąskaita nepriimta \((.+?)\)(?:: (.+))?$/, ru: (_, f, why) => `XML-счёт не принят (${f})${why ? `: ${why}` : ''}`, en: (_, f, why) => `XML e-invoice not accepted (${f})${why ? `: ${why}` : ''}` },
   { re: /^HEIC formato nuotraukos nepalaikomos: (.+)$/, ru: (_, f) => `Фотографии формата HEIC не поддерживаются: ${f}`, en: (_, f) => `HEIC photos are not supported: ${f}` },
   { re: /^Per daug priedų: apdorota tik pirmieji (\d+)$/, ru: (_, n) => `Слишком много вложений: обработаны только первые ${n}`, en: (_, n) => `Too many attachments: only the first ${n} were processed` },
 ];

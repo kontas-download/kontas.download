@@ -25,7 +25,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       if (error instanceof FieldErrorsError) {
         const lang = await currentErrorLang();
         const fields = Object.fromEntries(Object.entries(error.fields).map(([k, v]) => [k, translateServerError(v, lang)]));
-        return NextResponse.json({ error: translateServerError(error.message, lang), fields }, { status: 400 });
+        return NextResponse.json({ error: translateServerError(error.message, lang), fields }, { status: error.status });
       }
       throw error;
     }

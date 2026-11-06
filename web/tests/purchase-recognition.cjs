@@ -78,8 +78,8 @@ test('store: keeps the original byte for byte, write-once, refuses duplicates an
   assert.equal(rec.storeDocument(2, { buffer: data, fileName: 'x.pdf', mimeType: 'application/pdf' }).companyId, 2);
   assert.throws(() => rec.getDocument(2, row.id), e => e.status === 404);
   const heic = Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypheic'), Buffer.alloc(40)]);
-  assert.throws(() => rec.storeDocument(1, { buffer: heic, fileName: 'a.heic', mimeType: 'image/heic' }), e => e.status === 415 && e.message.includes('JPEG'));
-  assert.throws(() => rec.storeDocument(1, { buffer: heic, fileName: 'a.jpg', mimeType: 'image/jpeg' }), e => e.status === 415 && e.message.includes('JPEG'));
+  assert.equal(rec.storeDocument(1, { buffer: heic, fileName: 'a.heic', mimeType: 'image/heic' }).mimeType, 'image/heic', 'HEIC photos are accepted and stored as they are');
+  assert.throws(() => rec.storeDocument(1, { buffer: heic, fileName: 'a.jpg', mimeType: 'image/jpeg' }), e => e.status === 415);
   assert.throws(() => rec.storeDocument(1, { buffer: Buffer.from('MZ not a document'), fileName: 'a.pdf', mimeType: 'application/pdf' }), e => e.status === 415);
   assert.throws(() => rec.storeDocument(1, { buffer: Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(20)]), fileName: 'a.pdf', mimeType: 'application/pdf' }), e => e.status === 415);
   assert.throws(() => rec.storeDocument(1, { buffer: Buffer.concat([Buffer.from('%PDF-'), Buffer.alloc(20 * 1024 * 1024)]), fileName: 'big.pdf', mimeType: 'application/pdf' }), e => e.status === 413);
@@ -92,14 +92,14 @@ test('store: keeps the original byte for byte, write-once, refuses duplicates an
 
 test('settings: the API key is encrypted, round-trips and is never returned', () => {
   const settings = rec.getRecognitionSettings(1);
-  assert.deepEqual(settings, { enabled: true, model: '', hasKey: true });
+  assert.deepEqual(settings, { enabled: true, model: '', hasKey: true, monthlyLimitEur: null });
   assert.ok(!JSON.stringify(settings).includes('sk-test'));
   const stored = db.prepare('SELECT apiKeyEncrypted FROM CompanyRecognitionSettings WHERE companyId=1').get().apiKeyEncrypted;
   assert.ok(stored && !stored.includes('sk-test'));
   assert.equal(decryptSecret(stored, 1), 'sk-test-secret-key');
   assert.throws(() => decryptSecret(stored, 2), e => e.status === 503);
   assert.throws(() => rec.saveRecognitionSettings(2, { enabled: true }), e => e.status === 400);
-  assert.deepEqual(rec.saveRecognitionSettings(1, { enabled: true, model: 'model-x' }), { enabled: true, model: 'model-x', hasKey: true });
+  assert.deepEqual(rec.saveRecognitionSettings(1, { enabled: true, model: 'model-x' }), { enabled: true, model: 'model-x', hasKey: true, monthlyLimitEur: null });
   assert.equal(decryptSecret(db.prepare('SELECT apiKeyEncrypted FROM CompanyRecognitionSettings WHERE companyId=1').get().apiKeyEncrypted, 1), 'sk-test-secret-key');
   assert.throws(() => rec.saveRecognitionSettings(1, { enabled: true, model: 'bad model!' }), e => e.status === 400);
   rec.saveRecognitionSettings(1, { enabled: true, model: '' });
@@ -170,6 +170,8 @@ test('preview: supplier match, new supplier, arithmetic, buyer, duplicates, sugg
   const empty = rec.previewDocument(1, fresh.id);
   assert.equal(empty.recognized, false);
   assert.equal(empty.draft.lines.length, 1); assert.equal(empty.draft.paidBy, 'COMPANY'); assert.equal(empty.draft.issueDate, '');
+  // Not pre-ticked: switching the currency to USD must show the ECB rate block, not "amounts already in euro".
+  assert.equal(empty.draft.amountsInEur, false);
   for (const key of ['supplier.name', 'issueDate', 'number', 'lines.0.itemName']) assert.ok(empty.missing[key], key);
 });
 
@@ -243,11 +245,11 @@ test('confirm refuses incomplete input with a field map and creates nothing', as
   // The preview reports the same fields the confirmation would refuse.
   const p = rec.previewDocument(1, id);
   assert.ok(p.missing['lines.0.taxCode']);
-  // Foreign currency needs an explicit EUR confirmation; credit notes are refused.
+  // Foreign currency needs an explicit EUR confirmation; a credit note needs its original purchase (see purchase-document-credit.cjs).
   const usd = await extractedDoc(1, null, extracted({ currency: 'USD', number: 'USD-1' }));
   assert.ok(fieldsOf(() => rec.confirmDocument(1, usd, 7, good({ number: 'USD-1' }))).currency);
   const credit = await extractedDoc(1, null, extracted({ docKind: 'CREDIT_NOTE', number: 'KR-9' }));
-  assert.ok(fieldsOf(() => rec.confirmDocument(1, credit, 7, good({ number: 'KR-9' }))).docKind);
+  assert.ok(fieldsOf(() => rec.confirmDocument(1, credit, 7, good({ number: 'KR-9' })))['credit.original']);
   // Another company cannot confirm this document or pick this company's client.
   assert.throws(() => rec.confirmDocument(2, id, 7, base), e => e.status === 404);
   assert.ok(refuse({ ...base, supplier: { clientId: Number(foreignClient), name: 'x' } }).supplier);
@@ -367,4 +369,70 @@ test('supplier lookup by company code and VAT code', () => {
   assert.equal(rec.lookupSupplier(1, '', 'lt 300000777').id, hit.id);
   assert.equal(rec.lookupSupplier(1, '999', 'LT999'), null);
   assert.equal(rec.lookupSupplier(2, '300000777', ''), null, 'other company');
+});
+
+test('expense account: supplier history pre-fill, validated model suggestion, precedence and the audit source', async () => {
+  const [A, B, C] = db.prepare("SELECT code FROM ChartOfAccount WHERE code GLOB '6[0-9][0-9][0-9]' ORDER BY code LIMIT 3").all().map(r => r.code);
+  assert.ok(A && B && C, 'the test chart has three expense accounts');
+  const sup = { code: '600000006', vatCode: null, name: 'UAB Istorija', address: null };
+  const confirm = async (number, date, input, over = {}) => {
+    const id = await extractedDoc(1, null, extracted({ number, issueDate: date, supplier: sup, ...over }));
+    const out = rec.confirmDocument(1, id, 7, good({ number, issueDate: date, ...input }));
+    return { id, out };
+  };
+  // The first purchase creates the supplier; later ones are filed under it with different dates and accounts.
+  const first = await confirm('IST-1', '2026-09-01', { supplier: { name: sup.name, code: sup.code, create: true }, debitAccount: A });
+  const clientId = first.out.purchase.clientId;
+  const ref = { clientId, name: sup.name };
+  await confirm('IST-2', '2026-10-01', { supplier: ref, debitAccount: B });
+  await confirm('IST-3', '2026-10-15', { supplier: ref }); // newest, but without an account: skipped
+  assert.equal(db.prepare('SELECT accountSource FROM PurchaseDocument WHERE id=?').get(first.id).accountSource, 'USER');
+
+  // History: the most recent NON-EMPTY account wins, the label data names the source purchase, nothing but the account is pre-filled.
+  const withModel = extracted({ number: 'IST-4', supplier: sup, suggestedAccount: { code: C, reason: 'Kuras' } });
+  const id4 = await extractedDoc(1, null, withModel);
+  const p4 = rec.previewDocument(1, id4);
+  assert.equal(p4.draft.debitAccount, B); assert.equal(p4.draft.accountSource, 'HISTORY');
+  assert.equal(p4.draft.accountInfo.number, 'IST-2'); assert.equal(p4.draft.accountInfo.date, '2026-10-01'); assert.ok(p4.draft.accountInfo.purchaseId);
+  assert.equal(p4.draft.lines[0].taxCode, null, 'VAT codes stay a hint');
+  assert.equal(p4.suggestions.modelAccount.code, C, 'history beats the model, the suggestion stays available to the client');
+  assert.equal(rec.lookupSupplier(1, sup.code, '').accountHistory.account, B);
+  assert.equal(rec.supplierAccountHistory(db, 2, clientId), null, 'history never crosses companies');
+
+  // No history: the validated model suggestion is pre-filled; the reason is cut to 120 characters and cleaned.
+  const fresh = (n, code, reason) => extracted({ number: n, supplier: { name: 'UAB Naujokas', code: '700000007', vatCode: null, address: null }, suggestedAccount: { code, reason } });
+  const long = 'Kuras\n' + 'x'.repeat(200);
+  const pm = rec.previewDocument(1, await extractedDoc(1, null, fresh('NJ-1', C, long)));
+  assert.equal(pm.draft.debitAccount, C); assert.equal(pm.draft.accountSource, 'MODEL');
+  assert.ok(pm.draft.accountInfo.reason.length <= 120 && !pm.draft.accountInfo.reason.includes('\n'));
+  // Unknown, reserved and out-of-class codes are discarded: the field stays empty (6118 by default).
+  for (const code of ['9999', '4492', '2444', '2410', '5001', 'abc', null]) {
+    const id = await extractedDoc(1, null, fresh('NJ-' + code, code, 'Netinka'));
+    const p = rec.previewDocument(1, id);
+    assert.equal(p.draft.debitAccount, null, String(code)); assert.equal(p.draft.accountSource, null); assert.equal(p.suggestions.modelAccount, null);
+    assert.equal(JSON.parse(rec.getDocument(1, id).extractedJson).suggestedAccount, null, 'dropped before it is stored');
+  }
+  // A recognition result without the field (older extractions) still previews.
+  assert.equal(rec.previewDocument(1, await extractedDoc(1, null, extracted({ number: 'NJ-OLD', supplier: { name: 'UAB Senas', code: '800000008', vatCode: null, address: null } }))).draft.debitAccount, null);
+
+  // The provider gets a compact chart of accounts a purchase may be posted to.
+  const spy = fake(extracted({ number: 'NJ-SPY' }));
+  const spyRow = rec.storeDocument(1, { buffer: pdf(), fileName: 's.pdf', mimeType: 'application/pdf' });
+  await rec.recognizeDocument(1, spyRow.id, spy);
+  const offered = spy.calls[0].opts.accounts;
+  assert.ok(offered.length > 3 && offered.every(a => a.code && a.name));
+  assert.ok(offered.some(a => a.code === A) && !offered.some(a => /^(44|27|5)/.test(a.code) || a.code === '2410' || a.code === '2444'));
+
+  // Audit: the server verifies the claimed source against the facts.
+  const audit = async (number, input, over = {}) => {
+    const r = await confirm(number, '2026-10-20', { supplier: ref, ...input }, over);
+    return db.prepare('SELECT accountSource FROM PurchaseDocument WHERE id=?').get(r.id).accountSource;
+  };
+  assert.equal(await audit('AU-1', { debitAccount: B, accountSource: 'HISTORY' }), 'HISTORY');
+  assert.equal(await audit('AU-2', { debitAccount: A, accountSource: 'HISTORY' }), 'USER', 'not the latest account of the supplier');
+  assert.equal(await audit('AU-3', { debitAccount: C, accountSource: 'MODEL' }, { suggestedAccount: { code: C, reason: 'Kuras' } }), 'MODEL');
+  assert.equal(await audit('AU-4', { debitAccount: C, accountSource: 'MODEL' }), 'USER', 'no such suggestion on the document');
+  assert.equal(await audit('AU-5', { debitAccount: A }), 'USER');
+  assert.equal(await audit('AU-6', { debitAccount: undefined, accountSource: 'HISTORY' }), null, 'empty account has no source');
+  assert.equal(await audit('AU-7', { debitAccount: '', accountSource: 'USER' }), null);
 });

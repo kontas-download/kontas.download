@@ -73,3 +73,8 @@ To send invoices and reminders the server needs access to an SMTP server (ports 
 ## Security
 
 Only ports 80 and 443 (Caddy) are open to the outside; the application is reachable only inside the Docker network. Enable automatic OS updates and a firewall. Do not publish the `.env` file or the `data` folder. More: [../web/SECURITY.en.md](../web/SECURITY.en.md).
+
+
+## Cloudflare deployment (`deploy-all` / `deploy-code`)
+
+`python scripts/cloudflare_containers.py deploy-all` (or `deploy-code`) runs: mandatory backup (D1 + container) -> code deploy -> health check. It does **not** modify live data; the local `web/prisma/dev.db` is never synced to D1. Without a successful backup nothing is deployed. Required variables (environment or `scripts/.deploy.env`, template `scripts/.deploy.env.example`): `KONTAS_ADMIN_EMAIL`, `KONTAS_ADMIN_PASSWORD`, `INTERNAL_BRIDGE_KEY`. An explicit `--skip-d1-backup` skips the D1 backup (with a warning). The dangerous `sync-d1 --from-local-dev-db` requires typing the live domain interactively, takes a backup first and aborts if live has more records than local (unless `--allow-data-loss`).

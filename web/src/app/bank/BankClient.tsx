@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { SuggestionLists } from '@/components/SuggestionLists';
 import type { Suggestions } from '@/lib/suggestions';
 import { BankPaymentsPanel } from '@/components/BankPaymentsPanel';
+import { PurchaseBankMatches } from '@/components/PurchaseBankMatches';
 import { 
   Search, 
   Landmark, 
@@ -284,6 +285,7 @@ export function BankClient({ initialTransactions, totalCount, companyId, suggest
       </div>
 
       <BankPaymentsPanel />
+      <PurchaseBankMatches />
 
       {/* Filter Bar */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">

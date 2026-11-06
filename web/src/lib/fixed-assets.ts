@@ -21,6 +21,12 @@ export function defaultAccounts(category: AssetCategory) {
   return { assetAccount: ASSET_ACCOUNT[category], accumulatedAccount: category === 'INTANGIBLE' ? '1139' : '1209', expenseAccount: '6306', disposalAccount: '6810' };
 }
 
+// Accounts a purchase may be debited to when it buys a fixed asset (the asset accounts of the groups above).
+export const FIXED_ASSET_ACCOUNTS = [...new Set(Object.values(ASSET_ACCOUNT))];
+export const isFixedAssetAccount = (code: string) => FIXED_ASSET_ACCOUNTS.includes(code);
+// Group suggested for an asset account; 1206 serves several groups, so the person picks (COMPUTER is the common case).
+export const categoryForAccount = (code: string): AssetCategory | null => (Object.entries(ASSET_ACCOUNT).find(([, account]) => account === code)?.[0] as AssetCategory | undefined) ?? null;
+
 // ---- Periods ('YYYY-MM') ----
 export const monthOf = (date: string) => date.slice(0, 7);
 export function addMonths(period: string, n: number) {
@@ -74,6 +80,7 @@ export interface FixedAssetRow {
   cost: number; residualValue: number; usefulLifeMonths: number; method: DepreciationMethod; decliningFactor: number | null;
   assetAccount: string; accumulatedAccount: string; expenseAccount: string; disposalAccount: string;
   disposedAt: string | null; disposalProceeds: number | null; disposalReason: string | null; notes: string | null; updatedAt: string;
+  purchaseId?: number | null; purchaseItemId?: number | null;
 }
 const assetRow = (db: Database.Database, companyId: number, id: number) => {
   const row = db.prepare('SELECT * FROM FixedAsset WHERE id=? AND companyId=?').get(id, companyId) as FixedAssetRow | undefined;
@@ -189,10 +196,12 @@ function parseAsset(db: Database.Database, companyId: number, body: Record<strin
   };
 }
 
-export function createAsset(db: Database.Database, companyId: number, body: Record<string, unknown>, actorId: number | null) {
+// `link`: the purchase (and line) the card was bought with; it must belong to the same company.
+export function createAsset(db: Database.Database, companyId: number, body: Record<string, unknown>, actorId: number | null, link?: { purchaseId: number; purchaseItemId: number | null }) {
   const a = parseAsset(db, companyId, body);
-  const res = db.prepare(`INSERT INTO FixedAsset(companyId,code,name,category,acquisitionDate,commissioningDate,cost,residualValue,usefulLifeMonths,method,decliningFactor,assetAccount,accumulatedAccount,expenseAccount,disposalAccount,notes,updatedBy)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(companyId, a.code, a.name, a.category, a.acquisitionDate, a.commissioningDate, a.cost, a.residualValue, a.usefulLifeMonths, a.method, a.decliningFactor, a.assetAccount, a.accumulatedAccount, a.expenseAccount, a.disposalAccount, a.notes, actorId);
+  if (link && !db.prepare('SELECT 1 FROM Purchase WHERE id=? AND companyId=?').get(link.purchaseId, companyId)) throw new HttpError(404, 'Įrašas nerastas');
+  const res = db.prepare(`INSERT INTO FixedAsset(companyId,code,name,category,acquisitionDate,commissioningDate,cost,residualValue,usefulLifeMonths,method,decliningFactor,assetAccount,accumulatedAccount,expenseAccount,disposalAccount,notes,updatedBy,purchaseId,purchaseItemId)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(companyId, a.code, a.name, a.category, a.acquisitionDate, a.commissioningDate, a.cost, a.residualValue, a.usefulLifeMonths, a.method, a.decliningFactor, a.assetAccount, a.accumulatedAccount, a.expenseAccount, a.disposalAccount, a.notes, actorId, link?.purchaseId ?? null, link?.purchaseItemId ?? null);
   return Number(res.lastInsertRowid);
 }
 

@@ -73,3 +73,8 @@ docker exec -it kontas-app node scripts/set-password.cjs admin@example.com --ena
 ## Безопасность
 
 Наружу открыты только 80 и 443 (Caddy); приложение доступно лишь внутри сети Docker. Включите автоматические обновления ОС и файрвол. Не публикуйте файл `.env` и каталог `data`. Подробнее: [../web/SECURITY.ru.md](../web/SECURITY.ru.md).
+
+
+## Деплой в Cloudflare (`deploy-all` / `deploy-code`)
+
+`python scripts/cloudflare_containers.py deploy-all` (или `deploy-code`) выполняет: обязательный бэкап (D1 + контейнер) -> деплой кода -> проверку. Живые данные он **не меняет**; локальная `web/prisma/dev.db` в D1 не синхронизируется. Без успешного бэкапа деплоя нет. Нужные переменные (окружение или `scripts/.deploy.env`, образец `scripts/.deploy.env.example`): `KONTAS_ADMIN_EMAIL`, `KONTAS_ADMIN_PASSWORD`, `INTERNAL_BRIDGE_KEY`. Явный `--skip-d1-backup` пропускает бэкап D1 (с предупреждением). Опасная `sync-d1 --from-local-dev-db` требует интерактивно ввести домен, сначала делает бэкап и прерывается, если в живой базе записей больше, чем в локальной (без `--allow-data-loss`).

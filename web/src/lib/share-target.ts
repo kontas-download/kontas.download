@@ -2,7 +2,7 @@ import { HttpError } from './errors';
 
 // Web Share Target: files shared from the phone's "Share" sheet arrive as a multipart POST. This module holds the logic without framework imports.
 export const SHARE_PATH = '/purchase-documents/share';
-export const SHARE_ACCEPT = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+export const SHARE_ACCEPT = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
 export const SHARE_MAX_FILES = 10;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_ERRORS = 5;

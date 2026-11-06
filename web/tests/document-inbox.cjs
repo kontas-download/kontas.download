@@ -114,7 +114,7 @@ test('a message the receiving server marked dmarc=fail is refused', async () => 
   assert.equal(docs(3).length, 1);
 });
 
-test('PDF and images are stored with source EMAIL and the sender; small inline images, HEIC and XML are handled as specified', async () => {
+test('PDF and images are stored with source EMAIL and the sender; small inline images and XML are handled as specified, HEIC photos are accepted', async () => {
   configure(4);
   const s = server({ messages: [
     { uid: 1, source: mail({ atts: [att('saskaita.pdf', 'application/pdf', pdf()), att('kvitas.png', 'image/png', png()), att('foto.jpg', 'image/jpeg', jpg()), att('logo.png', 'image/png', png(500), { inline: true })] }) },
@@ -124,21 +124,20 @@ test('PDF and images are stored with source EMAIL and the sender; small inline i
     { uid: 5, source: mail({ atts: [att('notes.txt', 'text/plain', Buffer.from('nieko'))] }) },
   ] });
   const result = await inbox.pollInbox(4, s.deps);
-  assert.equal(result.imported, 2);
+  assert.equal(result.imported, 3);
   const stored = docs(4);
-  assert.equal(stored.length, 4, 'pdf + png + jpg of message 1 and the pdf of message 3; the 500-byte inline logo is ignored');
+  assert.equal(stored.length, 5, 'pdf + png + jpg of message 1, the HEIC photo of message 2 and the pdf of message 3; the 500-byte inline logo is ignored');
+  assert.equal(stored.find(d => d.fileName === 'IMG_1.heic').mimeType, 'image/heic');
   for (const d of stored) { assert.equal(d.source, 'EMAIL'); assert.equal(d.sender, 'tiekejas@example.com'); }
   assert.ok(!stored.some(d => d.fileName === 'logo.png'));
   const rows = logOf(4);
   assert.equal(rows[0].status, 'IMPORTED');
-  assert.match(rows[1].detail, /HEIC formato nuotraukos nepalaikomos: IMG_1\.heic/);
-  assert.equal(rows[1].status, 'NO_ATTACHMENTS');
-  assert.match(rows[2].detail, /XML e-sąskaita: importuokite per XML importą/);
+  assert.equal(rows[1].status, 'IMPORTED');
+  assert.match(rows[2].detail, /XML e-sąskaita nepriimta \(inv\.xml\)/);
   assert.equal(rows[2].status, 'IMPORTED');
   assert.equal(rows[3].status, 'NO_ATTACHMENTS');
   assert.match(rows[3].detail, /XML e-sąskaita/);
   assert.equal(rows[4].status, 'NO_ATTACHMENTS');
-  assert.match(translateServerError(rows[1].detail, 'ru'), /HEIC/);
   assert.match(translateServerError('Išsaugota dokumentų: 3', 'en'), /Documents stored: 3/);
 });
 

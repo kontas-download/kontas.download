@@ -13,13 +13,17 @@ async function documentId(context: Context) {
 }
 
 // Detail with the review preview; a document that was not recognized yet gets an empty draft for manual entry.
-export async function GET(_request: Request, context: Context) {
+export async function GET(request: Request, context: Context) {
   try {
     const denied = await requireApiAccess();
     if (denied) return denied;
     const companyId = await getActiveCompanyId();
     const id = await documentId(context);
-    return NextResponse.json(await localizePreview(previewDocument(companyId, id)), { headers: { 'Cache-Control': 'no-store' } });
+    // ?originalPurchaseId=: the original chosen for an XML credit note without a reference.
+    const original = new URL(request.url).searchParams.get('originalPurchaseId');
+    const originalPurchaseId = original ? Number(original) : undefined;
+    if (originalPurchaseId !== undefined && !Number.isSafeInteger(originalPurchaseId)) throw new HttpError(400, 'Neteisingas ID');
+    return NextResponse.json(await localizePreview(previewDocument(companyId, id, { originalPurchaseId })), { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     return apiError(err);
   }

@@ -19,6 +19,7 @@ export const bankPages: HelpPage[] = [
           'Patvirtinkite importą.',
         ],
         rules: [
+          'Išeinančios operacijos puslapyje „Bankas ir išrašai“ papildomai siūlomos pirkimams (ir dar nepatvirtintiems gautiems dokumentams) pagal sumą, datą, kortelės paskutinius 4 skaitmenis, tiekėją ir dokumento numerį. Patikimumas ≥ 90 % gali būti susietas vienu paspaudimu, tačiau tik jums patvirtinus; susiejimas naudoja tą patį apmokėjimų mechanizmą, o banko operacija jau turi savo įrašą (D 4430 / K 2710).',
           'CSV: skyriklis ir stulpelių pavadinimai atpažįstami automatiškai (lietuvių, anglų, rusų antraštės; vienas sumos stulpelis arba debetas/kreditas; D/K stulpelis nustato ženklą).',
           'Bet kuri neteisinga eilutė atmeta visą failą – dalinio importo nebūna. Pradinio/galutinio likučio ar apyvartų eilutės atmeta failą.',
           'camt.053: kryptis imama iš CdtDbtInd, sąskaita – iš IBAN, kontrahentas – iš priešingos šalies, paskirtis – iš mokėjimo informacijos. Importuojami tik banko užregistruoti (booked) įrašai; laukiantys praleidžiami ir parodomi.',
@@ -45,6 +46,7 @@ export const bankPages: HelpPage[] = [
           'Подтвердите импорт.',
         ],
         rules: [
+          'Исходящие операции на странице «Банк и выписки» дополнительно предлагаются для покупок (и ещё не подтверждённых полученных документов) по сумме, дате, последним 4 цифрам карты, поставщику и номеру документа. Надёжность ≥ 90 % можно связать одним нажатием, но только с вашего подтверждения; связывание использует тот же механизм оплат, а у банковской операции уже есть своя проводка (Д 4430 / К 2710).',
           'CSV: разделитель и названия столбцов определяются автоматически (литовские, английские, русские заголовки; один столбец суммы или дебет/кредит; столбец D/K задаёт знак).',
           'Любая неверная строка отклоняет весь файл — частичного импорта не бывает. Строки начального/конечного остатка или оборотов отклоняют файл.',
           'camt.053: направление берётся из CdtDbtInd, счёт — из IBAN, контрагент — из противоположной стороны, назначение — из платёжной информации. Импортируются только проведённые банком (booked) записи; ожидающие пропускаются и показываются.',
@@ -71,6 +73,7 @@ export const bankPages: HelpPage[] = [
           'Confirm the import.',
         ],
         rules: [
+          'On the "Bank and statements" page outgoing lines are also suggested for purchases (and received documents not yet confirmed) by amount, date, card last 4 digits, supplier and document number. Suggestions of 90 % or more can be linked with one click, but only after your confirmation; linking uses the same payment mechanism, and the bank line already carries its own posting (D 4430 / K 2710).',
           'CSV: delimiter and column names are detected automatically (Lithuanian, English, Russian headers; single amount column or debit/credit pair; a D/K column sets the sign).',
           'Any invalid row rejects the whole file: there is no partial import. Opening/closing balance or turnover rows reject the file.',
           'camt.053: direction from CdtDbtInd, account from the IBAN, counterparty from the opposite party, details from the remittance information. Only booked entries are imported; pending ones are skipped and reported.',

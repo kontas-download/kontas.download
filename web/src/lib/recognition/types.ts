@@ -21,11 +21,19 @@ export const RecognizedDocumentSchema = z.object({
   payment: z.object({ method: z.enum(['CARD', 'CASH', 'TRANSFER', 'OTHER']).nullable(), cardLast4: text }),
   uncertainFields: z.array(z.string()),
   notes: text,
+  // Proposed expense/asset account for the whole document, taken from the chart given in the request. Optional: documents recognized before this field existed lack it.
+  suggestedAccount: z.object({ code: text, reason: text }).nullable().optional(),
+  // Credit notes: the number of the invoice the document refers to, as printed. Optional: older extractions lack it.
+  referencedDocument: text.optional(),
 });
 export type RecognizedDocument = z.infer<typeof RecognizedDocumentSchema>;
 
+export interface RecognitionUsage { model: string; inputTokens: number; outputTokens: number }
+
 export interface RecognitionProvider {
-  recognize(file: { data: Buffer; mimeType: string }, opts: { apiKey: string; model: string }): Promise<RecognizedDocument>;
+  // `accounts` is the compact chart (code + name) the model may pick the suggested account from; empty or missing = no suggestion requested.
+  // `onUsage` receives the token usage reported by the provider (also for a call that ended without a usable result).
+  recognize(file: { data: Buffer; mimeType: string }, opts: { apiKey: string; model: string; accounts?: { code: string; name: string }[]; onUsage?: (usage: RecognitionUsage) => void }): Promise<RecognizedDocument>;
   // Tiny text-only request that proves the key and the model work. Throws RecognitionError.
   testKey(apiKey: string, model: string): Promise<void>;
 }

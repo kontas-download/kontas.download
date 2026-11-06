@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useT } from '@/lib/i18n/client';
+import { useI18n } from '@/lib/i18n/client';
+import { LOCALES } from '@/lib/i18n/config';
 import { DEFAULT_RECOGNITION_MODEL, RECOGNITION_MODELS } from '@/lib/recognition/models';
 
 const input = 'block mt-1 w-full h-10 rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none';
@@ -8,12 +9,14 @@ const hintKey = { accurate: 'docs.modelAccurate', balanced: 'docs.modelBalanced'
 
 // Per-company settings of purchase document recognition. The API key is write-only: the server only says whether one is stored.
 export function RecognitionSettingsSection() {
-  const t = useT();
+  const { t, lang } = useI18n();
   const [enabled, setEnabled] = useState(false);
   const [model, setModel] = useState<string>(DEFAULT_RECOGNITION_MODEL);
   const [hasKey, setHasKey] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [clearKey, setClearKey] = useState(false);
+  const [limit, setLimit] = useState('');
+  const [usage, setUsage] = useState<{ month: string; calls: number; inputTokens: number; outputTokens: number; costEur: number; limitEur: number | null; limitReached: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
@@ -22,7 +25,7 @@ export function RecognitionSettingsSection() {
     let cancelled = false;
     fetch('/api/settings/recognition').then(r => r.json()).then(d => {
       if (cancelled) return;
-      setEnabled(Boolean(d.enabled)); setHasKey(Boolean(d.hasKey)); setModel(d.model || DEFAULT_RECOGNITION_MODEL);
+      setEnabled(Boolean(d.enabled)); setHasKey(Boolean(d.hasKey)); setModel(d.model || DEFAULT_RECOGNITION_MODEL); setLimit(d.monthlyLimitEur == null ? '' : String(d.monthlyLimitEur)); setUsage(d.usage || null);
     }).catch(() => { if (!cancelled) setMessage({ kind: 'error', text: t('common.error') }); }).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [t]);
@@ -30,10 +33,10 @@ export function RecognitionSettingsSection() {
   async function save() {
     setBusy(true); setMessage(null);
     try {
-      const res = await fetch('/api/settings/recognition', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled, model, ...(apiKey ? { apiKey } : {}), ...(clearKey ? { clearKey: true } : {}) }) });
+      const res = await fetch('/api/settings/recognition', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled, model, monthlyLimitEur: limit.trim() ? Number(limit.replace(',', '.')) : null, ...(apiKey ? { apiKey } : {}), ...(clearKey ? { clearKey: true } : {}) }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t('common.error'));
-      setEnabled(Boolean(data.enabled)); setHasKey(Boolean(data.hasKey)); setApiKey(''); setClearKey(false);
+      setEnabled(Boolean(data.enabled)); setHasKey(Boolean(data.hasKey)); setLimit(data.monthlyLimitEur == null ? '' : String(data.monthlyLimitEur)); setUsage(data.usage || null); setApiKey(''); setClearKey(false);
       setMessage({ kind: 'ok', text: t('docs.settingsSaved') });
     } catch (error) { setMessage({ kind: 'error', text: error instanceof Error ? error.message : t('common.error') }); } finally { setBusy(false); }
   }
@@ -64,6 +67,18 @@ export function RecognitionSettingsSection() {
           {RECOGNITION_MODELS.map(m => <option key={m.id} value={m.id}>{m.label} — {t(hintKey[m.hint])}{m.id === DEFAULT_RECOGNITION_MODEL ? ` (${t('docs.modelDefault')})` : ''}</option>)}
         </select>
       </label>
+      <label className="block text-xs font-medium text-slate-400">{t('docs.limitLabel')}
+        <input type="text" inputMode="decimal" onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }} value={limit} onChange={e => setLimit(e.target.value)} placeholder={t('docs.limitNone')} className={input} />
+        <span className="mt-1 block text-[11px] text-slate-500">{t('docs.limitHelp')}</span>
+      </label>
+      {usage && (
+        <div role="status" className={`rounded-lg border p-3 text-sm ${usage.limitReached ? 'border-amber-700 bg-amber-950/40 text-amber-200' : 'border-slate-800 bg-slate-950 text-slate-300'}`}>
+          <strong className="block text-slate-100">{t('docs.usageTitle', { month: usage.month })}</strong>
+          {t('docs.usageLine', { calls: usage.calls, cost: usage.costEur.toLocaleString(LOCALES[lang], { minimumFractionDigits: 2, maximumFractionDigits: 2 }), input: usage.inputTokens.toLocaleString(LOCALES[lang]), output: usage.outputTokens.toLocaleString(LOCALES[lang]) })}
+          {usage.limitEur !== null && <> {t('docs.usageOfLimit', { limit: usage.limitEur.toLocaleString(LOCALES[lang], { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}</>}
+          {usage.limitReached && <span className="mt-1 block font-semibold">{t('docs.limitReachedShort')}</span>}
+        </div>
+      )}
     </fieldset>
     <div className="flex flex-wrap justify-end gap-3">
       <button type="button" disabled={loading || busy || (!apiKey && !hasKey)} onClick={test} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-40">{t('docs.testKey')}</button>

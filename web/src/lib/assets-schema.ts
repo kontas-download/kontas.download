@@ -102,4 +102,14 @@ export function migrateFixedAssets(db: Database.Database) {
     account.run('6810', 'Ilgalaikio turto perleidimo ir nurašymo nuostoliai');
     db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-10-fixed-assets-v1');
   }).immediate();
+
+  // v2: the purchase (and its line) a card was created from, set when the card comes from a confirmed received document.
+  db.transaction(() => {
+    if (db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-11-fixed-asset-purchase-link')) return;
+    const have = new Set((db.prepare('PRAGMA table_info(FixedAsset)').all() as { name: string }[]).map(c => c.name));
+    if (!have.has('purchaseId')) db.exec('ALTER TABLE FixedAsset ADD COLUMN purchaseId INTEGER REFERENCES Purchase(id) ON DELETE SET NULL');
+    if (!have.has('purchaseItemId')) db.exec('ALTER TABLE FixedAsset ADD COLUMN purchaseItemId INTEGER');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_fixed_asset_purchase ON FixedAsset(purchaseId)');
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-fixed-asset-purchase-link');
+  }).immediate();
 }

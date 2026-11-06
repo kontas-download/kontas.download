@@ -49,13 +49,13 @@ test('several files go to the inbox; recognition is skipped when it is not enabl
 });
 
 test('a failing file does not stop the others and its message reaches the inbox; a failed recognition is not an error', async () => {
-  const heic = new File([Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypheic'), Buffer.alloc(20)])], 'IMG_1.heic', { type: 'image/heic' });
-  const result = await share.processSharedFiles([heic, pdf()], null, { store: input => rec.storeDocument(1, input), recognize: async () => { throw new Error('boom'); } }, m => `[${m.slice(0, 4)}]`);
+  const bad = new File([Buffer.from('MZ not a document')], 'tool.exe', { type: 'application/octet-stream' });
+  const result = await share.processSharedFiles([bad, pdf()], null, { store: input => rec.storeDocument(1, input), recognize: async () => { throw new Error('boom'); } }, m => `[${m.slice(0, 4)}]`);
   assert.equal(result.stored.length, 1);
   assert.equal(result.errors.length, 1);
-  assert.match(result.errors[0], /^IMG_1\.heic: \[HEIC\]/);
-  assert.match(result.location, /^\/purchase-documents\?shareError=IMG_1\.heic/);
-  const only = await share.processSharedFiles([heic], null, realDeps());
+  assert.match(result.errors[0], /^tool\.exe: \[Pala\]/);
+  assert.match(result.location, /^\/purchase-documents\?shareError=tool\.exe/);
+  const only = await share.processSharedFiles([bad], null, realDeps());
   assert.match(only.location, /^\/purchase-documents\?shareError=/, 'a single failed file stays in the inbox');
 });
 
@@ -80,7 +80,7 @@ test('only the files field is used and empty parts are ignored; at most ten file
 test('the manifest declares the share target for the same files the upload accepts', () => {
   const manifest = require('../src/app/manifest.ts').default();
   assert.equal(manifest.display, 'standalone');
-  assert.deepEqual(manifest.share_target, { action: '/purchase-documents/share', method: 'POST', enctype: 'multipart/form-data', params: { files: [{ name: 'files', accept: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'] }] } });
+  assert.deepEqual(manifest.share_target, { action: '/purchase-documents/share', method: 'POST', enctype: 'multipart/form-data', params: { files: [{ name: 'files', accept: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'] }] } });
   for (const icon of manifest.icons) assert.ok(fs.existsSync(path.join(__dirname, '../public', icon.src)), icon.src);
   assert.ok(manifest.icons.some(i => i.sizes === '192x192') && manifest.icons.some(i => i.sizes === '512x512'));
 });

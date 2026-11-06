@@ -2,6 +2,9 @@
 // Merged into the general server error translation (lib/errors.ts).
 type Ru = (...m: string[]) => string;
 const EXACT: [string, string, string][] = [
+  ['Pasiektas mėnesio atpažinimo išlaidų limitas: automatinis atpažinimas sustabdytas iki kito mėnesio. Dokumentas išsaugotas, duomenis galite suvesti rankiniu būdu.', 'Достигнут месячный лимит расходов на распознавание: автоматическое распознавание остановлено до следующего месяца. Документ сохранён, данные можно ввести вручную.', 'The monthly recognition spending limit has been reached: automatic recognition is paused until next month. The document is stored; you can enter the data manually.'],
+  ['Mėnesio limitas turi būti teigiamas skaičius eurais', 'Месячный лимит должен быть положительным числом в евро', 'The monthly limit must be a positive number in euros'],
+  ['Dokumentas atrodo kaip jau užregistruoto dublikatas. Pažymėkite „Tai ne dublikatas, vis tiek patvirtinti“.', 'Документ похож на дубликат уже зарегистрированного. Отметьте «Это не дубликат, всё равно подтвердить».', 'The document looks like a duplicate of one already registered. Tick "This is not a duplicate, confirm anyway".'],
   ['Asmens vardas nurodomas tik kai mokėta asmens lėšomis', 'Имя лица указывается только при оплате из средств лица', "The person is named only when paid from the person's own funds"],
   ['Atpažinimo paslauga šiuo metu perkrauta arba viršytas limitas. Bandykite vėliau.', 'Сервис распознавания сейчас перегружен или превышен лимит. Повторите позже.', 'The recognition service is overloaded or the limit was exceeded. Try again later.'],
   ['Atpažinimo rezultatas neatitinka laukiamo formato.', 'Результат распознавания не соответствует ожидаемому формату.', 'The recognition result does not match the expected format.'],
@@ -45,7 +48,7 @@ const EXACT: [string, string, string][] = [
   ['Nurodykite tiekėjo pavadinimą', 'Укажите название поставщика', 'Enter the supplier name'],
   ['Nurodykite tiekėjo įmonės kodą (jis nurodytas dokumente)', 'Укажите код компании поставщика (он указан в документе)', 'Enter the supplier company code (it is shown on the document)'],
   ['Nurodykite, ar atpažinimas įjungtas', 'Укажите, включено ли распознавание', 'State whether recognition is enabled'],
-  ['Palaikomi tik PDF, JPEG, PNG ir WebP failai.', 'Поддерживаются только файлы PDF, JPEG, PNG и WebP.', 'Only PDF, JPEG, PNG and WebP files are supported.'],
+  ['Palaikomi tik PDF, JPEG, PNG, WebP ir UBL XML e-sąskaitos failai.', 'Поддерживаются только файлы PDF, JPEG, PNG, WebP и XML-счета UBL.', 'Only PDF, JPEG, PNG, WebP and UBL XML e-invoice files are supported.'],
   ['Pasirinkite tiekėją iš žinyno arba patvirtinkite naujo tiekėjo sukūrimą', 'Выберите поставщика из справочника или подтвердите создание нового', 'Choose a supplier from the list or confirm creating a new one'],
   ['Pasirinktas modelis nerastas arba raktas neturi prie jo prieigos.', 'Выбранная модель не найдена или у ключа нет к ней доступа.', 'The selected model was not found or the key has no access to it.'],
   ['Pasirinktas tiekėjas nerastas šioje įmonėje', 'Выбранный поставщик не найден в этой компании', 'The selected supplier was not found in this company'],
@@ -67,6 +70,20 @@ const EXACT: [string, string, string][] = [
   ['Nepavyko nuskaityti išsaugoto API rakto. Patikrinkite šifravimo raktą.', 'Не удалось прочитать сохранённый API-ключ. Проверьте ключ шифрования.', 'The stored API key could not be read. Check the encryption key.'],
   ['Atpažinimas nepavyko dėl netikėtos klaidos.', 'Распознавание не удалось из-за непредвиденной ошибки.', 'Recognition failed because of an unexpected error.'],
   ['HEIC formato nuotraukos nepalaikomos. Telefone pasirinkite JPEG formatą (nustatymai: Fotoaparatas > Formatai > Maksimalus suderinamumas) arba nuotrauką išsaugokite kaip JPEG.', 'Фотографии формата HEIC не поддерживаются. На телефоне выберите формат JPEG (Настройки: Камера > Форматы > Наиболее совместимый) или сохраните фото как JPEG.', 'HEIC photos are not supported. Choose the JPEG format on the phone (Settings: Camera > Formats > Most Compatible) or save the photo as JPEG.'],
+  ['Atsargų kortelės yra skirtinguose sandėliuose: vienas dokumentas pajamuojamas tik į vieną sandėlį', 'Карточки запасов находятся на разных складах: один документ оприходуется только на один склад', 'The stock cards are in different warehouses: one document is received into one warehouse only'],
+  ['Neteisinga valiutos santrumpa', 'Некорректный код валюты', 'Invalid currency code'],
+  ['Nurodykite valiutos kursą (valiutos vienetų už 1 EUR)', 'Укажите курс валюты (единиц валюты за 1 EUR)', 'Enter the exchange rate (currency units per 1 EUR)'],
+  ['Neteisinga kurso data', 'Некорректная дата курса', 'Invalid rate date'],
+  ['Neteisinga dokumento data', 'Некорректная дата документа', 'Invalid document date'],
+  ['Nepavyko gauti Europos centrinio banko kurso (nėra ryšio): įveskite kursą rankiniu būdu', 'Не удалось получить курс Европейского центрального банка (нет связи): введите курс вручную', 'The European Central Bank rate could not be fetched (no connection): enter the rate by hand'],
+  ['Pasirinkite pradinį pirkimą, kurį koreguoja kreditinis dokumentas', 'Выберите исходную покупку, которую корректирует кредитный документ', 'Choose the original purchase the credit note corrects'],
+  ['Kreditinio dokumento tiekėjas turi sutapti su pradinio pirkimo tiekėju', 'Поставщик кредитного документа должен совпадать с поставщиком исходной покупки', 'The supplier of the credit note must be the supplier of the original purchase'],
+  ['Užsienio valiutos kreditinio dokumento čia registruoti negalima: įveskite sumas eurais ir pažymėkite, kad jos eurais', 'Кредитный документ в иностранной валюте здесь регистрировать нельзя: введите суммы в евро и отметьте, что они в евро', 'A foreign currency credit note cannot be registered here: enter the amounts in euro and tick that they are in euro'],
+  ['Kreditiniam dokumentui galima susieti tik esamą atsargų kortelę; ilgalaikio turto kortelė nekuriama', 'Для кредитного документа можно связать только существующую карточку запасов; карточка основного средства не создаётся', 'A credit note can be linked to an existing stock card only; no fixed asset card is created'],
+  ['Kreditinių dokumentų PVM viršija pradinio dokumento PVM', 'PVM кредитных документов превышает PVM исходного документа', 'The VAT of the credit notes exceeds the VAT of the original document'],
+  ['Kreditinių dokumentų suma viršija pradinio dokumento sumą', 'Сумма кредитных документов превышает сумму исходного документа', 'The amount of the credit notes exceeds the amount of the original document'],
+  ['Korekcijos data negali būti ankstesnė už pradinį dokumentą', 'Дата корректировки не может быть раньше исходного документа', 'The correction date cannot be earlier than the original document'],
+  ['Kreditinio dokumento pakartotinai koreguoti negalima', 'Кредитный документ повторно корректировать нельзя', 'A credit note cannot be corrected again'],
 ];
 export const RECOGNITION_EXACT: Record<string, { ru: string; en: string }> = Object.fromEntries(EXACT.map(([lt, ru, en]) => [lt, { ru, en }]));
 
@@ -89,4 +106,17 @@ export const RECOGNITION_PATTERNS: { re: RegExp; ru: Ru; en: Ru }[] = [
   { re: /^Šio tiekėjo dokumentas (.+) jau yra pirkimuose \(Nr\. (\d+)\)\.$/, ru: (_, d, n) => `Документ этого поставщика ${d} уже есть в покупках (№ ${n}).`, en: (_, d, n) => `This supplier's document ${d} is already in purchases (No. ${n}).` },
   { re: /^Šio tiekėjo dokumentas (.+) jau yra pirkimuose$/, ru: (_, d) => `Документ этого поставщика ${d} уже есть в покупках`, en: (_, d) => `This supplier's document ${d} is already in purchases` },
   { re: /^Šis dokumentas jau įkeltas \(Nr\. (\d+), (.+)\)\.$/, ru: (_, n, f) => `Этот документ уже загружен (№ ${n}, ${f}).`, en: (_, n, f) => `This document has already been uploaded (No. ${n}, ${f}).` },
+  { re: /^Eilutė (\d+): atsargų apskaita išjungta$/, ru: (_, n) => `Строка ${n}: учёт запасов выключен`, en: (_, n) => `Line ${n}: inventory accounting is off` },
+  { re: /^Eilutė (\d+): nurodykite naujos atsargų kortelės kodą$/, ru: (_, n) => `Строка ${n}: укажите код новой карточки запасов`, en: (_, n) => `Line ${n}: enter the code of the new stock card` },
+  { re: /^Eilutė (\d+): kodas „(.+)“ jau yra atsargų kortelėje: pasirinkite esamą kortelę$/, ru: (_, n, c) => `Строка ${n}: код «${c}» уже есть в карточке запасов: выберите существующую карточку`, en: (_, n, c) => `Line ${n}: the code "${c}" is already on a stock card: choose the existing card` },
+  { re: /^Eilutė (\d+): atsargų kortelė nerasta$/, ru: (_, n) => `Строка ${n}: карточка запасов не найдена`, en: (_, n) => `Line ${n}: stock card not found` },
+  { re: /^Eilutė (\d+): atsargų kortelė neturi kodo$/, ru: (_, n) => `Строка ${n}: у карточки запасов нет кода`, en: (_, n) => `Line ${n}: the stock card has no code` },
+  { re: /^Eilutė (\d+): ilgalaikio turto kortelę galima sukurti tik pasirinkus ilgalaikio turto sąskaitą$/, ru: (_, n) => `Строка ${n}: карточку основного средства можно создать только при выборе счёта основных средств`, en: (_, n) => `Line ${n}: a fixed asset card needs a fixed asset account` },
+  { re: /^Eilutė (\d+): eilutė negali būti ir ilgalaikis turtas, ir atsargos$/, ru: (_, n) => `Строка ${n}: строка не может быть одновременно основным средством и запасами`, en: (_, n) => `Line ${n}: a line cannot be both a fixed asset and stock` },
+  { re: /^Eilutė (\d+): pasirinkite turto grupę$/, ru: (_, n) => `Строка ${n}: выберите группу имущества`, en: (_, n) => `Line ${n}: choose the asset group` },
+  { re: /^Eilutė (\d+): naudingo tarnavimo laikas turi būti nuo 1 iki 1200 mėnesių$/, ru: (_, n) => `Строка ${n}: срок полезного использования должен быть от 1 до 1200 месяцев`, en: (_, n) => `Line ${n}: the useful life must be 1 to 1200 months` },
+  { re: /^Eilutė (\d+): neteisinga naudojimo pradžios data$/, ru: (_, n) => `Строка ${n}: некорректная дата ввода в эксплуатацию`, en: (_, n) => `Line ${n}: invalid date of putting into use` },
+  { re: /^Eilutė (\d+): turto kodas „(.+)“ jau naudojamas$/, ru: (_, n, c) => `Строка ${n}: код имущества «${c}» уже используется`, en: (_, n, c) => `Line ${n}: the asset code "${c}" is already in use` },
+  { re: /^Europos centrinis bankas nėra paskelbęs (\S+) kurso (\S+) dienai ar ankstesnėms dienoms: įveskite kursą rankiniu būdu$/, ru: (...m) => `Европейский центральный банк не публиковал курс ${m[1]} на ${m[2]} и ранее: введите курс вручную`, en: (...m) => `The European Central Bank has not published a rate for ${m[1]} on ${m[2]} or earlier days: enter the rate by hand` },
+  { re: /^Pradinio dokumento valiuta (\S+): kreditinio dokumento čia registruoti negalima$/, ru: (...m) => `Валюта исходного документа ${m[1]}: кредитный документ здесь регистрировать нельзя`, en: (...m) => `The original document currency is ${m[1]}: a credit note cannot be registered here` },
 ];

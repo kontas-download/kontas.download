@@ -4,6 +4,7 @@ import path from 'node:path';
 import type Database from 'better-sqlite3';
 import { codesFor } from './tax-codes';
 import { documentsRootFor } from './document-files';
+import { ensureLocalFile, remotePut } from './document-remote';
 
 // Company export package: one JSON file with everything that belongs to one company, so it can be restored as a NEW company.
 // Deliberately excluded: SMTP settings (CompanyMailSettings, encrypted passwords), the document mailbox settings (CompanyDocumentInbox, same rule), users, sessions, login attempts,
@@ -32,7 +33,7 @@ export const TABLES: Record<string, Spec & { table: string; where: string; order
   saleItems: { table: 'SaleItem', where: 'saleId IN (SELECT id FROM Sale WHERE companyId=?)', order: 'id', columns: t('id:i,saleId:i,itemName,itemCode,quantity:n,price:n,priceWithVat:n,vatRate:n,sumWithoutVat:n,sumWithVat:n,warehouseName') },
   purchases: { table: 'Purchase', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,series,number,purchaseDate,clientId:i,clientName,clientCode,sumWithoutVat:n,vat:n,sumWithVat:n,currencyCode,notes,createdAt,buyerVatMode,deductionPercent:n,deductibleVat:n,debitAccount,warehouseName,docType,originalPurchaseId:i,correctionReason,paidBy,paidByName,reimbursedAt,evidenceType,paymentMethod,cardLast4,cashRegisterNo,receiptNo,documentTime') },
   // Originals of purchase documents (the files travel in data.documentFiles); confirmedBy is not exported (users are not in the package).
-  purchaseDocuments: { table: 'PurchaseDocument', where: 'companyId=?', order: 'id', columns: t('purchaseId:i,fileName,mimeType,size:i,sha256,storagePath,source,sender,receivedAt,status,extractedJson,error,model,createdAt,confirmedAt') },
+  purchaseDocuments: { table: 'PurchaseDocument', where: 'companyId=?', order: 'id', columns: t('purchaseId:i,fileName,mimeType,size:i,sha256,storagePath,source,sender,receivedAt,status,extractedJson,error,model,createdAt,confirmedAt,visualName,visualSha256') },
   purchaseItems: { table: 'PurchaseItem', where: 'purchaseId IN (SELECT id FROM Purchase WHERE companyId=?)', order: 'id', columns: t('id:i,purchaseId:i,itemName,itemCode,quantity:n,price:n,sumWithoutVat:n,sumWithVat:n,vatRate:n') },
   bankTransactions: { table: 'BankTransaction', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,date,number,clientName,clientCode,sum:n,correspondenceAccountCode,accountingBankInternalName,notes,importHash,importBatch') },
   paymentAllocations: { table: 'PaymentAllocation', where: 'companyId=?', order: 'id', columns: t('id:i,bankTransactionId:i,saleId:i,purchaseId:i,amount:n,createdAt:i') },
@@ -80,7 +81,10 @@ export const TABLES: Record<string, Spec & { table: string; where: string; order
 type Row = Record<string, unknown>;
 export interface DocumentFile { sha256: string; data: string }
 export interface PackageData { company: Row; accountingLock: { lockedThrough: string | null; reason: string } | null; documentFiles?: DocumentFile[]; [table: string]: unknown }
-const STORAGE_PATH = /^\d+\/\d{4}\/([0-9a-f]{64})\.(pdf|jpg|png|webp)$/;
+const STORAGE_PATH = /^\d+\/\d{4}\/([0-9a-f]{64})\.(pdf|jpg|png|webp|xml)$/;
+const SHA256 = /^[0-9a-f]{64}$/;
+// The PDF kept beside an XML e-invoice lives next to it, named by its own hash.
+const visualPath = (storagePath: string, sha: string) => storagePath.replace(/[^/]+$/, `${sha}.pdf`);
 export interface CompanyPackage { format: string; version: number; exportedAt: string; appVersion: string; checksum: string; data: PackageData }
 
 // Keys sorted at every level; arrays keep their order. The checksum is the SHA-256 of this text.
@@ -111,9 +115,15 @@ export function exportCompany(db: Database.Database, companyId: number): Company
       const sha = String(row.sha256), rel = String(row.storagePath);
       if (files.has(sha) || !STORAGE_PATH.test(rel)) continue;
       const full = path.resolve(root, rel);
-      if (!full.startsWith(path.resolve(root) + path.sep) || !fs.existsSync(full)) continue;
+      if (!full.startsWith(path.resolve(root) + path.sep) || !ensureLocalFile(root, rel)) continue;
       const bytes = fs.readFileSync(full);
       if (crypto.createHash('sha256').update(bytes).digest('hex') === sha) files.set(sha, bytes.toString('base64'));
+      const vsha = typeof row.visualSha256 === 'string' && SHA256.test(row.visualSha256) ? row.visualSha256 : null;
+      const vfull = vsha ? path.resolve(root, visualPath(rel, vsha)) : null;
+      if (vsha && vfull && !files.has(vsha) && vfull.startsWith(path.resolve(root) + path.sep) && ensureLocalFile(root, visualPath(rel, vsha!))) {
+        const vbytes = fs.readFileSync(vfull);
+        if (crypto.createHash('sha256').update(vbytes).digest('hex') === vsha) files.set(vsha, vbytes.toString('base64'));
+      }
     }
     data.documentFiles = [...files].map(([sha256, content]) => ({ sha256, data: content }));
     return data;
@@ -211,6 +221,7 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
     if (r.purchaseId != null && !purchaseIds.has(r.purchaseId as number)) broken('purchaseDocuments', i, 'purchaseId');
     if (seenDocuments.has(String(r.sha256))) problems.push(problem('duplicateId', `purchaseDocuments[${i}]: dokumentas pakete kartojasi`, { table: 'purchaseDocuments', index: i, field: 'sha256' }));
     seenDocuments.add(String(r.sha256));
+    if (r.visualSha256 != null && (typeof r.visualSha256 !== 'string' || !SHA256.test(r.visualSha256))) problems.push(problem('badValue', `purchaseDocuments[${i}].visualSha256: neteisinga kontrolinė suma`, { table: 'purchaseDocuments', index: i, field: 'visualSha256' }));
   });
   rows.saleItems.forEach((r, i) => { if (!saleIds.has(r.saleId as number)) broken('saleItems', i, 'saleId'); });
   rows.purchaseItems.forEach((r, i) => { if (!purchaseIds.has(r.purchaseId as number)) broken('purchaseItems', i, 'purchaseId'); });
@@ -317,10 +328,14 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
         const bytes = documentFiles.get(String(r.sha256));
         if (!bytes) { documentsWithoutFile++; continue; }
         if (!options.commit) continue;
-        const full = path.resolve(companyRoot, storagePath);
-        if (!full.startsWith(companyRoot + path.sep)) throw new Error('DOCUMENT_PATH');
-        fs.mkdirSync(path.dirname(full), { recursive: true });
-        try { fs.writeFileSync(full, bytes, { flag: 'wx' }); writtenFiles.push(full); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
+        const visual = typeof r.visualSha256 === 'string' ? documentFiles.get(r.visualSha256) : undefined;
+        for (const [rel, content] of [[storagePath, bytes], ...(visual ? [ [visualPath(storagePath, String(r.visualSha256)), visual]] : [])] as [string, Buffer][]) {
+          const full = path.resolve(companyRoot, rel);
+          if (!full.startsWith(companyRoot + path.sep)) throw new Error('DOCUMENT_PATH');
+          fs.mkdirSync(path.dirname(full), { recursive: true });
+          try { fs.writeFileSync(full, content, { flag: 'wx' }); writtenFiles.push(full); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
+          remotePut(rel, content);
+        }
       }
       if (documentsWithoutFile) warnings.push(problem('documentFilesMissing', `${documentsWithoutFile} dokumentų originalų failų pakete nėra: įrašai perkelti be failų`, { count: documentsWithoutFile }));
       for (const r of rows.purchaseItems) map.purchaseItem.set(r.id, insert('PurchaseItem', { ...pick(r, ['id']), purchaseId: map.purchase.get(r.purchaseId) }));

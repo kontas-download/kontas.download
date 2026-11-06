@@ -108,8 +108,10 @@ test('review form: draft conversion, mirrored validation and payload', () => {
   assert.ok(form.validateForm(f, ctx).documentTime);
   f.documentTime = ''; f.supplier.code = '';
   assert.ok(form.validateForm(f, ctx)['supplier.code']);
-  const bad = form.validateForm(f, { ...ctx, docKind: 'CREDIT_NOTE', currency: 'USD' });
-  assert.ok(bad.currency && bad.docKind);
+  const bad = form.validateForm(f, { ...ctx, currency: 'USD' });
+  assert.ok(bad.currency);
+  assert.equal(form.validateForm({ ...f, isCredit: true }, ctx)['credit.original'].key, 'docs.v_creditOriginal');
+  assert.equal(form.validateForm({ ...f, isCredit: true, creditOriginalId: '5' }, ctx)['credit.original'], undefined);
   f.deductionPercent = '50';
   assert.ok(form.validateForm(f, { ...ctx, companyVatPayer: false }).deductionPercent);
   assert.equal(form.isLowQuality(['a', 'b', 'c', 'd'], { net: 1, vat: 1, gross: 2 }), true);
@@ -220,4 +222,33 @@ test('R2 backup uploads only the originals missing in the bucket', async () => {
     assert.equal(result.uploaded, files.length - 1);
     assert.ok(!uploaded.includes('backups/documents/' + files[0].rel));
   } finally { global.fetch = realFetch; }
+});
+
+test('expense account form logic: history/model refill on supplier change, a value chosen by the person is never overwritten', () => {
+  const history = { account: '6118', purchaseId: 5, number: 'AB-1', date: '2026-10-01' };
+  const model = { code: '6310', reason: 'Kuras' };
+  const empty = form.draftToForm(extractedDraft());
+  assert.equal(empty.debitAccount, ''); assert.equal(empty.accountSource, null);
+  // The server pre-fill travels in the draft and is restored with its label data.
+  const pre = form.draftToForm({ ...extractedDraft(), debitAccount: '6310', accountSource: 'MODEL', accountInfo: { reason: 'Kuras' } });
+  assert.equal(pre.accountSource, 'MODEL'); assert.equal(pre.accountInfo.reason, 'Kuras');
+  assert.equal(form.draftToForm({ ...extractedDraft(), debitAccount: null, accountSource: 'MODEL' }).accountSource, null, 'no source without a value');
+  // Supplier with history: auto-filled, history beats the model.
+  const h = form.refillAccountForSupplier(empty, history, model);
+  assert.equal(h.debitAccount, '6118'); assert.equal(h.accountSource, 'HISTORY'); assert.equal(h.accountInfo.number, 'AB-1');
+  // Another supplier: an auto-filled value follows it (history, then model, then empty).
+  assert.equal(form.refillAccountForSupplier(h, { ...history, account: '6320' }, model).debitAccount, '6320');
+  const m = form.refillAccountForSupplier(h, null, model);
+  assert.equal(m.debitAccount, '6310'); assert.equal(m.accountSource, 'MODEL');
+  const cleared = form.refillAccountForSupplier(m, null, null);
+  assert.equal(cleared.debitAccount, ''); assert.equal(cleared.accountSource, null); assert.equal(cleared.accountInfo, null);
+  // A value typed or picked by the person (also an empty choice made on purpose) is kept.
+  const typed = form.setDebitAccount(h, '6500');
+  assert.equal(typed.accountSource, 'USER');
+  assert.equal(form.refillAccountForSupplier(typed, history, model).debitAccount, '6500');
+  assert.equal(form.refillAccountForSupplier(form.setDebitAccount(h, ''), history, model).debitAccount, '');
+  // The payload carries the claimed source only together with an account.
+  assert.equal(form.formToPayload(h).accountSource, 'HISTORY'); assert.equal(form.formToPayload(h).debitAccount, '6118');
+  assert.equal(form.formToPayload(empty).accountSource, undefined);
+  assert.equal(form.formToPayload(form.setDebitAccount(h, '')).accountSource, undefined);
 });

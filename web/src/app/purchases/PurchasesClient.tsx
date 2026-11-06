@@ -22,6 +22,7 @@ import { useI18n } from '@/lib/i18n/client';
 import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
 import { askConfirm } from '@/components/ConfirmHost';
+import { PurchaseBankMatches } from '@/components/PurchaseBankMatches';
 import Link from 'next/link';
 
 // Own-funds payment, evidence type and cash receipt fields of a purchase (empty string = not set).
@@ -49,6 +50,7 @@ export function PurchasesClient({
   catalog?: PurchaseCatalogItem[];
 }) {
   const { t, lang } = useI18n();
+  const [bankOpenId, setBankOpenId] = useState<number | null>(null);
   const num = (n: number) => n.toLocaleString(LOCALES[lang], { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const [purchases, setPurchases] = useState(initialPurchases);
   const [itemsMap,setItemsMap]=useState(itemsByPurchaseId);
@@ -457,6 +459,8 @@ export function PurchasesClient({
         </div>
       </div>
 
+      <PurchaseBankMatches />
+
       {/* Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
@@ -486,7 +490,8 @@ export function PurchasesClient({
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
               {paginatedPurchases.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-800/40 transition-colors">
+                <React.Fragment key={p.id}>
+                <tr className="hover:bg-slate-800/40 transition-colors">
                   <td className="py-2.5 px-3 font-semibold text-white">
                     <span className="text-slate-400 mr-1">{p.series}</span>
                     <span>{p.number}</span>
@@ -519,6 +524,15 @@ export function PurchasesClient({
                   <td className="py-2.5 px-3 text-center">
                     <div className="flex items-center justify-center gap-1">
                       {p.documentId && <a href={`/api/purchase-documents/${p.documentId}/file`} target="_blank" rel="noreferrer" className="px-1.5 py-0.5 hover:bg-slate-800 rounded text-[10px] font-bold text-sky-300" title={t('docs.openOriginal')}>{t('docs.originalShort')}</a>}
+                      {p.docType !== 'KS' && p.paidBy !== 'PERSON' && (
+                        <button
+                          onClick={() => setBankOpenId(bankOpenId === p.id ? null : p.id)}
+                          className="px-1.5 py-0.5 hover:bg-slate-800 rounded text-[10px] font-bold text-sky-300 transition-colors"
+                          title={t('bank.pm.rowTitle')}
+                        >
+                          {t('bank.pm.rowButton')}
+                        </button>
+                      )}
                       {p.docType !== 'KS' && (
                         <button
                           onClick={() => setCreditPurchase(p)}
@@ -545,6 +559,8 @@ export function PurchasesClient({
                     </div>
                   </td>
                 </tr>
+                {bankOpenId === p.id && <tr><td colSpan={7} className="px-3 py-2"><PurchaseBankMatches purchaseId={p.id} /></td></tr>}
+                </React.Fragment>
               ))}
               {paginatedPurchases.length === 0 && (
                 <tr>

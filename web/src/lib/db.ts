@@ -18,6 +18,7 @@ import { migrateMailSignature } from './mail-signature';
 import { migrateAutomation } from './automation-schema';
 import { migratePurchaseDocuments } from './purchase-document-schema';
 import { migrateDocumentInbox } from './document-inbox-schema';
+import { migrateExchangeRates } from './exchange-rate-schema';
 import Database from 'better-sqlite3';
 import path from 'node:path';
 let dbInstance: Database.Database | null = null;
@@ -74,6 +75,7 @@ export function getDb() {
     migrateAutomation(db);
     migratePurchaseDocuments(db);
     migrateDocumentInbox(db);
+    migrateExchangeRates(db);
     dbInstance = db;
   }
   return dbInstance;

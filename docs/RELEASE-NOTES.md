@@ -6,6 +6,32 @@
 
 Pagrindinė dokumentacijos kalba – lietuvių. Jei lietuviškas ir angliškas tekstai skiriasi, viršesnis lietuviškas.
 
+### 0.5.3 – bankas, užsienio valiuta, kreditinės sąskaitos, archyvas patikrinimui
+
+Archyvas: `kontas-download-0.5.3.zip`, šalia – kontrolinės sumos failas `kontas-download-0.5.3.zip.sha256`. Atnaujinti iš 0.4.0, 0.5.0, 0.5.1 ar 0.5.2: `update.ps1` / `update.sh`.
+
+- Turinio dublikatų tikrinimas: tas pats dokumentas (stiprus sutapimas) ar galimas dublikatas pažymimas eilėje, patvirtinti galima tik aiškiai pažymėjus.
+- Bankas: pirkimų ir banko operacijų suderinimas – pasiūlymai su patikimumu, susiejimas, atsiejimas, asmens sumokėtų išlaidų kompensavimas.
+- Ilgalaikio turto kortelė ir atsargų priėmimas iš dokumento eilučių (neprivaloma, tik patvirtinus).
+- Užsienio valiutos dokumentai su ECB kursu: kursas dokumento dienai ar paskutinei ankstesnei, galima įvesti kursą ranka.
+- Kreditinės sąskaitos iš PDF ar nuotraukų registruojamos per bendrą kreditinio pirkimo kelią.
+- XML e-sąskaitos iš el. pašto patenka į eilę; PDF lieka kaip matomas originalas, patvirtinama įprastu XML importo keliu.
+- Atpažinimo apytikslė kaina ir mėnesio išlaidų limitas.
+- Greita eilės peržiūra klaviatūra.
+- HEIC nuotraukos ir nuotraukos paruošimas prieš atpažinimą.
+- Archyvas mokesčių inspekcijos patikrinimui: ZIP su originalais, registru ir kontrolinėmis sumomis.
+- Išlaidų sąskaita pagal tiekėjo istoriją arba pasiūlymas pagal turinį.
+- Debesies diegimas: originalai saugomi objektų saugykloje (vietinis diskas – tik talpykla), pašto dėžutė tikrinama kas 15 minučių, tik kai įjungta dokumentų dėžutė.
+- Diegimo sauga: gyvi duomenys neperrašomi, atsarginė kopija privaloma, slaptažodžių kode nėra.
+- Pilnas trečiųjų šalių licencijų sąrašas.
+
+Atnaujinimo pastabos: HEIC nuotraukų ir nuotraukų paruošimo bibliotekos (`sharp`, `heic-convert`) yra naujos priklausomybės; `update.ps1` / `update.sh` jas įdiegia kaip įprasta.
+
+Kontrolinė suma:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.3.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.3.zip.sha256).Split(' ')[0]` – turi būti `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.3.zip.sha256` – turi būti `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.3.zip.sha256` – turi būti `OK`.
+
 ### 0.5.2 – gauti dokumentai, atpažinimas, priėmimas el. paštu
 
 Archyvas: `kontas-download-0.5.2.zip`, šalia – kontrolinės sumos failas `kontas-download-0.5.2.zip.sha256`. Atnaujinti iš 0.4.0, 0.5.0 ar 0.5.1: `update.ps1` / `update.sh`.
@@ -181,6 +207,32 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 
 Основной язык документации – литовский; при расхождении текстов приоритет у литовского.
 
+### 0.5.3 – банк, иностранная валюта, кредитные счета, архив для проверки
+
+Архив: `kontas-download-0.5.3.zip`, рядом – файл контрольной суммы `kontas-download-0.5.3.zip.sha256`. Обновление с 0.4.0, 0.5.0, 0.5.1 или 0.5.2: `update.ps1` / `update.sh`.
+
+- Проверка дубликатов по содержимому: тот же документ (сильное совпадение) или возможный дубликат отмечается в очереди, подтвердить можно только с явной отметкой.
+- Банк: сопоставление закупок и банковских операций – предложения с уровнем уверенности, привязка, отвязка, возмещение расходов, оплаченных лицом.
+- Карточка основного средства и приход товаров из строк документа (необязательно, только после подтверждения).
+- Документы в иностранной валюте с курсом ЕЦБ: курс на день документа или последний предыдущий, можно ввести курс вручную.
+- Кредитные счета из PDF или фото регистрируются через общий путь кредитной закупки.
+- XML e-счета из почты попадают в очередь; PDF остаётся видимым оригиналом, подтверждение – обычным путём импорта XML.
+- Ориентировочная стоимость распознавания и месячный лимит расходов.
+- Быстрый просмотр очереди с клавиатуры.
+- Фото HEIC и подготовка фото перед распознаванием.
+- Архив для налоговой проверки: ZIP с оригиналами, реестром и контрольными суммами.
+- Счёт расходов по истории поставщика или предложение по содержимому.
+- Облачная установка: оригиналы хранятся в объектном хранилище (локальный диск – только кэш), почтовый ящик проверяется каждые 15 минут, только если включён ящик документов.
+- Безопасность развёртывания: живые данные не перезаписываются, резервная копия обязательна, паролей в коде нет.
+- Полный список лицензий третьих сторон.
+
+Примечания к обновлению: библиотеки для фото HEIC и подготовки фото (`sharp`, `heic-convert`) – новые зависимости; `update.ps1` / `update.sh` устанавливают их как обычно.
+
+Контрольная сумма:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.3.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.3.zip.sha256).Split(' ')[0]` – должно быть `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.3.zip.sha256` – должно быть `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.3.zip.sha256` – должно быть `OK`.
+
 ### 0.5.2 – входящие документы, распознавание, приём по e-mail
 
 Архив: `kontas-download-0.5.2.zip`, рядом – файл контрольной суммы `kontas-download-0.5.2.zip.sha256`. Обновление с 0.4.0, 0.5.0 или 0.5.1: `update.ps1` / `update.sh`.
@@ -355,6 +407,32 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 ## English
 
 The main documentation language is Lithuanian; if the texts differ, the Lithuanian one prevails.
+
+### 0.5.3 – bank, foreign currency, credit notes, archive for inspection
+
+Archive: `kontas-download-0.5.3.zip`, with the checksum file `kontas-download-0.5.3.zip.sha256` next to it. Updating from 0.4.0, 0.5.0, 0.5.1 or 0.5.2: `update.ps1` / `update.sh`.
+
+- Content duplicate check: the same document (strong match) or a possible duplicate is flagged in the queue; confirming requires an explicit tick.
+- Bank: matching purchases with bank transactions – suggestions with a confidence level, linking, unlinking, and reimbursement of expenses paid by a person.
+- Fixed asset card and stock receipt from document lines (optional, only after confirmation).
+- Foreign currency documents with ECB rates: the rate for the document date or the last earlier one; a rate can be entered by hand.
+- Credit notes from PDFs or photos are registered through the common credit purchase path.
+- XML e-invoices from e-mail go into the queue; the PDF stays as the visual original, and confirmation uses the usual XML import path.
+- Recognition cost estimate and monthly spending limit.
+- Fast keyboard review of the queue.
+- HEIC photos and photo preparation before recognition.
+- Archive for a tax inspection: a ZIP with originals, a register and checksums.
+- Expense account from the supplier's history or a suggestion based on content.
+- Cloud installation: originals are stored in object storage (the local disk is only a cache), and the mailbox is checked every 15 minutes, only when a document mailbox is enabled.
+- Deployment safety: live data is never overwritten, a backup is mandatory, no passwords in code.
+- Full third-party licence list.
+
+Upgrade notes: the HEIC and photo preparation libraries (`sharp`, `heic-convert`) are new dependencies; `update.ps1` / `update.sh` install them as usual.
+
+Checksum:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.3.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.3.zip.sha256).Split(' ')[0]` – must be `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.3.zip.sha256` – must be `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.3.zip.sha256` – must be `OK`.
 
 ### 0.5.2 – received documents, recognition, intake by e-mail
 

@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { hydrateDocuments } from './document-remote';
 
 // Stored originals of purchase documents: write-once files named by their content hash under <data dir>/documents/<companyId>/<year>/.
 // DOCUMENTS_DIR overrides the folder. Shared by recognition, backups and the company export.
@@ -26,6 +27,7 @@ export function listDocumentFiles(root: string): { rel: string; size: number }[]
 
 // tar.gz of the whole documents folder in the temp directory; null when there are no files. The caller deletes the returned file.
 export function createDocumentsArchive(root: string): string | null {
+  hydrateDocuments(root); // Cloudflare Containers: files kept only in R2 are fetched first
   if (!listDocumentFiles(root).length) return null;
   const target = path.join(os.tmpdir(), `kontas-documents-${Date.now()}-${process.pid}.tar.gz`);
   // GNU tar (Git for Windows) reads "C:" as a remote host unless told the names are local.

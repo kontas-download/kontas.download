@@ -21,6 +21,8 @@ export const purchasePages: HelpPage[] = [
           'Išsaugokite. Tiekėjo kreditinei sąskaitai pirkimų sąraše spauskite „KS“.',
         ],
         rules: [
+          'Archyvas patikrinimui (VMI): skiltyje „Gauti dokumentai“ pasirinkite laikotarpį ir paspauskite „Parsisiųsti archyvą“ – gausite ZIP su visų to laikotarpio pirkimų originaliais dokumentais, pirkimų registru (CSV) ir README.txt.',
+          'Apmokėjimas per banką: prie pirkimo (mygtukas „Bankas“), po gauto dokumento patvirtinimo ir puslapyje „Bankas ir išrašai“ siūlomos išeinančios banko operacijos pagal tikslią sumą, datą (nuo −3 iki +10 dienų), kortelės paskutinius 4 skaitmenis, tiekėją ir dokumento numerį, su patikimumu procentais. Susieti galima tik jums paspaudus; „Susieti visus patikimus“ susieja tik ≥ 90 %. Susiejus pirkimas laikomas apmokėtu, o „Atsieti“ viską grąžina. Pirkimai, apmokėti asmens lėšomis, su įmonės banku nesiejami: kompensavimo mokėjimas (banko operacija asmeniui) siūlomas pažymėti kaip kompensavimas.',
           'Korespondencijos: D 6118 (arba pasirinkta sąskaita) / K 4430 suma be PVM; atskaitomas PVM D 2444 / K 4430; neatskaitomas PVM lieka sąnaudose.',
           'NON_VAT ir SVS režimu atskaitos dalis turi būti 0 %.',
           'Debeto sąskaita turi būti sąskaitų plane ir negali būti atsiskaitymų, PVM, pinigų ar pajamų sąskaita (44xx, 2410, 2444, 27xx, 5xxx).',
@@ -49,6 +51,8 @@ export const purchasePages: HelpPage[] = [
           'Сохраните. Для кредитового счёта поставщика нажмите «KS» в списке покупок.',
         ],
         rules: [
+          'Архив для проверки (VMI): в разделе «Полученные документы» выберите период и нажмите «Скачать архив» — вы получите ZIP с оригиналами документов всех покупок периода, реестром покупок (CSV) и README.txt.',
+          'Оплата через банк: у покупки (кнопка «Банк»), после подтверждения полученного документа и на странице «Банк и выписки» предлагаются исходящие банковские операции по точной сумме, дате (от −3 до +10 дней), последним 4 цифрам карты, поставщику и номеру документа, с надёжностью в процентах. Связать можно только вашим нажатием; «Связать все надёжные» связывает лишь ≥ 90 %. После связывания покупка считается оплаченной, а «Отвязать» всё возвращает. Покупки, оплаченные из средств лица, с банком компании не связываются: платёж возмещения (банковская операция на лицо) предлагается отметить как возмещение.',
           'Проводки: Д 6118 (или выбранный счёт) / К 4430 сумма без PVM; вычитаемый PVM Д 2444 / К 4430; невычитаемый PVM остаётся в расходах.',
           'В режимах NON_VAT и SVS доля вычета должна быть 0 %.',
           'Дебетовый счёт должен быть в плане счетов и не может быть счётом расчётов, PVM, денег или доходов (44xx, 2410, 2444, 27xx, 5xxx).',
@@ -77,6 +81,8 @@ export const purchasePages: HelpPage[] = [
           'Save. For a supplier credit note click "KS" in the purchases list.',
         ],
         rules: [
+          'Archive for an inspection (VMI): in "Received documents" choose a period and press "Download the archive" - you get a ZIP with the original documents of all purchases of the period, a purchase register (CSV) and README.txt.',
+          'Payment through the bank: on the purchase (the "Bank" button), after confirming a received document and on the "Bank and statements" page, outgoing bank lines are suggested by exact amount, date (-3 to +10 days), card last 4 digits, supplier and document number, with a confidence in percent. A link is made only by your click; "Link all reliable" links only suggestions of 90 % or more. Once linked the purchase counts as paid, and "Unlink" reverses it. Purchases paid from own funds of a person are not matched against the company bank: the reimbursement payment (a bank line to the person) is offered to be marked as reimbursement.',
           'Postings: D 6118 (or the chosen account) / C 4430 net; deductible VAT D 2444 / C 4430; non-deductible VAT stays in the expense.',
           'Under NON_VAT and SVS the deduction must be 0 %.',
           'The debit account must exist in the chart and cannot be a payable, VAT, cash or income account (44xx, 2410, 2444, 27xx, 5xxx).',

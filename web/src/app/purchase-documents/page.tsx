@@ -1,6 +1,6 @@
 import { requirePageAccess } from '@/lib/access';
 import { getActiveCompanyId } from '@/lib/company';
-import { getRecognitionSettings } from '@/lib/purchase-recognition';
+import { getRecognitionSettings, recognitionUsageSummary } from '@/lib/purchase-recognition';
 import { pageTitle } from '@/lib/i18n/page-title';
 import { DocumentsClient } from './DocumentsClient';
 
@@ -13,5 +13,5 @@ export default async function PurchaseDocumentsPage({ searchParams }: { searchPa
   const shareErrors = (Array.isArray(shareError) ? shareError : shareError ? [shareError] : []).slice(0, 5).map(e => e.slice(0, 300));
   const companyId = await getActiveCompanyId();
   const settings = getRecognitionSettings(companyId);
-  return <DocumentsClient companyId={companyId} recognitionReady={settings.enabled && settings.hasKey} shareErrors={shareErrors} />;
+  return <DocumentsClient companyId={companyId} recognitionReady={settings.enabled && settings.hasKey} limitReached={recognitionUsageSummary(companyId).limitReached} shareErrors={shareErrors} />;
 }
