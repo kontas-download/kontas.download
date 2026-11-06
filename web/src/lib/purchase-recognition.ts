@@ -17,6 +17,8 @@ import { inventorySettings } from './inventory';
 import { convertLine, validCurrencyCode, validRate } from './foreign-currency';
 import { isPublishedRate } from './exchange-rates';
 import { insertPurchaseCredit, planPurchaseCredit } from './purchase-credit';
+import { addressToSuggest, findClientByEmail, senderContext } from './document-inbox-senders';
+import { findRule, markRuleUsed, saveSupplierRule, type SupplierRule } from './supplier-rules';
 import { codesFor } from './tax-codes';
 import { setLineCodes } from './tax-line-codes';
 import { dateValue } from './validation';
@@ -29,7 +31,7 @@ export interface PurchaseDocumentRow {
   id: number; companyId: number; purchaseId: number | null; fileName: string; mimeType: string; size: number; sha256: string; storagePath: string;
   source: 'UPLOAD' | 'EMAIL'; sender: string | null; receivedAt: string; status: DocumentStatus; extractedJson: string | null; error: string | null;
   model: string | null; createdAt: string; confirmedAt: string | null; confirmedBy: number | null; accountSource: AccountSource | null;
-  visualName: string | null; visualSha256: string | null; uploadedBy: number | null;
+  visualName: string | null; visualSha256: string | null; uploadedBy: number | null; originalSender: string | null;
 }
 // Field name -> Lithuanian message. Keys: 'supplier.name', 'issueDate', 'number', 'lines.0.taxCode', 'totals.gross', ...
 export type FieldErrors = Record<string, string>;
@@ -155,7 +157,7 @@ export function detectMime(buffer: Buffer): string | null {
   return null;
 }
 // `visual`: the PDF of the same invoice received beside an XML e-invoice, kept as its visual original (not a queue item of its own).
-export function storeDocument(companyId: number, input: { buffer: Buffer; fileName: string; mimeType?: string; source?: 'UPLOAD' | 'EMAIL'; sender?: string | null; visual?: { buffer: Buffer; fileName: string } }): PurchaseDocumentRow {
+export function storeDocument(companyId: number, input: { buffer: Buffer; fileName: string; mimeType?: string; source?: 'UPLOAD' | 'EMAIL'; sender?: string | null; originalSender?: string | null; visual?: { buffer: Buffer; fileName: string } }): PurchaseDocumentRow {
   const db = getDb();
   const { buffer } = input;
   if (!buffer.length) throw new HttpError(400, 'Failas tuščias');
@@ -188,8 +190,8 @@ export function storeDocument(companyId: number, input: { buffer: Buffer; fileNa
     remotePut(storagePath, buffer);
     if (visual) remotePut(`${companyId}/${new Date().getUTCFullYear()}/${visual.sha}.pdf`, visual.buffer);
     // An XML e-invoice needs no recognition: its data is read from the file, so it waits in the queue as EXTRACTED.
-    const res = db.prepare('INSERT INTO PurchaseDocument(companyId,fileName,mimeType,size,sha256,storagePath,source,sender,status,visualName,visualSha256,uploadedBy) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')
-      .run(companyId, (path.basename(input.fileName || 'dokumentas') || 'dokumentas').slice(0, 200), detected, buffer.length, sha256, storagePath, source, input.sender ? String(input.sender).slice(0, 254) : null, detected === XML_MIME ? 'EXTRACTED' : 'NEW', visual?.name ?? null, visual?.sha ?? null, currentActorId(db));
+    const res = db.prepare('INSERT INTO PurchaseDocument(companyId,fileName,mimeType,size,sha256,storagePath,source,sender,originalSender,status,visualName,visualSha256,uploadedBy) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
+      .run(companyId, (path.basename(input.fileName || 'dokumentas') || 'dokumentas').slice(0, 200), detected, buffer.length, sha256, storagePath, source, input.sender ? String(input.sender).slice(0, 254) : null, input.originalSender ? String(input.originalSender).slice(0, 254).toLowerCase() : null, detected === XML_MIME ? 'EXTRACTED' : 'NEW', visual?.name ?? null, visual?.sha ?? null, currentActorId(db));
     return getDocument(companyId, Number(res.lastInsertRowid));
   } catch (error) {
     if (created) fs.rmSync(full, { force: true });
@@ -703,6 +705,7 @@ function emptyPreview(db: Database.Database, companyId: number, row: PurchaseDoc
     document: publicRow(row), extracted: { docKind: 'INVOICE', currency: 'EUR', supplier: { code: null, name: null, vatCode: null }, totals: { net: null, vat: null, gross: null } } as unknown as RecognizedDocument,
     recognized: false, draft, missing, warnings: [] as string[],
     supplier: { clientId: null as number | null, name: null as string | null, code: null as string | null, vatCode: null as string | null },
+    supplierFromEmail: null as string | null, rule: null as ReturnType<typeof ruleSummary>,
     needsSupplier: true, buyerMatches: null as boolean | null, duplicatePurchaseId: null as number | null, duplicates: [] as DuplicateHit[],
     suggestedEvidenceType: 'INVOICE' as const, suggestedDeductionPercent: null as number | null, companyVatPayer,
     suggestions: { debitAccount: null as string | null, debitAccountFromPurchaseId: null as number | null, accountHistory: null as AccountHistory | null, modelAccount: null as { code: string; reason: string } | null, lineTaxCodes: [] as (string | null)[] },
@@ -727,7 +730,7 @@ export function lookupSupplier(companyId: number, code: string, vatCode: string)
   const id = findSupplierId(db, companyId, { regNumber: code, vatCode });
   if (id === null) return null;
   const client = db.prepare('SELECT id, name, code, vatCode, address FROM Client WHERE id=? AND companyId=?').get(id, companyId) as { id: number; name: string; code: string | null; vatCode: string | null; address: string | null };
-  return { ...client, accountHistory: supplierAccountHistory(db, companyId, client.id) };
+  return { ...client, accountHistory: supplierAccountHistory(db, companyId, client.id), rule: ruleSummary(findRule(db, companyId, client.id, [])) };
 }
 
 // XML e-invoice from the queue: the file is read by the UBL reader (no recognition) and checked by the same preview as the XML import.
@@ -742,6 +745,20 @@ export function previewXmlDocument(companyId: number, id: number, options: { ori
   return { kind: 'xml' as const, document: publicRow(row), xml, accountHistory: history, companyVatPayer, warnings: [] as string[], missing: {} as Record<string, string> };
 }
 
+// What the review screen shows about the rule that pre-filled the form.
+export function ruleSummary(rule: SupplierRule | null) {
+  return rule ? { id: rule.id, name: rule.name, debitAccount: rule.debitAccount, taxCode: rule.taxCode, evidenceType: rule.evidenceType, paymentMethod: rule.paymentMethod, paidBy: rule.paidBy, deductionPercent: rule.deductionPercent } : null;
+}
+
+// Addresses a document came from, most specific first: the original sender of a forwarded message, then the sender unless it is the company's own person.
+function documentSenders(db: Database.Database, companyId: number, row: PurchaseDocumentRow): string[] {
+  if (row.source !== 'EMAIL') return [];
+  const out: string[] = [];
+  if (row.originalSender) out.push(row.originalSender);
+  if (row.sender && !senderContext(db, companyId).own.has(row.sender.toLowerCase())) out.push(row.sender.toLowerCase());
+  return out;
+}
+
 export function previewDocument(companyId: number, id: number, options: { originalPurchaseId?: number } = {}) {
   const db = getDb();
   const row = getDocument(companyId, id);
@@ -749,7 +766,22 @@ export function previewDocument(companyId: number, id: number, options: { origin
   const x = parseExtracted(row);
   if (!x) return emptyPreview(db, companyId, row);
   const warnings: string[] = [];
-  const supplierId = findSupplierId(db, companyId, { regNumber: x.supplier.code, vatCode: x.supplier.vatCode });
+  let supplierId = findSupplierId(db, companyId, { regNumber: x.supplier.code, vatCode: x.supplier.vatCode });
+  // No usable code on the document: the supplier may be known by the e-mail address the document came from.
+  const senders = documentSenders(db, companyId, row);
+  let supplierFromEmail: string | null = null;
+  let supplier = x.supplier;
+  if (supplierId === null && !x.supplier.code?.trim() && !x.supplier.vatCode?.trim()) {
+    for (const address of senders) {
+      const found = findClientByEmail(db, companyId, address);
+      if (found === null) continue;
+      const c = db.prepare('SELECT name, code, vatCode, address FROM Client WHERE id=?').get(found) as { name: string; code: string | null; vatCode: string | null; address: string | null };
+      supplierId = found; supplierFromEmail = address;
+      supplier = { ...x.supplier, name: x.supplier.name || c.name, code: c.code, vatCode: c.vatCode, address: x.supplier.address || c.address };
+      break;
+    }
+  }
+  const rule: SupplierRule | null = findRule(db, companyId, supplierId, senders);
   const buyerOk = buyerMatchesCompany(db, companyId, { regNumber: x.buyer.code, vatCode: x.buyer.vatCode });
   if (buyerOk === false) warnings.push('Pirkėjo kodas arba PVM kodas dokumente nesutampa su įmonės duomenimis: dokumentas gali būti išrašytas kitam asmeniui.');
   if (buyerOk === null) warnings.push('Nepavyko palyginti pirkėjo: dokumente arba įmonės duomenyse nėra juridinio asmens kodo ir PVM kodo.');
@@ -780,7 +812,10 @@ export function previewDocument(companyId: number, id: number, options: { origin
   let suggestedDeductionPercent: number | null = null;
   if (x.docKind === 'RECEIPT') warnings.push('Tai kasos kvitas: PVM sąskaitos faktūros nėra, todėl siūloma registruoti kaip kvitą be PVM atskaitos.');
   else if (!x.buyer.vatCode?.trim()) warnings.push('Dokumente nenurodytas pirkėjo PVM kodas: siūloma registruoti kaip kvitą be PVM atskaitos.');
-  if (suggestedEvidenceType === 'RECEIPT') suggestedDeductionPercent = 0;
+  // A rule's document kind replaces the guess from the buyer's VAT code; its deduction share replaces the company default (never for a non-payer, below).
+  const evidenceType = rule?.evidenceType ?? suggestedEvidenceType;
+  if (evidenceType === 'RECEIPT') suggestedDeductionPercent = 0;
+  if (rule?.deductionPercent != null) suggestedDeductionPercent = rule.deductionPercent;
   const date = x.issueDate && validDate(x.issueDate) ? x.issueDate : undefined;
   let companyVatPayer = true;
   try { companyVatPayer = companyTaxMode(companyId, date) === 'STANDARD_VAT'; } catch { companyVatPayer = true; }
@@ -790,28 +825,33 @@ export function previewDocument(companyId: number, id: number, options: { origin
   const suggestions = suggestFor(db, companyId, supplierId, x.lines.map(l => l.vatRate));
   // A credit note is shown with positive amounts (the credit logic negates them); printed minus signs are dropped.
   const abs = <T extends number | null>(v: T): T => (x.docKind === 'CREDIT_NOTE' && typeof v === 'number' ? Math.abs(v) as T : v);
+  const ruleTaxCode: string | null = rule?.taxCode && codesFor('PURCHASE').includes(rule.taxCode) ? rule.taxCode : null;
   const draftLines = x.lines.map((l, i) => {
     const rate = l.vatRate;
     const quantity = l.quantity ?? 1;
     const net = l.net ?? (l.gross !== null && rate !== null ? r2(l.gross / (1 + rate / 100)) : l.unitPrice !== null ? r2(l.unitPrice * quantity) : null);
     const gross = l.gross ?? (net !== null && l.vat !== null ? r2(net + l.vat) : net !== null && rate !== null ? r2(net * (1 + rate / 100)) : null);
     const vat = l.vat ?? (net !== null && gross !== null ? r2(gross - net) : null);
-    // taxCode stays empty: a suggested code only becomes real when the reviewer picks it.
-    return { itemName: l.name || '', quantity: abs(quantity), net: abs(net), vat: abs(vat), gross: abs(gross), vatRate: rate, taxCode: null as string | null, suggestedTaxCode: suggestions.taxCodes[i]?.taxCode ?? null, suggestedFromPurchaseId: suggestions.taxCodes[i]?.purchaseId ?? null };
+    // A code from history stays a suggestion until the reviewer picks it; the code of the person's own rule is pre-filled.
+    return { itemName: l.name || '', quantity: abs(quantity), net: abs(net), vat: abs(vat), gross: abs(gross), vatRate: rate, taxCode: ruleTaxCode, suggestedTaxCode: suggestions.taxCodes[i]?.taxCode ?? null, suggestedFromPurchaseId: suggestions.taxCodes[i]?.purchaseId ?? null };
   });
   // Pre-fill of the expense account: the supplier's history first, else the validated suggestion from the document content. Never a guess.
   const modelAccount = sanitizeSuggestedAccount(db, x.suggestedAccount);
   const history = suggestions.debitAccount;
-  const prefill = history
+  // The person's rule beats the supplier's history, which beats the suggestion from the document.
+  const ruleAccount = rule?.debitAccount && allowedDebit(db, rule.debitAccount) ? rule.debitAccount : null;
+  const prefill = ruleAccount
+    ? { account: ruleAccount, source: 'RULE' as const, info: { ruleId: rule!.id, ruleName: rule!.name } }
+    : history
     ? { account: history.account, source: 'HISTORY' as const, info: { purchaseId: history.purchaseId, number: history.number, date: history.date } }
     : modelAccount ? { account: modelAccount.code, source: 'MODEL' as const, info: { reason: modelAccount.reason } } : null;
   const draft: ConfirmInput = {
-    supplier: { clientId: supplierId, name: x.supplier.name || '', code: x.supplier.code || '', vatCode: x.supplier.vatCode || '', address: x.supplier.address || '', create: supplierId === null },
+    supplier: { clientId: supplierId, name: supplier.name || '', code: supplier.code || '', vatCode: supplier.vatCode || '', address: supplier.address || '', create: supplierId === null },
     series, number, issueDate: x.issueDate || '', dueDate: x.dueDate || '', lines: draftLines,
     totals: { net: abs(t.net) ?? undefined, vat: abs(t.vat) ?? undefined, gross: abs(t.gross) ?? undefined },
-    evidenceType: suggestedEvidenceType, ...(suggestedDeductionPercent !== null ? { deductionPercent: suggestedDeductionPercent } : {}),
-    paymentMethod: x.payment.method, cardLast4: x.payment.cardLast4, cashRegisterNo: x.receipt?.cashRegisterNo ?? null, receiptNo: x.receipt?.receiptNo ?? null, documentTime: x.receipt?.time ?? null,
-    paidBy: x.payment.method === 'CARD' ? 'COMPANY' : null, debitAccount: prefill?.account ?? null, accountSource: prefill?.source ?? null, accountInfo: prefill?.info ?? null, amountsInEur: !x.currency || x.currency.toUpperCase() === 'EUR',
+    evidenceType, ...(suggestedDeductionPercent !== null ? { deductionPercent: suggestedDeductionPercent } : {}),
+    paymentMethod: x.payment.method ?? rule?.paymentMethod ?? null, cardLast4: x.payment.cardLast4, cashRegisterNo: x.receipt?.cashRegisterNo ?? null, receiptNo: x.receipt?.receiptNo ?? null, documentTime: x.receipt?.time ?? null,
+    paidBy: rule?.paidBy ?? (x.payment.method === 'CARD' ? 'COMPANY' : null), debitAccount: prefill?.account ?? null, accountSource: prefill?.source ?? null, accountInfo: prefill?.info ?? null, amountsInEur: !x.currency || x.currency.toUpperCase() === 'EUR',
     currency: x.currency?.trim().toUpperCase() || 'EUR', docKind: x.docKind === 'CREDIT_NOTE' ? 'CREDIT_NOTE' : 'INVOICE', referencedDocument: x.referencedDocument ?? null,
     ...(x.currency && x.currency.trim().toUpperCase() !== 'EUR' ? { foreign: { currency: x.currency.trim().toUpperCase(), rate: null, rateDate: null } } : {}),
   };
@@ -819,7 +859,8 @@ export function previewDocument(companyId: number, id: number, options: { origin
   const { errors: missing } = validateEdit(db, companyId, draft, x);
   return {
     document: publicRow(row), extracted: x, recognized: true, draft, missing, warnings,
-    supplier: { clientId: supplierId, name: x.supplier.name, code: x.supplier.code, vatCode: x.supplier.vatCode },
+    supplier: { clientId: supplierId, name: supplier.name, code: supplier.code, vatCode: supplier.vatCode }, supplierFromEmail,
+    rule: ruleSummary(rule),
     needsSupplier: supplierId === null, buyerMatches: buyerOk, duplicatePurchaseId, duplicates,
     suggestedEvidenceType, suggestedDeductionPercent, companyVatPayer,
     suggestions: { debitAccount: suggestions.debitAccount?.account ?? null, debitAccountFromPurchaseId: suggestions.debitAccount?.purchaseId ?? null, accountHistory: history, modelAccount, lineTaxCodes: suggestions.taxCodes.map(s => s?.taxCode ?? null) },
@@ -898,6 +939,13 @@ function createAssetCards(db: Database.Database, companyId: number, userId: numb
 
 // The user's edited values are authoritative; the extraction is only used to ask for fields the document had (supplier code, currency).
 export function confirmDocument(companyId: number, id: number, userId: number | null, input: ConfirmInput) {
+  const result = confirmDocumentInner(companyId, id, userId, input);
+  // Learning: a document received by e-mail from an address that no rule accepts (typically a forwarded one) offers to allow that address.
+  const row = getDocument(companyId, id);
+  return { ...result, suggestAllowSender: row.source === 'EMAIL' ? addressToSuggest(companyId, row.sender, row.originalSender) : null };
+}
+
+function confirmDocumentInner(companyId: number, id: number, userId: number | null, input: ConfirmInput) {
   const db = getDb();
   return db.transaction(() => {
     const row = getDocument(companyId, id);
@@ -933,6 +981,13 @@ export function confirmDocument(companyId: number, id: number, userId: number | 
     const stored = purchase as { sumWithVat: number };
     if (!near(stored.sumWithVat, n.declaredGross, 0.01 * Math.max(1, items.length) + 1e-9)) throw new FieldErrorsError({ 'totals.gross': 'Perskaičiuota suma pagal eilutes nesutampa su bendra suma' });
     writePurchaseExtras(db, companyId, purchaseId, n.extras);
+    const used = findRule(db, companyId, supplierId, documentSenders(db, companyId, row));
+    if (used) markRuleUsed(db, used.id);
+    // "Save as the rule of this supplier": the confirmed values become (or replace) the supplier's rule.
+    const codes = [...new Set(n.taxCodes)];
+    const rule = input.saveRule === true
+      ? saveSupplierRule(db, companyId, supplierId, { debitAccount: n.body.debitAccount, taxCode: codes.length === 1 ? codes[0] : null, evidenceType: n.extras.evidenceType, paymentMethod: n.extras.paymentMethod, paidBy: n.extras.paidBy, deductionPercent: n.body.deductionPercent })
+      : null;
     setLineCodes(db, companyId, (items as { id: number }[]).map((it, i) => ({ kind: 'PURCHASE' as const, itemId: it.id, taxCode: n.taxCodes[i], note: row.extractedJson ? 'Pagal atpažintą dokumentą' : 'Pagal gautą dokumentą (įvesta rankiniu būdu)' })), userId);
     if (n.foreign) {
       const f = n.foreign;
@@ -941,6 +996,6 @@ export function confirmDocument(companyId: number, id: number, userId: number | 
     }
     const assets = createAssetCards(db, companyId, userId, purchaseId, n, items as { id: number; sumWithoutVat: number; sumWithVat: number }[]);
     db.prepare("UPDATE PurchaseDocument SET status='CONFIRMED', purchaseId=?, confirmedAt=strftime('%Y-%m-%dT%H:%M:%fZ','now'), confirmedBy=?, error=NULL, accountSource=? WHERE id=?").run(purchaseId, userId, accountSource, id);
-    return { purchase: db.prepare('SELECT * FROM Purchase WHERE id=?').get(purchaseId), items, assets, createdSupplier, document: publicRow(getDocument(companyId, id)) };
+    return { purchase: db.prepare('SELECT * FROM Purchase WHERE id=?').get(purchaseId), items, assets, createdSupplier, rule, document: publicRow(getDocument(companyId, id)) };
   })();
 }

@@ -1,4 +1,6 @@
 // The only place (besides the provider adapter) that names the cloud vendor's models. The UI and the settings API import the list from here.
+// Name of the cloud vendor, shown on the Settings -> API card (the only UI text that names it).
+export const RECOGNITION_VENDOR = 'Anthropic';
 export const RECOGNITION_MODELS = [
   { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', hint: 'accurate' },
   { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', hint: 'balanced' },

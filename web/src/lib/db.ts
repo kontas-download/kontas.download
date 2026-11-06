@@ -3,7 +3,8 @@ import { migratePurchaseCorrections } from './purchase-correction-schema';
 import { migrateTax, migratePurchaseAccount, migrateSaleCorrections, migrateInvoiceArchive, migrateDeliveryArchiveStatus } from './tax-schema';
 import { migrateControls, migrateAuditColumns, migrateAuditActor } from './control-schema';
 import { extensions } from '../extensions/registry';
-import { migratePayments, migrateManualSettlements, migratePaymentGuards, migrateReminders, migrateTaxCalendar, migrateRecurring, migratePurchaseSources } from './payment-schema';
+import { migrateApiAccess } from './api-schema';
+import { migratePayments, migrateManualSettlements, migratePaymentGuards, migrateReminders, migrateTaxCalendar, migrateObligationSubmission, migrateRecurring, migratePurchaseSources } from './payment-schema';
 import { migrateAccounting } from './accounting-schema';
 import { migrateDocumentLanguage } from './document-language-schema';
 import { migratePaymentAudit } from './data-transfer-schema';
@@ -19,6 +20,7 @@ import { migrateAutomation } from './automation-schema';
 import { migratePurchaseDocuments } from './purchase-document-schema';
 import { migrateDocumentInbox } from './document-inbox-schema';
 import { migrateExchangeRates } from './exchange-rate-schema';
+import { migratePurchaseItemPrices } from './purchase-item-price-repair-schema';
 import Database from 'better-sqlite3';
 import path from 'node:path';
 let dbInstance: Database.Database | null = null;
@@ -46,6 +48,8 @@ export function getDb() {
     migratePaymentGuards(db);
     migrateReminders(db);
     migrateTaxCalendar(db);
+    migrateObligationSubmission(db);
+    migrateApiAccess(db);
     migrateRecurring(db);
     migratePurchaseSources(db);
     migrateControls(db);
@@ -76,6 +80,7 @@ export function getDb() {
     migratePurchaseDocuments(db);
     migrateDocumentInbox(db);
     migrateExchangeRates(db);
+    migratePurchaseItemPrices(db);
     dbInstance = db;
   }
   return dbInstance;

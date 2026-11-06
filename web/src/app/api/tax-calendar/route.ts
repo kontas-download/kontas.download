@@ -4,7 +4,7 @@ import { apiError, HttpError } from '@/lib/errors';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 import { validTaxDate } from '@/lib/tax';
-import { OBLIGATION_CODES, calendarEvents, loadSettings, type ObligationCode } from '@/lib/tax-calendar';
+import { OBLIGATION_CODES, calendarEvents, loadSettings, markObligationDone, unmarkObligationDone, type ObligationCode } from '@/lib/tax-calendar';
 import { NextResponse } from 'next/server';
 
 const day = 86_400_000;
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
   }
 }
 
-// body: { code, enabled?, period? } updates applicability; { code, periodEnd, done: boolean, note? } marks a period as filed.
+// body: { code, enabled?, period? } updates applicability; { code, periodEnd, done: boolean, submittedDate?, registrationNo?, note? } marks a period as filed.
 export async function PUT(request: Request) {
   try {
     const denied = await requireApiAccess();
@@ -45,8 +45,8 @@ export async function PUT(request: Request) {
     const db = getDb();
     if (typeof body.done === 'boolean') {
       if (!validTaxDate(body.periodEnd)) throw new HttpError(400, 'Neteisinga laikotarpio pabaigos data');
-      if (body.done) db.prepare('INSERT OR REPLACE INTO ObligationDone(companyId,code,periodEnd,doneAt,note) VALUES(?,?,?,?,?)').run(companyId, obligation, body.periodEnd, Date.now(), typeof body.note === 'string' ? body.note.slice(0, 500) : null);
-      else db.prepare('DELETE FROM ObligationDone WHERE companyId=? AND code=? AND periodEnd=?').run(companyId, obligation, body.periodEnd);
+      if (body.done) markObligationDone(db, companyId, obligation, body.periodEnd, body);
+      else unmarkObligationDone(db, companyId, obligation, body.periodEnd);
       return NextResponse.json({ success: true });
     }
     const period = body.period == null ? null : body.period;

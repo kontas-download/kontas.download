@@ -4,6 +4,8 @@ import { HttpError } from './errors';
 import { encryptSecret, decryptSecret, validEmail } from './company-mail';
 import { detectMime, getRecognitionSettings, looksLikeUblInvoice, storeDocument } from './purchase-recognition';
 import { parseUblInvoice } from './ubl-invoice';
+import { classifySender, senderAllowed, senderContext, type SenderContext } from './document-inbox-senders';
+import { bodyText, originalSenderFromText } from './document-inbox-forward';
 
 // Purchase documents received by e-mail. The company points the program at any IMAP mailbox; every few minutes the program
 // reads new messages, accepts only the allowed senders and stores PDF / image attachments as received documents (source EMAIL).
@@ -39,7 +41,7 @@ export interface InboxDeps {
 
 interface InboxRow {
   companyId: number; enabled: number; host: string; port: number; secure: number; username: string; passwordEncrypted: string; folder: string;
-  processedFolder: string; allowedSenders: string; lastUidValidity: string | null; lastUid: number; lastRunAt: string | null; lastError: string | null;
+  processedFolder: string; allowedSenders: string; acceptKnownContacts: number; lastUidValidity: string | null; lastUid: number; lastRunAt: string | null; lastError: string | null;
 }
 const inboxRow = (companyId: number) => getDb().prepare('SELECT * FROM CompanyDocumentInbox WHERE companyId=?').get(companyId) as InboxRow | undefined;
 
@@ -49,7 +51,7 @@ export function getInboxSettings(companyId: number) {
   return {
     enabled: Boolean(r?.enabled), host: r?.host ?? '', port: r?.port ?? 993, secure: r ? Boolean(r.secure) : true, username: r?.username ?? '',
     hasPassword: Boolean(r?.passwordEncrypted), folder: r?.folder || 'INBOX', processedFolder: r?.processedFolder ?? '',
-    allowedSenders: r?.allowedSenders ?? '', lastRunAt: r?.lastRunAt ?? null, lastError: r?.lastError ?? null,
+    allowedSenders: r?.allowedSenders ?? '', acceptKnownContacts: r ? Boolean(r.acceptKnownContacts) : true, lastRunAt: r?.lastRunAt ?? null, lastError: r?.lastError ?? null,
   };
 }
 
@@ -69,13 +71,7 @@ export function parseAllowedSenders(text: unknown): string[] {
   if (list.length > 200) throw new HttpError(400, 'Per daug leidžiamų siuntėjų (daugiausia 200)');
   return list;
 }
-/** Exact address or @domain, case-insensitive. An empty list refuses everyone. */
-export function senderAllowed(address: string, allowed: string[]): boolean {
-  const a = address.trim().toLowerCase();
-  if (!a || !a.includes('@')) return false;
-  const domain = a.slice(a.lastIndexOf('@'));
-  return allowed.some(entry => (entry.startsWith('@') ? entry === domain : entry === a));
-}
+export { senderAllowed };
 
 const folderName = (value: unknown, label: string, required: boolean) => {
   if (value === undefined || value === null) return required ? 'INBOX' : '';
@@ -110,19 +106,34 @@ export function saveInboxSettings(companyId: number, body: Record<string, unknow
   const folder = folderName(body.folder, 'gaunamieji', true);
   const processedFolder = folderName(body.processedFolder, 'apdoroti', false);
   const allowed = parseAllowedSenders(body.allowedSenders);
+  if (body.acceptKnownContacts !== undefined && typeof body.acceptKnownContacts !== 'boolean') throw new HttpError(400, 'Neteisingas nustatymas: priimti iš žinomų kontrahentų');
   const previous = inboxRow(companyId);
+  const acceptKnown = typeof body.acceptKnownContacts === 'boolean' ? body.acceptKnownContacts : previous ? Boolean(previous.acceptKnownContacts) : true;
   const secret = clearPassword === true ? '' : typeof password === 'string' && password ? encryptSecret(password, companyId) : previous?.passwordEncrypted || '';
   if (enabled && (!username.trim() || !secret)) throw new HttpError(400, 'Norėdami įjungti dėžutę, nurodykite naudotojo vardą ir slaptažodį.');
   if (previous && previous.username !== username && secret && !(typeof password === 'string' && password)) throw new HttpError(400, 'Keičiant naudotojo vardą įveskite naują slaptažodį.');
-  getDb().prepare(`INSERT INTO CompanyDocumentInbox(companyId,enabled,host,port,secure,username,passwordEncrypted,folder,processedFolder,allowedSenders,updatedAt)
-    VALUES(?,?,?,?,?,?,?,?,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  getDb().prepare(`INSERT INTO CompanyDocumentInbox(companyId,enabled,host,port,secure,username,passwordEncrypted,folder,processedFolder,allowedSenders,acceptKnownContacts,updatedAt)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now'))
     ON CONFLICT(companyId) DO UPDATE SET enabled=excluded.enabled,host=excluded.host,port=excluded.port,secure=excluded.secure,username=excluded.username,
-      passwordEncrypted=excluded.passwordEncrypted,folder=excluded.folder,processedFolder=excluded.processedFolder,allowedSenders=excluded.allowedSenders,updatedAt=excluded.updatedAt,
+      passwordEncrypted=excluded.passwordEncrypted,folder=excluded.folder,processedFolder=excluded.processedFolder,allowedSenders=excluded.allowedSenders,acceptKnownContacts=excluded.acceptKnownContacts,updatedAt=excluded.updatedAt,
       -- another mailbox or folder means another UID space: start from scratch
       lastUid=CASE WHEN CompanyDocumentInbox.host=excluded.host AND CompanyDocumentInbox.username=excluded.username AND CompanyDocumentInbox.folder=excluded.folder THEN CompanyDocumentInbox.lastUid ELSE 0 END,
       lastUidValidity=CASE WHEN CompanyDocumentInbox.host=excluded.host AND CompanyDocumentInbox.username=excluded.username AND CompanyDocumentInbox.folder=excluded.folder THEN CompanyDocumentInbox.lastUidValidity ELSE NULL END`)
-    .run(companyId, enabled ? 1 : 0, typeof host === 'string' ? host.trim() : '', port, Number(secure), username.trim(), secret, folder, processedFolder, allowed.join('\n'));
+    .run(companyId, enabled ? 1 : 0, typeof host === 'string' ? host.trim() : '', port, Number(secure), username.trim(), secret, folder, processedFolder, allowed.join('\n'), Number(acceptKnown));
   publishInboxMarker().catch(err => console.error('[document-inbox] marker', err instanceof Error ? err.message : err));
+  return getInboxSettings(companyId);
+}
+
+// The person agrees to accept mail from one more address (the learning flow after a confirmation, or from the refusal log).
+export function allowSender(companyId: number, address: unknown) {
+  const entry = typeof address === 'string' ? address.trim().toLowerCase() : '';
+  if (!validEmail(entry)) throw new HttpError(400, 'Neteisingas siuntėjas: ' + String(address).slice(0, 100) + '. Nurodykite el. pašto adresą arba @domeną, po vieną eilutėje.');
+  const list = parseAllowedSenders(inboxRow(companyId)?.allowedSenders ?? '');
+  if (!list.includes(entry)) list.push(entry);
+  if (list.length > 200) throw new HttpError(400, 'Per daug leidžiamų siuntėjų (daugiausia 200)');
+  const joined = list.join(String.fromCharCode(10));
+  getDb().prepare(`INSERT INTO CompanyDocumentInbox(companyId,allowedSenders) VALUES(?,?)
+    ON CONFLICT(companyId) DO UPDATE SET allowedSenders=excluded.allowedSenders,updatedAt=strftime('%Y-%m-%dT%H:%M:%fZ','now')`).run(companyId, joined);
   return getInboxSettings(companyId);
 }
 
@@ -175,14 +186,15 @@ function log(companyId: number, uidValidity: string, uid: number, m: { messageId
     .run(companyId, uidValidity, uid, m.messageId?.slice(0, 500) ?? null, m.sender?.slice(0, 254) ?? null, m.subject?.slice(0, 300) ?? null, m.status, m.detail.join('\n').slice(0, 2000));
 }
 
-async function handleMessage(companyId: number, uidValidity: string, uid: number, source: Buffer, allowed: string[], deps: InboxDeps, recognizing: boolean): Promise<'IMPORTED' | 'SKIPPED' | 'OTHER'> {
+async function handleMessage(companyId: number, uidValidity: string, uid: number, source: Buffer, ctx: SenderContext, deps: InboxDeps, recognizing: boolean): Promise<'IMPORTED' | 'SKIPPED' | 'OTHER'> {
   const parsed = await simpleParser(source);
   const messageId = parsed.messageId ?? null;
   const subject = parsed.subject ?? null;
   const sender = parsed.from?.value?.[0]?.address?.trim().toLowerCase() || null;
   const entry = (status: string, detail: string[]) => log(companyId, uidValidity, uid, { messageId, sender, subject, status, detail });
   if (messageId && getDb().prepare('SELECT 1 FROM DocumentInboxMessage WHERE companyId=? AND messageId=?').get(companyId, messageId.slice(0, 500))) return 'OTHER'; // the same message under a new UID
-  if (!sender || !senderAllowed(sender, allowed)) { entry('SKIPPED_SENDER', [`Siuntėjas nėra leidžiamų sąraše: ${sender ?? 'nežinomas'}`]); return 'SKIPPED'; }
+  const via = sender ? classifySender(ctx, sender) : null;
+  if (!sender || !via) { entry('SKIPPED_SENDER', [`Siuntėjas nėra leidžiamų sąraše: ${sender ?? 'nežinomas'}`]); return 'SKIPPED'; }
   // Best effort only: the header is written by the receiving server and some hosts do not write it at all. The allowed sender list
   // is the real protection; this just refuses messages the receiving server itself judged forged.
   const auth = parsed.headers.get('authentication-results');
@@ -191,9 +203,30 @@ async function handleMessage(companyId: number, uidValidity: string, uid: number
 
   const detail: string[] = [];
   let stored = 0, duplicates = 0, errors = 0, used = 0;
-  interface Entry { name: string; content: Buffer; kind: 'xml' | 'doc' }
+  interface Entry { name: string; content: Buffer; kind: 'xml' | 'doc'; original: string | null }
   const entries: Entry[] = [];
-  for (const attachment of parsed.attachments) {
+  // A message from the company's own person is a forward: the original sender is read from the body ("Forwarded message" block)
+  // or from an attached message (message/rfc822), whose own attachments are the documents.
+  const forwarded = via === 'OWN';
+  const inlineOriginal = forwarded ? originalSenderFromText(bodyText(parsed), ctx.own) : null;
+  interface Flat { filename?: string; contentType?: string; content: Buffer; related?: boolean; contentDisposition?: string; original: string | null }
+  const flat: Flat[] = [];
+  const expand = async (list: typeof parsed.attachments, depth: number, original: string | null) => {
+    for (const a of list) {
+      if (/^message\/rfc822$/i.test(a.contentType || '')) {
+        if (depth >= 2) continue;
+        const nested = await simpleParser(a.content).catch(() => null);
+        if (!nested) continue;
+        const from = nested.from?.value?.[0]?.address?.trim().toLowerCase() || null;
+        const own = forwarded ? (from && !ctx.own.has(from) ? from : originalSenderFromText(bodyText(nested), ctx.own) ?? original) : null;
+        await expand(nested.attachments, depth + 1, own);
+        continue;
+      }
+      flat.push({ filename: a.filename, contentType: a.contentType, content: a.content, related: a.related, contentDisposition: a.contentDisposition, original });
+    }
+  };
+  await expand(parsed.attachments, 0, inlineOriginal);
+  for (const attachment of flat) {
     const name = (attachment.filename || 'priedas').slice(0, 200);
     const type = attachment.contentType || '';
     const content = attachment.content;
@@ -204,11 +237,11 @@ async function handleMessage(companyId: number, uidValidity: string, uid: number
       // An e-invoice the UBL reader cannot map is not queued (a PDF of the same message still is).
       const result = parseUblInvoice(content.toString('utf8'));
       if (!result.invoice) { detail.push(`${XML_LINE} (${name})${result.issues[0] ? `: ${result.issues[0]}` : ''}`.slice(0, 400)); continue; }
-      entries.push({ name, content, kind: 'xml' });
+      entries.push({ name, content, kind: 'xml', original: attachment.original });
       continue;
     }
     if (!imageExt.test(name) && !detectMime(content)) continue; // not a document type the program reads (signature files, calendar invites, ...)
-    entries.push({ name, content, kind: 'doc' });
+    entries.push({ name, content, kind: 'doc', original: attachment.original });
   }
   // A PDF of the same invoice (same file name, or the only PDF next to the only XML) is the XML's visual original, not a second queue item.
   const xmls = entries.filter(e => e.kind === 'xml');
@@ -226,7 +259,7 @@ async function handleMessage(companyId: number, uidValidity: string, uid: number
     if (++used > MAX_ATTACHMENTS) { detail.push(`Per daug priedų: apdorota tik pirmieji ${MAX_ATTACHMENTS}`); break; }
     const visual = visualOf.get(entry);
     try {
-      const row = storeDocument(companyId, { buffer: entry.content, fileName: entry.name, source: 'EMAIL', sender, ...(visual ? { visual: { buffer: visual.content, fileName: visual.name } } : {}) });
+      const row = storeDocument(companyId, { buffer: entry.content, fileName: entry.name, source: 'EMAIL', sender, originalSender: entry.original, ...(visual ? { visual: { buffer: visual.content, fileName: visual.name } } : {}) });
       stored++;
       if (visual && !row.visualSha256) detail.push(`Dublikatas: ${visual.name}`);
       // XML needs no recognition; the PDF/image documents are recognized when the company has it on.
@@ -239,6 +272,8 @@ async function handleMessage(companyId: number, uidValidity: string, uid: number
       if (visual) { taken.delete(visual); }
     }
   }
+  const originals = [...new Set(entries.map(e => e.original).filter((a): a is string => Boolean(a)))];
+  if (originals.length) detail.unshift(`Persiųsta: pradinis siuntėjas ${originals.join(', ')}`);
   if (stored) detail.unshift(`Išsaugota dokumentų: ${stored}`);
   if (stored || duplicates) { entry('IMPORTED', detail); return 'IMPORTED'; }
   if (errors) { entry('FAILED', detail); return 'OTHER'; }
@@ -257,7 +292,7 @@ export async function pollInbox(companyId: number, deps: InboxDeps): Promise<Pol
     const row = inboxRow(companyId);
     if (!row?.enabled) throw new HttpError(409, 'El. pašto dėžutė neįjungta.');
     const connection = connectionFor(companyId, {}, row);
-    const allowed = parseAllowedSenders(row.allowedSenders);
+    const ctx = senderContext(db, companyId);
     const recognition = getRecognitionSettings(companyId);
     const recognizing = recognition.enabled && recognition.hasKey;
     try {
@@ -273,7 +308,7 @@ export async function pollInbox(companyId: number, deps: InboxDeps): Promise<Pol
       for (const uid of uids) {
         result.messages++;
         if (!db.prepare('SELECT 1 FROM DocumentInboxMessage WHERE companyId=? AND uidValidity=? AND uid=?').get(companyId, uidValidity, uid)) {
-          const outcome = await handleMessage(companyId, uidValidity, uid, await session.fetchSource(uid), allowed, deps, recognizing);
+          const outcome = await handleMessage(companyId, uidValidity, uid, await session.fetchSource(uid), ctx, deps, recognizing);
           if (outcome === 'IMPORTED') result.imported++;
           if (outcome === 'SKIPPED') result.skipped++;
         }
@@ -306,7 +341,9 @@ export async function pollAllInboxes(deps: InboxDeps): Promise<{ companyId: numb
   return out;
 }
 
+// `canAllow`: refused only because the sender is not accepted (a failed DMARC check is never offered for allowing).
 export function inboxLog(companyId: number, limit = 50) {
-  return getDb().prepare('SELECT id, uid, sender, subject, receivedAt, status, detail FROM DocumentInboxMessage WHERE companyId=? ORDER BY id DESC LIMIT ?').all(companyId, limit) as
+  const rows = getDb().prepare('SELECT id, uid, sender, subject, receivedAt, status, detail FROM DocumentInboxMessage WHERE companyId=? ORDER BY id DESC LIMIT ?').all(companyId, limit) as
     { id: number; uid: number; sender: string | null; subject: string | null; receivedAt: string; status: string; detail: string }[];
+  return rows.map(r => ({ ...r, canAllow: r.status === 'SKIPPED_SENDER' && Boolean(r.sender) && !r.detail.startsWith('DMARC patikra') }));
 }

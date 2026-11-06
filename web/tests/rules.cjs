@@ -98,6 +98,9 @@ test('rules: calendar deadlines in the tax calendar (calendar.fr0564.dueDay, cal
   jar.set('auth_session', auth.createSessionToken({ id: 1 })); jar.set('active_company_id', '1');
   const route = require('../src/app/api/tax-calendar/route.ts');
   const put = body => route.PUT(new Request('http://localhost:3000/api/tax-calendar', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
+  // FR0564 needs a VAT code; GPM313/GPM312 events of ended periods need payroll.
+  db.prepare("UPDATE Company SET vatCode='LT100000000' WHERE id=1").run();
+  for (const [y, m] of [[2025, 12], [2026, 1]]) db.prepare("INSERT INTO Payroll(companyId,year,month,sumWithVat,createdAt) VALUES(1,?,?,1000,datetime('now'))").run(y, m);
   for (const code of ['FR0564', 'GPM313', 'GPM312', 'PLN204']) assert.equal((await put({ code, enabled: true })).status, 200, code);
   const { calendarEvents } = require('../src/lib/tax-calendar.ts');
   const events = calendarEvents(db, 1, '2026-01-01', '2026-12-31');

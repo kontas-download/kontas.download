@@ -58,6 +58,15 @@ export function migrateTaxCalendar(db: Database.Database) {
   }).immediate();
 }
 
+// Submission record of a tax calendar entry (date, registration number, note). Additive; the calendar still reads ObligationDone for "done".
+export function migrateObligationSubmission(db: Database.Database) {
+  db.transaction(() => {
+    if (db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-11-obligation-submission-v1')) return;
+    db.exec(`CREATE TABLE IF NOT EXISTS ObligationSubmission(companyId INTEGER NOT NULL REFERENCES Company(id) ON DELETE CASCADE, code TEXT NOT NULL, periodEnd TEXT NOT NULL, submittedDate TEXT NOT NULL, registrationNo TEXT, note TEXT, createdAt INTEGER NOT NULL, PRIMARY KEY(companyId,code,periodEnd));`);
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-obligation-submission-v1');
+  }).immediate();
+}
+
 // Recurring invoice templates. Nothing is issued automatically: a person issues each period.
 export function migrateRecurring(db: Database.Database) {
   db.transaction(() => {

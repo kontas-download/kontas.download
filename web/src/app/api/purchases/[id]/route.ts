@@ -44,6 +44,13 @@ export async function PUT(
     const db = getDb();
 
     const { sumWithoutVat, sumWithVat, vat } = totalLines(items);
+    // Safety net: a form that lost the line prices (all zero) must never wipe out a stored amount.
+    const stored = db.prepare('SELECT sumWithVat, sumWithoutVat FROM Purchase WHERE id=? AND companyId=?').get(id, companyId) as { sumWithVat: number; sumWithoutVat: number };
+    const storedTotal = Math.max(Math.abs(Number(stored.sumWithVat) || 0), Math.abs(Number(stored.sumWithoutVat) || 0));
+    const allZero = Array.isArray(items) && items.every((it: { price?: unknown }) => !Number(it?.price));
+    if (storedTotal > 0.005 && (allZero || Math.abs(sumWithVat) < 0.005)) {
+      return NextResponse.json({ error: 'Eilučių kainos nulinės, o dokumento suma nenulinė: išsaugojimas atmestas, kad suma nebūtų panaikinta. Patikrinkite eilučių kainas.' }, { status: 400 });
+    }
     const snapshot=db.prepare('SELECT buyerVatMode,deductionPercent,debitAccount,warehouseName FROM Purchase WHERE id=? AND companyId=?').get(id,companyId) as {buyerVatMode:string|null;deductionPercent:number|null;debitAccount:string|null;warehouseName:string|null};
     const mode=snapshot.buyerVatMode?taxMode(snapshot.buyerVatMode):companyTaxMode(companyId,purchaseDate);
     const {deductionPercent,deductibleVat}=purchaseTax(vat,mode,body.deductionPercent ?? snapshot.deductionPercent ?? undefined);

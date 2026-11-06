@@ -24,6 +24,7 @@ const EXACT: [string, string, string][] = [
   ['Pašto serveris nerastas: patikrinkite serverio adresą.', 'Почтовый сервер не найден: проверьте адрес сервера.', 'Mail server not found: check the server address.'],
   ['Saugaus ryšio (SSL/TLS) klaida: patikrinkite prievadą ir SSL/TLS nustatymą arba serverio sertifikatą.', 'Ошибка защищённого соединения (SSL/TLS): проверьте порт, настройку SSL/TLS или сертификат сервера.', 'Secure connection (SSL/TLS) error: check the port, the SSL/TLS setting or the server certificate.'],
   ['Nepavyko prisijungti prie serverio: patikrinkite adresą, prievadą ir ugniasienę.', 'Не удалось подключиться к серверу: проверьте адрес, порт и брандмауэр.', 'Could not reach the server: check the address, the port and the firewall.'],
+  ['Neteisingas nustatymas: priimti iš žinomų kontrahentų', 'Некорректная настройка: принимать от известных контрагентов', 'Invalid setting: accept from known contractors'],
   ['Laiške nėra tinkamų priedų', 'В письме нет подходящих вложений', 'The message has no suitable attachments'],
 ];
 export const INBOX_EXACT: Record<string, { ru: string; en: string }> = Object.fromEntries(EXACT.map(([lt, ru, en]) => [lt, { ru, en }]));
@@ -34,6 +35,7 @@ export const INBOX_PATTERNS: { re: RegExp; ru: Ru; en: Ru }[] = [
   { re: /^Aplankas "(.+)" nerastas pašto dėžutėje\.$/, ru: (_, f) => `Папка "${f}" не найдена в почтовом ящике.`, en: (_, f) => `The folder "${f}" was not found in the mailbox.` },
   { re: /^Siuntėjas nėra leidžiamų sąraše: (.+)$/, ru: (_, s) => `Отправитель не в списке разрешённых: ${s}`, en: (_, s) => `The sender is not on the allowed list: ${s}` },
   { re: /^DMARC patikra nepavyko: laiškas galėjo būti suklastotas \((.+)\)$/, ru: (_, s) => `Проверка DMARC не пройдена: письмо могло быть подделано (${s})`, en: (_, s) => `DMARC check failed: the message may be forged (${s})` },
+  { re: /^Persiųsta: pradinis siuntėjas (.+)$/, ru: (_, s) => `Переслано: исходный отправитель ${s}`, en: (_, s) => `Forwarded: original sender ${s}` },
   { re: /^Išsaugota dokumentų: (\d+)$/, ru: (_, n) => `Сохранено документов: ${n}`, en: (_, n) => `Documents stored: ${n}` },
   { re: /^Dublikatas: (.+)$/, ru: (_, f) => `Дубликат: ${f}`, en: (_, f) => `Duplicate: ${f}` },
   { re: /^XML e-sąskaita nepriimta \((.+?)\)(?:: (.+))?$/, ru: (_, f, why) => `XML-счёт не принят (${f})${why ? `: ${why}` : ''}`, en: (_, f, why) => `XML e-invoice not accepted (${f})${why ? `: ${why}` : ''}` },

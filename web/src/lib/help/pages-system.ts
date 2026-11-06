@@ -228,4 +228,84 @@ export const systemPages: HelpPage[] = [
       },
     },
   },
+  {
+    slug: 'api-settings',
+    group: 'system',
+    related: ['tax-calendar', 'document-recognition'],
+    sources: ['vmi-eds'],
+    text: {
+      lt: {
+        title: 'API nustatymai',
+        summary: 'Prisijungimai prie dokumentų atpažinimo, VMI EDS, Sodros EDAS ir programos adresas.',
+        purpose: [
+          'Skiltyje Nustatymai → API vienoje vietoje laikomi prisijungimai prie išorinių sistemų aktyviai įmonei: dokumentų atpažinimo raktas, VMI EDS ir Sodros EDAS duomenų perdavimo vartotojai. Registrų centras ir bankų API kol kas tik aprašyti.',
+          'Slaptažodžiai ir raktai saugomi užšifruoti, po išsaugojimo niekada nerodomi ir į įmonės eksporto paketą neįtraukiami.',
+        ],
+        steps: [
+          'Atidarykite Nustatymai → API.',
+          'Dokumentų atpažinimas: įveskite raktą, pasirinkite modelį ir, jei reikia, mėnesio limitą.',
+          'VMI EDS: įmonės atstovas EDS sistemoje sukuria duomenų perdavimo vartotoją; jo vardą ir slaptažodį įveskite čia ir pasirinkite aplinką (bandomoji ar gamybinė).',
+          'Sodra EDAS: EDAS portale sugeneruokite API vartotoją ir slaptažodį ir įveskite čia.',
+          'Programos adresas: nurodykite viešą programos adresą (pvz., https://apskaita.example.lt); jis naudojamas nuorodoms priminimų laiškuose.',
+        ],
+        rules: [
+          'Duomenų siuntimas į VMI ir Sodrą dar neprijungtas: išsaugoti duomenys keičia tik būseną „Duomenys įvesti“. Deklaracijas kol kas pateikite rankiniu būdu.',
+          'Registrų centras metinių finansinių ataskaitų teikimui programinės sąsajos nesuteikia; ataskaitą reikia įkelti rankiniu būdu.',
+          'Programos adresą keičia tik administratorius; jei jis nenurodytas, naudojamas aplinkos kintamasis APP_BASE_URL.',
+        ],
+        mistakes: [
+          'Tikėtis, kad įvedus VMI ar Sodros duomenis deklaracijos bus siunčiamos automatiškai.',
+          'Pamiršti nurodyti programos adresą, todėl priminimų laiškuose nuorodos be adreso neveikia.',
+        ],
+      },
+      ru: {
+        title: 'Настройки API',
+        summary: 'Подключения к распознаванию документов, VMI EDS, Sodra EDAS и адрес программы.',
+        purpose: [
+          'В разделе Настройки → API в одном месте хранятся подключения к внешним системам для активной компании: ключ распознавания документов, пользователи передачи данных VMI EDS и Sodra EDAS. Центр регистров и API банков пока только описаны.',
+          'Пароли и ключи хранятся в зашифрованном виде, после сохранения не показываются и в пакет экспорта компании не включаются.',
+        ],
+        steps: [
+          'Откройте Настройки → API.',
+          'Распознавание документов: введите ключ, выберите модель и при необходимости месячный лимит.',
+          'VMI EDS: представитель компании создаёт в системе EDS пользователя передачи данных; введите здесь его имя и пароль и выберите среду (тестовая или рабочая).',
+          'Sodra EDAS: сгенерируйте в портале EDAS пользователя и пароль API и введите их здесь.',
+          'Адрес программы: укажите публичный адрес программы (например, https://apskaita.example.lt); он используется для ссылок в письмах-напоминаниях.',
+        ],
+        rules: [
+          'Отправка данных в VMI и Sodra пока не подключена: сохранённые данные меняют только состояние на «Данные введены». Декларации пока подавайте вручную.',
+          'Центр регистров не предоставляет программного интерфейса для подачи годовой отчётности; отчёт нужно загрузить вручную.',
+          'Адрес программы меняет только администратор; если он не указан, используется переменная окружения APP_BASE_URL.',
+        ],
+        mistakes: [
+          'Ожидать, что после ввода данных VMI или Sodra декларации будут отправляться автоматически.',
+          'Не указать адрес программы, из-за чего ссылки в письмах-напоминаниях остаются без адреса.',
+        ],
+      },
+      en: {
+        title: 'API settings',
+        summary: 'Connections for document recognition, VMI EDS, Sodra EDAS and the application address.',
+        purpose: [
+          'Settings → API keeps the connections to external systems for the active company in one place: the document recognition key and the data-transfer users of VMI EDS and Sodra EDAS. The Centre of Registers and bank APIs are only described for now.',
+          'Passwords and keys are stored encrypted, are never shown after saving and are not part of the company export package.',
+        ],
+        steps: [
+          'Open Settings → API.',
+          'Document recognition: enter the key, choose the model and, if needed, a monthly limit.',
+          'VMI EDS: the company representative creates a data-transfer user in EDS; enter its name and password here and choose the environment (test or production).',
+          'Sodra EDAS: generate an API user and password in the EDAS portal and enter them here.',
+          'Application address: enter the public address of the application (for example https://apskaita.example.lt); it is used for links in reminder e-mails.',
+        ],
+        rules: [
+          'Sending data to VMI and Sodra is not connected yet: the saved data only changes the status to "Configured". File declarations by hand for now.',
+          'The Centre of Registers offers no programming interface for annual financial statements; the report has to be uploaded by hand.',
+          'Only an administrator can change the application address; if it is empty, the APP_BASE_URL environment variable is used.',
+        ],
+        mistakes: [
+          'Expecting declarations to be sent automatically once the VMI or Sodra data is entered.',
+          'Leaving the application address empty, so links in reminder e-mails have no address.',
+        ],
+      },
+    },
+  },
 ];

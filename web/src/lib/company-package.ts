@@ -7,7 +7,7 @@ import { documentsRootFor } from './document-files';
 import { ensureLocalFile, remotePut } from './document-remote';
 
 // Company export package: one JSON file with everything that belongs to one company, so it can be restored as a NEW company.
-// Deliberately excluded: SMTP settings (CompanyMailSettings, encrypted passwords), the document mailbox settings (CompanyDocumentInbox, same rule), users, sessions, login attempts,
+// Deliberately excluded: SMTP settings (CompanyMailSettings, encrypted passwords), state system access data (CompanyApiCredential, same rule), the filing attempt log (FilingAttempt), the document mailbox settings (CompanyDocumentInbox, same rule), users, sessions, login attempts,
 // the PDF invoice archive and supplier XML originals (evidence stays in the source database and its backups).
 // Included: the purchase document originals (PurchaseDocument rows and the files themselves, base64 under data.documentFiles).
 export const PACKAGE_FORMAT = 'kontas-company';
@@ -26,6 +26,7 @@ export const TABLES: Record<string, Spec & { table: string; where: string; order
   taxPeriods: { table: 'CompanyTaxPeriod', where: 'companyId=?', order: 'effectiveFrom', columns: t('effectiveFrom,mode') },
   obligations: { table: 'CompanyObligation', where: 'companyId=?', order: 'code', columns: t('code,enabled:i,period') },
   obligationsDone: { table: 'ObligationDone', where: 'companyId=?', order: 'code,periodEnd', columns: t('code,periodEnd,doneAt:i,note') },
+  obligationSubmissions: { table: 'ObligationSubmission', where: 'companyId=?', order: 'code,periodEnd', columns: t('code,periodEnd,submittedDate,registrationNo,note,createdAt:i') },
   chartOfAccounts: { table: 'ChartOfAccount', where: '1=1', order: 'code', columns: t('code,name') },
   clients: { table: 'Client', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,name,code,vatCode,email,phone,address,city,countryName,createdAt,updatedAt,isVatPayer:i,documentLang,correspondenceEmail') },
   stockItems: { table: 'StockItem', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,name,code,barcode,warehouseName,stock:n,remainder:n,price:n,cost:n,purchaseDate,clientName') },
@@ -33,7 +34,7 @@ export const TABLES: Record<string, Spec & { table: string; where: string; order
   saleItems: { table: 'SaleItem', where: 'saleId IN (SELECT id FROM Sale WHERE companyId=?)', order: 'id', columns: t('id:i,saleId:i,itemName,itemCode,quantity:n,price:n,priceWithVat:n,vatRate:n,sumWithoutVat:n,sumWithVat:n,warehouseName') },
   purchases: { table: 'Purchase', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,series,number,purchaseDate,clientId:i,clientName,clientCode,sumWithoutVat:n,vat:n,sumWithVat:n,currencyCode,notes,createdAt,buyerVatMode,deductionPercent:n,deductibleVat:n,debitAccount,warehouseName,docType,originalPurchaseId:i,correctionReason,paidBy,paidByName,reimbursedAt,evidenceType,paymentMethod,cardLast4,cashRegisterNo,receiptNo,documentTime') },
   // Originals of purchase documents (the files travel in data.documentFiles); confirmedBy is not exported (users are not in the package).
-  purchaseDocuments: { table: 'PurchaseDocument', where: 'companyId=?', order: 'id', columns: t('purchaseId:i,fileName,mimeType,size:i,sha256,storagePath,source,sender,receivedAt,status,extractedJson,error,model,createdAt,confirmedAt,visualName,visualSha256') },
+  purchaseDocuments: { table: 'PurchaseDocument', where: 'companyId=?', order: 'id', columns: t('purchaseId:i,fileName,mimeType,size:i,sha256,storagePath,source,sender,receivedAt,status,extractedJson,error,model,createdAt,confirmedAt,visualName,visualSha256,originalSender') },
   purchaseItems: { table: 'PurchaseItem', where: 'purchaseId IN (SELECT id FROM Purchase WHERE companyId=?)', order: 'id', columns: t('id:i,purchaseId:i,itemName,itemCode,quantity:n,price:n,sumWithoutVat:n,sumWithVat:n,vatRate:n') },
   bankTransactions: { table: 'BankTransaction', where: 'companyId=?', order: 'id', columns: t('id:i,externalId:i,date,number,clientName,clientCode,sum:n,correspondenceAccountCode,accountingBankInternalName,notes,importHash,importBatch') },
   paymentAllocations: { table: 'PaymentAllocation', where: 'companyId=?', order: 'id', columns: t('id:i,bankTransactionId:i,saleId:i,purchaseId:i,amount:n,createdAt:i') },
@@ -282,6 +283,7 @@ export function importCompanyPackage(db: Database.Database, input: unknown, opti
       for (const r of rows.taxPeriods) insert('CompanyTaxPeriod', { ...r, companyId });
       for (const r of rows.obligations) insert('CompanyObligation', { ...r, companyId });
       for (const r of rows.obligationsDone) insert('ObligationDone', { ...r, companyId });
+      for (const r of rows.obligationSubmissions) insert('ObligationSubmission', { ...r, companyId });
       // The chart of accounts is shared by all companies: only codes that do not exist yet are added; names are never changed.
       const addAccount = db.prepare('INSERT OR IGNORE INTO ChartOfAccount(code,name) VALUES(?,?)');
       for (const r of rows.chartOfAccounts) accountsAdded += addAccount.run(r.code, r.name).changes;

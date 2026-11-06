@@ -1,0 +1,50 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const Module = require('node:module');
+const ts = require('typescript');
+const Database = require('better-sqlite3');
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'erp-pzero-'));
+process.env.DATABASE_URL = 'file:' + path.join(temp, 'test.db');
+const fixture = new Database(process.env.DATABASE_URL.slice(5));
+fixture.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
+const company = fixture.prepare("INSERT INTO Company (id, name, code, vatCode, currencyCode, isDefault, createdAt, updatedAt) VALUES (?, ?, ?, ?, 'EUR', 0, datetime('now'), datetime('now'))");
+company.run(1, 'MB Pirkėjas', '111111111', 'LT111111119');
+company.run(2, 'Company B', '222222222', 'LT222222229');
+fixture.close();
+const jar = new Map();
+const realLoad = Module._load;
+Module._load = function(name, parent, isMain) {
+  if (name === 'next/headers') return { cookies: async () => ({ get: key => jar.has(key) ? { value: jar.get(key) } : undefined }) };
+  if (name === 'next/navigation') return { redirect: url => { throw new Error('redirect:' + url); } };
+  if (name.startsWith('@/')) name = path.join(__dirname, '../src', name.slice(2));
+  return realLoad.call(this, name, parent, isMain);
+};
+require.extensions['.ts'] = (mod, filename) => mod._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText, filename);
+const auth = require('../src/lib/auth.ts');
+const { getDb } = require('../src/lib/db.ts');
+const db = getDb();
+const request = (method, body) => new Request('http://localhost:3000/api/test', { method, headers: { 'Content-Type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) });
+const context = id => ({ params: Promise.resolve({ id: String(id) }) });
+
+test('purchase update refuses to wipe a stored total through zero-price lines', async () => {
+  db.prepare("INSERT INTO User(id,email,name,passwordHash,role,createdAt) VALUES(1,'p@example.test','P','unused','admin',datetime('now'))").run();
+  jar.set('auth_session', auth.createSessionToken({ id: 1 })); jar.set('active_company_id', '1');
+  db.prepare("INSERT INTO Purchase(id,companyId,number,purchaseDate,vat,sumWithoutVat,sumWithVat,createdAt) VALUES(1,1,'244/147','2023-12-23',0,132.3,132.3,datetime('now'))").run();
+  db.prepare("INSERT INTO PurchaseItem(purchaseId,itemName,quantity,price,sumWithoutVat,sumWithVat,vatRate) VALUES(1,'Dyzelinas',89.23,0,0,132.3,NULL)").run();
+  const one = require('../src/app/api/purchases/[id]/route.ts');
+  const put = price => one.PUT(request('PUT', { series: '', number: '244/147', purchaseDate: '2023-12-23', clientName: 'Bandomasis tiekejas', items: [{ itemName: 'Dyzelinas', quantity: 89.23, price, vatRate: 0 }] }), context(1));
+  const refused = await put(0);
+  assert.equal(refused.status, 400);
+  assert.match((await refused.json()).error, /kainos nulinės/);
+  assert.deepEqual(db.prepare('SELECT sumWithoutVat s, sumWithVat g FROM Purchase WHERE id=1').get(), { s: 132.3, g: 132.3 });
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM PurchaseItem WHERE purchaseId=1').get().n, 1);
+  const ok = await put(1.4827);
+  assert.equal(ok.status, 200);
+  assert.equal(db.prepare('SELECT sumWithVat g FROM Purchase WHERE id=1').get().g, 132.3);
+  // a document that was stored with a zero total can still be saved with zero lines
+  db.prepare("INSERT INTO Purchase(id,companyId,number,purchaseDate,vat,sumWithoutVat,sumWithVat,createdAt) VALUES(2,1,'Z-0','2023-12-23',0,0,0,datetime('now'))").run();
+  assert.equal((await one.PUT(request('PUT', { series: '', number: 'Z-0', purchaseDate: '2023-12-23', clientName: 'X', items: [{ itemName: 'A', quantity: 1, price: 0, vatRate: 0 }] }), context(2))).status, 200);
+});

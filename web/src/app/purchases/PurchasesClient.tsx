@@ -24,9 +24,18 @@ import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize,
 import { askConfirm } from '@/components/ConfirmHost';
 import { PurchaseBankMatches } from '@/components/PurchaseBankMatches';
 import Link from 'next/link';
+import { displayPrice, editablePrice, lineSum, typedPrice } from '@/lib/line-price';
 
 // Own-funds payment, evidence type and cash receipt fields of a purchase (empty string = not set).
 const EMPTY_EXTRAS = { paidBy: '', paidByName: '', reimbursedAt: '', evidenceType: '', paymentMethod: '', cardLast4: '', cashRegisterNo: '', receiptNo: '', documentTime: '' };
+
+// Shared classes of the create/edit modal.
+const fieldCls = 'w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500';
+const cellCls = 'w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500';
+const numCellCls = `${cellCls} text-right font-mono [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`;
+const sectionHeadingCls = 'text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-1';
+const helpCls = 'block mt-1 text-[11px] font-normal text-slate-500';
+const itemGridCls = 'sm:grid-cols-[minmax(0,1fr)_5.5rem_7rem_5rem_6.5rem_2rem]';
 
 export function PurchasesClient({ 
   initialPurchases,
@@ -217,7 +226,7 @@ export function PurchasesClient({
       warehouseName: p.warehouseName || 'Pagrindinis',
       paidBy: p.paidBy || '', paidByName: p.paidByName || '', reimbursedAt: p.reimbursedAt || '', evidenceType: p.evidenceType || '', paymentMethod: p.paymentMethod || '',
       cardLast4: p.cardLast4 || '', cashRegisterNo: p.cashRegisterNo || '', receiptNo: p.receiptNo || '', documentTime: p.documentTime || '',
-      items: (itemsMap[p.id] || []).map(it=>({...it,vatRate:it.vatRate ?? (it.sumWithoutVat ? Math.round((it.sumWithVat/it.sumWithoutVat-1)*10000)/100 : 0)}))
+      items: (itemsMap[p.id] || []).map(it=>({...it,price:editablePrice(it),vatRate:it.vatRate ?? (it.sumWithoutVat ? Math.round((it.sumWithVat/it.sumWithoutVat-1)*10000)/100 : 0)}))
     });
     setErrorMsg('');
     setIsModalOpen(true);
@@ -586,14 +595,15 @@ export function PurchasesClient({
 
       {/* Modal: Create / Edit Purchase */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl text-slate-100 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-4xl w-full shadow-2xl text-slate-100 max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-800">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5 text-rose-400" />
                 <span>{editingPurchase ? t('purchases.editTitle') : t('purchases.newTitle')}</span>
               </h3>
-              <button 
+              <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
                 className="p-1 rounded-lg text-slate-400 hover:bg-slate-800"
               >
@@ -601,201 +611,245 @@ export function PurchasesClient({
               </button>
             </div>
 
-            {errorMsg && (
-              <div className="mt-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSave} className="mt-4 space-y-4 overflow-y-auto pr-1 flex-1 text-xs">
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-400 font-semibold mb-1">{t('purchases.series')}</label>
-                  <input
-                    type="text"
-                    list="sug-purchase-series"
-                    value={formData.series}
-                    onChange={(e) => setFormData({ ...formData, series: e.target.value.toUpperCase() })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono uppercase focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 font-semibold mb-1">{t('purchases.docNo')}</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.number}
-                    onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 font-semibold mb-1">{t('purchases.purchaseDate')}</label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.purchaseDate}
-                    onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              {/* Supplier Info */}
-              <div className="border border-slate-800 rounded-xl p-3 bg-slate-950/60 space-y-3">
-                <div className="font-semibold text-slate-300">{t('purchases.supplierDetails')}</div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-400 mb-1">{t('purchases.supplierName')}</label>
-                    <input
-                      type="text"
-                      list="purchase-clients-datalist"
-                      placeholder={t('purchases.supplierPlaceholder')}
-                      value={formData.clientName}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const matched = clientsList.find((c: any) => c.name.toLowerCase() === val.toLowerCase());
-                        if (matched) {
-                          setFormData({ ...formData, clientName: matched.name, clientCode: matched.code || '' });
-                        } else {
-                          setFormData({ ...formData, clientName: val });
-                        }
-                      }}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
-                    />
-                    <datalist id="purchase-clients-datalist">
-                      {clientsList.map((c: any) => (
-                        <option key={c.id} value={c.name}>{c.code ? t('purchases.codeLabel', { code: c.code }) : ''}</option>
-                      ))}
-                    </datalist>
+            <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0 text-xs">
+              <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-5 space-y-7">
+                {errorMsg && (
+                  <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{errorMsg}</span>
                   </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1">{t('purchases.companyCode')}</label>
-                    <input
-                      type="text"
-                      placeholder="301234567"
-                      value={formData.clientCode}
-                      onChange={(e) => setFormData({ ...formData, clientCode: e.target.value })}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono focus:outline-none focus:border-emerald-500"
-                    />
+                )}
+
+                {/* Supplier and document */}
+                <section className="space-y-3">
+                  <h4 className={sectionHeadingCls}>{t('purchases.sectionSupplier')}</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-slate-400 font-semibold mb-1">{t('purchases.series')}</label>
+                      <input
+                        type="text"
+                        list="sug-purchase-series"
+                        value={formData.series}
+                        onChange={(e) => setFormData({ ...formData, series: e.target.value.toUpperCase() })}
+                        className={`${fieldCls} font-mono uppercase`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 font-semibold mb-1">{t('purchases.docNo')}</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.number}
+                        onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                        className={`${fieldCls} font-mono`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 font-semibold mb-1">{t('purchases.purchaseDate')}</label>
+                      <input
+                        type="date"
+                        required
+                        value={formData.purchaseDate}
+                        onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+                        className={fieldCls}
+                      />
+                    </div>
                   </div>
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 font-semibold mb-1">{t('purchases.supplierName')}</label>
+                      <input
+                        type="text"
+                        list="purchase-clients-datalist"
+                        placeholder={t('purchases.supplierPlaceholder')}
+                        value={formData.clientName}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const matched = clientsList.find((c: any) => c.name.toLowerCase() === val.toLowerCase());
+                          if (matched) {
+                            setFormData({ ...formData, clientName: matched.name, clientCode: matched.code || '' });
+                          } else {
+                            setFormData({ ...formData, clientName: val });
+                          }
+                        }}
+                        className={fieldCls}
+                      />
+                      <datalist id="purchase-clients-datalist">
+                        {clientsList.map((c: any) => (
+                          <option key={c.id} value={c.name}>{c.code ? t('purchases.codeLabel', { code: c.code }) : ''}</option>
+                        ))}
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 font-semibold mb-1">{t('purchases.companyCode')}</label>
+                      <input
+                        type="text"
+                        placeholder="301234567"
+                        value={formData.clientCode}
+                        onChange={(e) => setFormData({ ...formData, clientCode: e.target.value })}
+                        className={`${fieldCls} font-mono`}
+                      />
+                    </div>
+                  </div>
+                </section>
 
-              {/* Items Section */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-300">{t('purchases.itemsHeading')}</span>
-                  <button
-                    type="button"
-                    onClick={handleAddItemRow}
-                    className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-semibold"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t('purchases.addRow')}</span>
-                  </button>
-                </div>
+                {/* Items */}
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-1">
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{t('purchases.itemsHeading')}</h4>
+                    <button
+                      type="button"
+                      onClick={handleAddItemRow}
+                      className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-semibold"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{t('purchases.addRow')}</span>
+                    </button>
+                  </div>
 
-                <div className="space-y-2">
-                  {formData.items.map((it, idx) => {
-                    const rowNoVat = (Number(it.quantity) || 1) * (Number(it.price) || 0);
-                    const rowWithVat = rowNoVat * (1 + (Number(it.vatRate) || 0) / 100);
+                  <div className={`hidden sm:grid ${itemGridCls} gap-2 px-2 text-[11px] font-semibold text-slate-400`}>
+                    <span>{t('purchases.colName')}</span>
+                    <span className="text-right">{t('purchases.colQty')}</span>
+                    <span className="text-right">{t('purchases.colPrice')}</span>
+                    <span className="text-right">{t('purchases.colVat')}</span>
+                    <span className="text-right">{t('purchases.colSum')}</span>
+                    <span />
+                  </div>
 
-                    return (
-                      <div key={idx} className="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800">
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            required
-                            placeholder={t('purchases.itemPlaceholder')}
-                            list="sug-purchase-items"
-                            value={it.itemName}
-                            onChange={(e) => handleItemChange(idx, 'itemName', e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                        <div className="w-16">
-                          <input
-                            type="number"
-                            min="0.01"
-                            step="any"
-                            value={it.quantity}
-                            onChange={(e) => handleItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)}
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-100 text-right font-mono focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                        <div className="w-24">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={it.price}
-                            onChange={(e) => handleItemChange(idx, 'price', parseFloat(e.target.value) || 0)}
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-slate-100 text-right font-mono focus:outline-none focus:border-emerald-500"
-                          />
-                        </div>
-                        <div className="w-16">
-                          <select
-                            value={it.vatRate}
-                            onChange={(e) => handleItemChange(idx, 'vatRate', parseInt(e.target.value, 10))}
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-1.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
-                          >
-                            {/* Rate choices of the line form (not a legal parameter, see lib/rules for how a stored rate is classified). */}
-                            <option value={21}>21%</option>
-                            <option value={9}>9%</option>
-                            <option value={5}>5%</option>
-                            <option value={0}>0%</option>
-                          </select>
-                        </div>
-                        <div className="w-24 text-right font-mono font-semibold text-rose-400 text-xs">
-                          €{rowWithVat.toFixed(2)}
-                        </div>
-                        {formData.items.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItemRow(idx)}
-                            className="p-1 hover:text-rose-400 text-slate-500"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                  <div className="space-y-2">
+                    {formData.items.map((it, idx) => {
+                      const rowNoVat = lineSum(it.quantity, it.price);
+                      const rowWithVat = rowNoVat * (1 + (Number(it.vatRate) || 0) / 100);
 
-                <label className="block text-xs text-slate-300">{t('purchases.deductionPercent')}<input type="number" min="0" max="100" step="0.01" value={formData.deductionPercent} disabled={(editingPurchase?.buyerVatMode || companyMode)!=='STANDARD_VAT'} onChange={e=>setFormData({...formData,deductionPercent:Number(e.target.value)})} className="block bg-slate-900 border border-slate-700 rounded p-2"/><span className="text-slate-400">{t('purchases.deductionHint')}</span></label>
-                <label className="block text-xs text-slate-300">{t('purchases.debitAccount')}<select value={formData.debitAccount} onChange={e=>setFormData({...formData,debitAccount:e.target.value})} className="block bg-slate-900 border border-slate-700 rounded p-2 max-w-full"><option value="">{t('purchases.defaultAccount')}</option>{accounts.map(a=><option key={a.code} value={a.code}>{a.code} — {a.name}</option>)}</select><span className="text-slate-400">{t('purchases.debitHint')}</span></label>
-                {warehouses.length > 0 && <label className="block text-xs text-slate-300">{t('purchases.warehouse')}<select value={formData.warehouseName} onChange={e=>setFormData({...formData,warehouseName:e.target.value})} className="block bg-slate-900 border border-slate-700 rounded p-2 max-w-full"><option value="Pagrindinis">Pagrindinis</option>{warehouses.filter(w=>w!=='Pagrindinis').map(w=><option key={w} value={w}>{w}</option>)}</select><span className="text-slate-400">{t('purchases.warehouseHint')}</span></label>}
+                      return (
+                        <div key={idx} className={`grid grid-cols-2 ${itemGridCls} gap-2 items-end sm:items-center bg-slate-950 p-2 rounded-lg border border-slate-800`}>
+                          <div className="col-span-2 sm:col-span-1 min-w-0">
+                            <input
+                              type="text"
+                              required
+                              placeholder={t('purchases.itemPlaceholder')}
+                              list="sug-purchase-items"
+                              value={it.itemName}
+                              onChange={(e) => handleItemChange(idx, 'itemName', e.target.value)}
+                              className={cellCls}
+                            />
+                          </div>
+                          <label className="block">
+                            <span className="sm:hidden text-[11px] text-slate-500">{t('purchases.colQty')}</span>
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="any"
+                              value={it.quantity}
+                              onChange={(e) => handleItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                              className={numCellCls}
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="sm:hidden text-[11px] text-slate-500">{t('purchases.colPrice')}</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={displayPrice(it.price)}
+                              onChange={(e) => handleItemChange(idx, 'price', typedPrice(e.target.value))}
+                              className={numCellCls}
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="sm:hidden text-[11px] text-slate-500">{t('purchases.colVat')}</span>
+                            <select
+                              value={it.vatRate}
+                              onChange={(e) => handleItemChange(idx, 'vatRate', parseInt(e.target.value, 10))}
+                              className={`${cellCls} text-right`}
+                            >
+                              {/* Rate choices of the line form (not a legal parameter, see lib/rules for how a stored rate is classified). */}
+                              <option value={21}>21%</option>
+                              <option value={9}>9%</option>
+                              <option value={5}>5%</option>
+                              <option value={0}>0%</option>
+                            </select>
+                          </label>
+                          <div className="flex items-center justify-between sm:justify-end gap-2 pb-1.5 sm:pb-0">
+                            <span className="sm:hidden text-[11px] text-slate-500">{t('purchases.colSum')}</span>
+                            <span className="text-right font-mono font-semibold text-rose-400 text-xs whitespace-nowrap">€{rowWithVat.toFixed(2)}</span>
+                          </div>
+                          <div className="col-span-2 sm:col-span-1 flex justify-end">
+                            {formData.items.length > 1 && (
+                              <button
+                                type="button"
+                                title={t('purchases.removeRow')}
+                                aria-label={t('purchases.removeRow')}
+                                onClick={() => handleRemoveItemRow(idx)}
+                                className="p-1 hover:text-rose-400 text-slate-500"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                {/* VAT and accounting */}
+                <section className="space-y-3">
+                  <h4 className={sectionHeadingCls}>{t('purchases.sectionTax')}</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="block text-slate-300 font-semibold">{t('purchases.deductionPercent')}
+                      <input type="number" min="0" max="100" step="0.01" value={formData.deductionPercent} disabled={(editingPurchase?.buyerVatMode || companyMode)!=='STANDARD_VAT'} onChange={e=>setFormData({...formData,deductionPercent:Number(e.target.value)})} className={`${fieldCls} mt-1 disabled:opacity-50`}/>
+                      <span className={helpCls}>{t('purchases.deductionHint')}</span>
+                    </label>
+                    <label className="block text-slate-300 font-semibold">{t('purchases.debitAccount')}
+                      <select value={formData.debitAccount} onChange={e=>setFormData({...formData,debitAccount:e.target.value})} className={`${fieldCls} mt-1`}><option value="">{t('purchases.defaultAccount')}</option>{accounts.map(a=><option key={a.code} value={a.code}>{a.code} — {a.name}</option>)}</select>
+                      <span className={helpCls}>{t('purchases.debitHint')}</span>
+                    </label>
+                  </div>
+                </section>
+
+                {/* Warehouse */}
+                {warehouses.length > 0 && (
+                  <section className="space-y-3">
+                    <h4 className={sectionHeadingCls}>{t('purchases.sectionWarehouse')}</h4>
+                    <label className="block text-slate-300 font-semibold sm:max-w-sm">{t('purchases.warehouse')}
+                      <select value={formData.warehouseName} onChange={e=>setFormData({...formData,warehouseName:e.target.value})} className={`${fieldCls} mt-1`}><option value="Pagrindinis">Pagrindinis</option>{warehouses.filter(w=>w!=='Pagrindinis').map(w=><option key={w} value={w}>{w}</option>)}</select>
+                      <span className={helpCls}>{t('purchases.warehouseHint')}</span>
+                    </label>
+                  </section>
+                )}
+
+                {/* Payment and document details */}
                 {editingPurchase && (
-                  <fieldset className="rounded-xl border border-slate-800 p-3 space-y-3">
-                    <legend className="px-1 text-xs font-bold text-slate-300">{t('docs.extrasTitle')}</legend>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <label className="block text-xs text-slate-300">{t('docs.evidenceType')}
-                        <select value={formData.evidenceType} onChange={e => setFormData({ ...formData, evidenceType: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2"><option value="">—</option><option value="INVOICE">{t('docs.evidenceInvoice')}</option><option value="RECEIPT">{t('docs.evidenceReceipt')}</option></select>
+                  <section className="space-y-3">
+                    <h4 className={sectionHeadingCls}>{t('purchases.sectionPayment')}</h4>
+                    <p className={helpCls}>{t('docs.extrasTitle')}</p>
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+                      <label className="block text-slate-300">{t('docs.evidenceType')}
+                        <select value={formData.evidenceType} onChange={e => setFormData({ ...formData, evidenceType: e.target.value })} className={`${fieldCls} mt-1`}><option value="">—</option><option value="INVOICE">{t('docs.evidenceInvoice')}</option><option value="RECEIPT">{t('docs.evidenceReceipt')}</option></select>
                       </label>
-                      <label className="block text-xs text-slate-300">{t('docs.paymentMethod')}
-                        <select value={formData.paymentMethod} onChange={e => setFormData({ ...formData, paymentMethod: e.target.value, cardLast4: e.target.value === 'CARD' ? formData.cardLast4 : '' })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2"><option value="">—</option>{['CARD', 'CASH', 'TRANSFER', 'OTHER'].map(m => <option key={m} value={m}>{t(`docs.pay_${m}`)}</option>)}</select>
+                      <label className="block text-slate-300">{t('docs.paymentMethod')}
+                        <select value={formData.paymentMethod} onChange={e => setFormData({ ...formData, paymentMethod: e.target.value, cardLast4: e.target.value === 'CARD' ? formData.cardLast4 : '' })} className={`${fieldCls} mt-1`}><option value="">—</option>{['CARD', 'CASH', 'TRANSFER', 'OTHER'].map(m => <option key={m} value={m}>{t(`docs.pay_${m}`)}</option>)}</select>
                       </label>
-                      <label className="block text-xs text-slate-300">{t('docs.cardLast4')}<input value={formData.cardLast4} maxLength={4} disabled={formData.paymentMethod !== 'CARD'} onChange={e => setFormData({ ...formData, cardLast4: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2 disabled:opacity-40" /></label>
-                      <label className="block text-xs text-slate-300">{t('docs.cashRegisterNo')}<input value={formData.cashRegisterNo} onChange={e => setFormData({ ...formData, cashRegisterNo: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2" /></label>
-                      <label className="block text-xs text-slate-300">{t('docs.receiptNo')}<input value={formData.receiptNo} onChange={e => setFormData({ ...formData, receiptNo: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2" /></label>
-                      <label className="block text-xs text-slate-300">{t('docs.time')}<input value={formData.documentTime} placeholder="HH:MM" onChange={e => setFormData({ ...formData, documentTime: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2" /></label>
-                      <label className="block text-xs text-slate-300">{t('docs.paidBy')}
-                        <select value={formData.paidBy} onChange={e => setFormData({ ...formData, paidBy: e.target.value, ...(e.target.value === 'PERSON' ? {} : { paidByName: '', reimbursedAt: '' }) })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2"><option value="">—</option><option value="COMPANY">{t('docs.paidByCompany')}</option><option value="PERSON">{t('docs.paidByPerson')}</option></select>
+                      <label className="block text-slate-300">{t('docs.cardLast4')}<input value={formData.cardLast4} maxLength={4} disabled={formData.paymentMethod !== 'CARD'} onChange={e => setFormData({ ...formData, cardLast4: e.target.value })} className={`${fieldCls} mt-1 disabled:opacity-40`} /></label>
+                      <label className="block text-slate-300">{t('docs.cashRegisterNo')}<input value={formData.cashRegisterNo} onChange={e => setFormData({ ...formData, cashRegisterNo: e.target.value })} className={`${fieldCls} mt-1`} /></label>
+                      <label className="block text-slate-300">{t('docs.receiptNo')}<input value={formData.receiptNo} onChange={e => setFormData({ ...formData, receiptNo: e.target.value })} className={`${fieldCls} mt-1`} /></label>
+                      <label className="block text-slate-300">{t('docs.time')}<input value={formData.documentTime} placeholder="HH:MM" onChange={e => setFormData({ ...formData, documentTime: e.target.value })} className={`${fieldCls} mt-1`} /></label>
+                      <label className="block text-slate-300">{t('docs.paidBy')}
+                        <select value={formData.paidBy} onChange={e => setFormData({ ...formData, paidBy: e.target.value, ...(e.target.value === 'PERSON' ? {} : { paidByName: '', reimbursedAt: '' }) })} className={`${fieldCls} mt-1`}><option value="">—</option><option value="COMPANY">{t('docs.paidByCompany')}</option><option value="PERSON">{t('docs.paidByPerson')}</option></select>
                       </label>
                       {formData.paidBy === 'PERSON' && <>
-                        <label className="block text-xs text-slate-300">{t('docs.paidByName')}<input value={formData.paidByName} onChange={e => setFormData({ ...formData, paidByName: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2" /></label>
-                        <label className="block text-xs text-slate-300">{t('docs.reimbursedAt')}<input type="date" value={formData.reimbursedAt} onChange={e => setFormData({ ...formData, reimbursedAt: e.target.value })} className="block w-full bg-slate-900 border border-slate-700 rounded p-2" /></label>
+                        <label className="block text-slate-300">{t('docs.paidByName')}<input value={formData.paidByName} onChange={e => setFormData({ ...formData, paidByName: e.target.value })} className={`${fieldCls} mt-1`} /></label>
+                        <label className="block text-slate-300">{t('docs.reimbursedAt')}<input type="date" value={formData.reimbursedAt} onChange={e => setFormData({ ...formData, reimbursedAt: e.target.value })} className={`${fieldCls} mt-1`} /></label>
                       </>}
                     </div>
                     {editingPurchase.documentId && <a href={`/api/purchase-documents/${editingPurchase.documentId}/file`} target="_blank" rel="noreferrer" className="inline-block text-xs font-semibold text-emerald-300 underline">{t('docs.openOriginal')}</a>}
-                  </fieldset>
+                  </section>
                 )}
+
                 {/* Totals */}
-                <div className="flex justify-end pt-2 text-right">
-                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1 w-64">
+                <div className="flex justify-end">
+                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1 w-full sm:w-64">
                     <div className="flex justify-between text-slate-400">
                       <span>{t('purchases.exVat')}:</span>
                       <span className="font-mono text-slate-200">€{formSubtotal.toFixed(2)}</span>
@@ -812,7 +866,7 @@ export function PurchasesClient({
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-3 px-4 sm:px-6 py-3 border-t border-slate-800 bg-slate-900 rounded-b-2xl">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}

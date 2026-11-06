@@ -2,10 +2,10 @@
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/i18n/client';
 import { MailSignatureSection } from './MailSignatureSection';
-import { RecognitionSettingsSection } from './RecognitionSettingsSection';
+import Link from 'next/link';
 import { DocumentInboxSection } from './DocumentInboxSection';
 const empty={host:'',port:587,secure:false,sender:'',username:'',password:'',enabled:false,hasPassword:false,clearPassword:false};
-// Document recognition settings belong to the active company (the settings API works on it), so the section is shown for that company only.
+// The document recognition key lives in Settings -> API. The mailbox settings belong to the active company (the settings API works on it), so the section is shown for that company only.
 export function CompanySmtpDialog({company,onClose,isActive=false}:{company:{id:number;name:string;email?:string|null};onClose:()=>void;isActive?:boolean}) {
   const t=useT();
   const [form,setForm]=useState(empty),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState(false);
@@ -25,7 +25,7 @@ export function CompanySmtpDialog({company,onClose,isActive=false}:{company:{id:
       {form.hasPassword&&<label className="flex items-center gap-2 text-sm text-slate-200"><input type="checkbox" className="h-4 w-4 accent-emerald-500" checked={form.clearPassword} onChange={e=>setForm({...form,clearPassword:e.target.checked,password:''})}/> {t('companies.smtpClearPassword')}</label>}
     </fieldset>
     <MailSignatureSection companyId={company.id} />
-    {isActive?<><RecognitionSettingsSection /><DocumentInboxSection /></>:<p className="text-xs text-slate-400">{t('docs.settingsActiveOnly')}</p>}
+    {isActive?<><p className="text-sm"><Link href="/settings/api" className="font-semibold text-emerald-300 underline">{t('api.recognitionMoved')}</Link></p><DocumentInboxSection /></>:<p className="text-xs text-slate-400">{t('docs.settingsActiveOnly')}</p>}
     <div className="flex justify-end gap-3"><button type="button" disabled={busy} onClick={onClose} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800">{t('common.close')}</button><button disabled={loading||busy} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-40">{busy?t('companies.saving'):t('common.save')}</button></div>
   </form></div>;
 }

@@ -450,14 +450,17 @@ export const taxPages: HelpPage[] = [
         steps: [
           'Atidarykite „Mokesčių kalendorius“.',
           'Įjunkite jūsų įmonei taikomas deklaracijas ir FR0600 laikotarpį (mėnuo, ketvirtis, pusmetis).',
-          'Pateikę deklaraciją VMI EDS, pažymėkite laikotarpį kaip pateiktą.',
+          'Spauskite „Paruošti“: programa sudaro failą to laikotarpio duomenimis, parodo patikrinimų pastabas ir kur pateikti (VMI EDS: deklaravimas.vmi.lt).',
+          'Pateikę deklaraciją VMI EDS, spauskite „Pažymėti pateiktą“ ir nurodykite datą bei, jei norite, registracijos numerį.',
         ],
         rules: [
           'FR0600 automatiškai rodoma STANDARD_VAT įmonėms; terminas – po laikotarpio einančio mėnesio 25 diena.',
           'FR0564 (25 d.), GPM313 (15 d. kitą mėnesį), GPM312 (vasario 15 d.) ir PLN204 (birželio 15 d.) išjungtos, kol jų neįjungiate, nes jų taikymas priklauso nuo faktų, kurių programa nežino.',
           'Datos nominalios. Termino perkėlimas, kai jis patenka į savaitgalį ar šventę, parodomas atskirai, tačiau ši taisyklė nepatikrinta pagal šaltinį – laikykitės ankstesnės datos.',
           'i.SAF registrų terminai neįtraukti, nes nepatikrinti.',
-          'Pažymėjimas „pateikta“ yra tik žymė programoje.',
+          'Pažymėjimas „pateikta“ yra tik žymė programoje. PVM formos nerodomos įmonei be PVM kodo; GPM313 ir GPM312 po laikotarpio pabaigos rodomos tik jei yra to laikotarpio darbo užmokestis.',
+          'Priminimus el. paštu (numatyta 5 d. prieš terminą, ne pateiktiems terminams) siunčia skiltis „Automatizavimas“. Automatinis pateikimas per VMI EDS žiniatinklio paslaugą reikalauja VMI specifikacijos ir įmonės prisijungimo duomenų; jis planuojamas atskirai.',
+          'Mygtukai „Pateikti į VMI“ ir „Tikrinti būseną“ skirti būsimam automatiniam siuntimui: kol jis neprijungtas, programa nieko nesiunčia, parodo paaiškinimą su nuoroda pateikti rankiniu būdu ir užregistruoja bandymą istorijoje. Prisijungimo duomenys įvedami Nustatymai → API.',
         ],
         mistakes: [
           'Laikyti kalendorių pilnu jūsų įmonės prievolių sąrašu.',
@@ -471,14 +474,17 @@ export const taxPages: HelpPage[] = [
         steps: [
           'Откройте «Налоговый календарь».',
           'Включите декларации, которые применяются к вашей компании, и период FR0600 (месяц, квартал, полугодие).',
-          'Подав декларацию в VMI EDS, отметьте период как поданный.',
+          'Нажмите «Подготовить»: программа создаст файл с данными этого периода, покажет замечания проверок и куда подавать (VMI EDS: deklaravimas.vmi.lt).',
+          'Подав декларацию в VMI EDS, нажмите «Отметить как поданную» и укажите дату и, при желании, регистрационный номер.',
         ],
         rules: [
           'FR0600 автоматически показывается компаниям STANDARD_VAT; срок — 25-е число месяца после окончания периода.',
           'FR0564 (25-е), GPM313 (15-е следующего месяца), GPM312 (15 февраля) и PLN204 (15 июня) выключены, пока вы их не включите, так как их применимость зависит от фактов, неизвестных программе.',
           'Даты номинальные. Перенос срока, попадающего на выходной или праздник, показывается отдельно, но это правило не проверено по источнику — ориентируйтесь на более раннюю дату.',
           'Сроки регистров i.SAF не включены, так как не проверены.',
-          'Отметка «подано» — только пометка в программе.',
+          'Отметка «подано» — только пометка в программе. Формы НДС не показываются компании без PVM-кода; GPM313 и GPM312 после окончания периода показываются, только если за период есть зарплата.',
+          'Напоминания по e-mail (по умолчанию за 5 дней до срока, для неотмеченных сроков) отправляет раздел «Автоматизация». Автоматическая подача через веб-сервис VMI EDS требует спецификации VMI и данных доступа компании; она планируется отдельно.',
+          'Кнопки «Подать в VMI» и «Проверить состояние» предназначены для будущей автоматической отправки: пока она не подключена, программа ничего не отправляет, показывает пояснение со ссылкой на ручную подачу и записывает попытку в историю. Данные доступа вводятся в Настройки → API.',
         ],
         mistakes: [
           'Считать календарь полным списком обязанностей вашей компании.',
@@ -492,14 +498,17 @@ export const taxPages: HelpPage[] = [
         steps: [
           'Open "Tax calendar".',
           'Enable the returns that apply to your company and the FR0600 period (month, quarter, half-year).',
-          'After submitting a return in VMI EDS, mark the period as filed.',
+          'Press "Prepare": the application builds the file with the data of that period, shows the check notes and where to submit it (VMI EDS: deklaravimas.vmi.lt).',
+          'After submitting in VMI EDS, press "Mark as submitted" and enter the date and, if you wish, the registration number.',
         ],
         rules: [
           'FR0600 appears automatically for STANDARD_VAT companies; due on the 25th of the month after the period.',
           'FR0564 (25th), GPM313 (15th of the next month), GPM312 (15 February) and PLN204 (15 June) are off until you enable them, because their applicability depends on facts the application does not know.',
           'Dates are nominal. The carry-over of a deadline falling on a weekend or holiday is shown separately, but that rule has not been verified against a source: use the earlier date.',
           'i.SAF register deadlines are not included because they have not been verified.',
-          'Marking as filed is only a note in the application.',
+          'Marking as filed is only a note in the application. VAT forms are not shown for a company without a VAT code; GPM313 and GPM312 are shown after the period ends only if there is payroll for it.',
+          'E-mail reminders (5 days before the deadline by default, for entries not marked as submitted) are sent by the "Automation" section. Automatic submission through the VMI EDS web service requires the VMI specification and the company credentials; it is planned separately.',
+          'The "Submit to VMI" and "Check status" buttons are for future automatic sending: until it is connected the application sends nothing, shows an explanation with a link to file by hand and records the attempt in the history. The access data is entered in Settings → API.',
         ],
         mistakes: [
           'Treating the calendar as the complete list of your company\'s obligations.',

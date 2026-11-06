@@ -93,7 +93,7 @@ export const recognitionPages: HelpPage[] = [
           {
             title: 'Dokumentų priėmimas el. paštu',
             items: [
-              'Programa gali pati paimti sąskaitas iš pašto dėžutės: kas 5 minutes ji perskaito nurodytą dėžutę, o leidžiamų siuntėjų laiškų PDF ar nuotraukų priedus išsaugo skiltyje „Gauti dokumentai“ (šaltinis „El. paštas“, matomas siuntėjas). Pirkimas ir toliau sukuriamas tik jums patvirtinus. Įmonės domeno DNS įrašų keisti nereikia.',
+              'Programa gali pati paimti sąskaitas iš pašto dėžutės: kas 5 minutes (debesies versijoje – kas 15 minučių) ji perskaito nurodytą dėžutę, o leidžiamų siuntėjų laiškų PDF ar nuotraukų priedus išsaugo skiltyje „Gauti dokumentai“ (šaltinis „El. paštas“, matomas siuntėjas). Pirkimas ir toliau sukuriamas tik jums patvirtinus. Įmonės domeno DNS įrašų keisti nereikia.',
               'Nustatymai: „Įmonės“ > aktyvios įmonės nustatymai > „El. pašto dėžutė dokumentams“. Nurodykite IMAP serverį, prievadą (dažniausiai 993 su SSL/TLS), naudotojo vardą, slaptažodį ir aplanką, tada „Patikrinti ryšį“ ir „Išsaugoti“.',
               'Variantas 1 – nauja dėžutė prie esamo pašto serverio: pašto talpinimo valdymo skydelyje sukurkite atskirą dėžutę (pvz., saskaitos@jusu-imone.lt). Dėžutės sukūrimas nėra DNS keitimas. Tiekėjų prašykite siųsti sąskaitas šiuo adresu; IMAP serverio adresą rasite hostingo instrukcijoje.',
               'Variantas 2 – nemokamas Gmail: sukurkite atskirą Gmail paskyrą, įjunkite dviejų žingsnių patvirtinimą, sukurkite „programos slaptažodį“ (App password) ir paskyros nustatymuose įjunkite IMAP. Programoje paspauskite „Gmail šablonas“ (imap.gmail.com, 993) ir slaptažodžio laukelyje įveskite programos slaptažodį, ne įprastą paskyros slaptažodį.',
@@ -102,6 +102,22 @@ export const recognitionPages: HelpPage[] = [
               'Kas vyksta su laiškais: pirmą kartą skaitomi tik neperskaityti laiškai, kad į programą nepatektų sena istorija. Apdorotas laiškas pažymimas kaip perskaitytas arba (jei nurodytas „Aplankas apdorotiems laiškams“) perkeliamas į tą aplanką. Tas pats laiškas ar tas pats failas antrą kartą nepriimamas. Nedidelės įterptos nuotraukos (parašų, logotipų paveikslėliai) ignoruojamos; vieno laiško ribos – 10 priedų po 20 MB.',
               'XML e-sąskaitos (UBL) laiške: jos išsaugomos eilėje „Gauti dokumentai“ be atpažinimo paslaugos – duomenys skaitomi tiesiai iš failo, o patvirtinus pirkimas sukuriamas tokiu pačiu keliu kaip XML importu (taip pat ir kreditinės sąskaitos). Jei laiške kartu yra to paties pavadinimo (arba vienintelis) PDF, jis tampa XML vaizdiniu originalu: eilėje lieka vienas įrašas, o duomenų šaltinis – XML. XML, kurio programa negali perskaityti, eilėje nesaugomas; žurnale matysite pastabą „XML e-sąskaita nepriimta“ su priežastimi, o PDF (jei yra) apdorojamas įprastai. HEIC nuotraukos priedai priimami taip pat kaip JPEG.',
               'Tikrinimas vyksta kas 5 minutes (debesies versijoje, kur programa tarp apsilankymų „miega“, – kas 15 minučių, ir tik jei yra įjungta dėžutė); mygtukas „Tikrinti dabar“ paleidžia jį iškart. Paskutinį tikrinimą, klaidą ir paskutinių laiškų žurnalą matote tame pačiame nustatymų bloke. Slaptažodis saugomas užšifruotas ir nerodomas; į įmonės eksporto paketą jis, kaip ir SMTP, neįtraukiamas.',
+            ],
+          },
+          {
+            title: 'Žinomi kontrahentai ir persiųsti laiškai',
+            items: [
+              'Papildomai prie sąrašo galite įjungti „Priimti iš žinomų kontrahentų“ (naujose dėžutėse įjungta, esamose – išjungta, kol įjungsite patys): priimami laiškai iš tiksliai tokio el. pašto, koks nurodytas kliento kortelėje („El. paštas“ arba „El. paštas korespondencijai“), ir iš to paties įmonės domeno kitų adresų. Viešų pašto paslaugų teikėjų domenai (gmail.com, outlook.com, inbox.lt, yandex, gmx ir pan.) pagal domeną netaikomi – tik tiksliam adresui.',
+              'Visada priimami laiškai iš jūsų įmonės naudotojų ir adresų (įmonės el. paštas, SMTP siuntėjas, pati dėžutė): tai persiuntėjai. Jei apskaitininkas persiunčia tiekėjo laišką, programa bando rasti pradinį siuntėją (eilutės „From:“, „Nuo:“, „От:“, „Von:“ po užrašo „Forwarded message“, „Persiųstas laiškas“, „Пересланное сообщение“, taip pat pridėtas laiškas .eml). Dokumente matomas ir persiuntėjas, ir pradinis siuntėjas; jei tiekėjas pagal kodą nerastas, jis ieškomas pagal pradinio siuntėjo el. paštą.',
+              'Mokymasis: patvirtinus dokumentą, kurio (pradinis) siuntėjas nepriimamas pagal jokią taisyklę, programa paklaus „Leisti priimti laiškus iš ...?“. Pasirinkus „Leisti“, adresas įrašomas į leidžiamų siuntėjų sąrašą. Atmestų laiškų sąrašas rodomas skiltyje „Gauti dokumentai“ ir dėžutės nustatymuose su mygtuku „Leisti šį siuntėją“; jau atmesti laiškai iš naujo neskaitomi. DMARC patikros nepraėję laiškai atmetami visada.',
+            ],
+          },
+          {
+            title: 'Tiekėjų taisyklės',
+            items: [
+              'Skiltyje „Gauti dokumentai“ > „Taisyklės“ galite nurodyti tiekėjui (arba siuntėjo adresui ar @domenui) apskaitos sąskaitą, PVM kodą, dokumento rūšį (sąskaita ar kvitas), mokėjimo būdą, kas sumokėjo ir atskaitomą PVM dalį. Peržiūros forma užpildoma šiomis reikšmėmis iš anksto, ir ties sąskaita matote „pagal taisyklę: ...“. Visas reikšmes galima pakeisti.',
+              'Eilė: pirmiausia taisyklė atpažinto tiekėjo, tada pradinio siuntėjo, tada siuntėjo (tikslus adresas pirmesnis už @domeną). Sąskaita iš taisyklės viršesnė už ankstesnio pirkimo istoriją, o ši – už pasiūlymą iš dokumento turinio. Taisyklės PVM kodas užpildomas iš anksto (istorijos kodas lieka tik pasiūlymu), nes taisyklę sukūrėte jūs.',
+              'Greitas būdas: peržiūros formoje pažymėkite „Išsaugoti kaip taisyklę šiam tiekėjui“ ir patvirtinkite dokumentą – taisyklė sukuriama arba atnaujinama pagal patvirtintas reikšmes. Sąskaita turi būti leidžiama pirkimui, o PVM kodas – iš pirkimo klasifikatoriaus. Įmonei, kuri nėra PVM mokėtoja, atskaitoma dalis visada 0.',
             ],
           },
           {
@@ -255,7 +271,7 @@ export const recognitionPages: HelpPage[] = [
           {
             title: 'Приём документов по эл. почте',
             items: [
-              'Программа может сама забирать счета из почтового ящика: каждые 5 минут она читает указанный ящик, а PDF и фото из писем разрешённых отправителей сохраняет в разделе «Полученные документы» (источник «Эл. почта», виден отправитель). Покупка по-прежнему создаётся только после вашего подтверждения. Менять DNS-записи домена компании не нужно.',
+              'Программа может сама забирать счета из почтового ящика: каждые 5 минут (в облачной версии – каждые 15 минут) она читает указанный ящик, а PDF и фото из писем разрешённых отправителей сохраняет в разделе «Полученные документы» (источник «Эл. почта», виден отправитель). Покупка по-прежнему создаётся только после вашего подтверждения. Менять DNS-записи домена компании не нужно.',
               'Настройки: «Компании» > настройки активной компании > «Почтовый ящик для документов». Укажите IMAP-сервер, порт (обычно 993 с SSL/TLS), имя пользователя, пароль и папку, затем «Проверить соединение» и «Сохранить».',
               'Вариант 1 – новый ящик на существующем почтовом сервере: в панели управления хостингом создайте отдельный ящик (например, saskaitos@vasha-firma.lt). Создание ящика не является изменением DNS. Попросите поставщиков присылать счета на этот адрес; адрес IMAP-сервера указан в инструкции хостинга.',
               'Вариант 2 – бесплатный Gmail: создайте отдельный аккаунт Gmail, включите двухэтапную проверку, создайте «пароль приложения» (App password) и включите IMAP в настройках аккаунта. В программе нажмите «Шаблон Gmail» (imap.gmail.com, 993) и введите в поле пароля пароль приложения, а не обычный пароль аккаунта.',
@@ -264,6 +280,22 @@ export const recognitionPages: HelpPage[] = [
               'Что происходит с письмами: при первом чтении берутся только непрочитанные письма, чтобы старая история не попала в программу. Обработанное письмо помечается прочитанным или (если указана «Папка для обработанных писем») переносится в эту папку. Одно и то же письмо или файл повторно не принимается. Небольшие встроенные картинки (подписи, логотипы) игнорируются; предел одного письма – 10 вложений по 20 МБ.',
               'XML-счета (UBL) в письме: сохраняются в очереди «Полученные документы» без сервиса распознавания — данные читаются прямо из файла, а после подтверждения покупка создаётся тем же путём, что и при XML-импорте (в том числе кредитные счета). Если в письме есть PDF с тем же именем (или единственный PDF), он становится визуальным оригиналом XML: в очереди остаётся одна запись, а источник данных — XML. XML, который программа не может прочитать, в очередь не попадает; в журнале будет пометка «XML-счёт не принят» с причиной, а PDF (если есть) обрабатывается как обычно. Вложения-фото HEIC принимаются так же, как JPEG.',
               'Проверка идёт каждые 5 минут (в облачной версии, где программа между визитами «спит», – каждые 15 минут и только при включённом ящике); кнопка «Проверить сейчас» запускает её немедленно. Последнюю проверку, ошибку и журнал последних писем видно в том же блоке настроек. Пароль хранится зашифрованным и не показывается; в пакет экспорта компании он, как и SMTP, не включается.',
+            ],
+          },
+          {
+            title: 'Известные контрагенты и пересланные письма',
+            items: [
+              'Дополнительно к списку можно включить «Принимать от известных контрагентов» (в новых ящиках включено, в существующих выключено, пока вы сами не включите): принимаются письма с точно такого адреса, как в карточке клиента («Эл. почта» или «E-mail для корреспонденции»), и с других адресов того же домена компании. Домены публичных почтовых сервисов (gmail.com, outlook.com, inbox.lt, yandex, gmx и т. п.) по домену не учитываются – только точный адрес.',
+              'Всегда принимаются письма от пользователей и адресов вашей компании (e-mail компании, отправитель SMTP, сам ящик): это пересылающие. Если бухгалтер пересылает письмо поставщика, программа пытается найти исходного отправителя (строки «From:», «Nuo:», «От:», «Von:» после надписи «Forwarded message», «Persiųstas laiškas», «Пересланное сообщение», а также приложенное письмо .eml). В документе видны и пересылающий, и исходный отправитель; если поставщик по коду не найден, он ищется по e-mail исходного отправителя.',
+              'Обучение: после подтверждения документа, чей (исходный) отправитель не принимается ни по одному правилу, программа спросит «Разрешить приём писем от ...?». При выборе «Разрешить» адрес записывается в список разрешённых отправителей. Список отклонённых писем показан в разделе «Полученные документы» и в настройках ящика с кнопкой «Разрешить этого отправителя»; уже отклонённые письма заново не читаются. Письма, не прошедшие проверку DMARC, отклоняются всегда.',
+            ],
+          },
+          {
+            title: 'Правила поставщиков',
+            items: [
+              'В разделе «Полученные документы» > «Правила» для поставщика (или адреса отправителя либо @домена) можно задать счёт учёта, код PVM, вид документа (счёт или чек), способ оплаты, кто оплатил и долю вычитаемого PVM. Форма проверки заполняется этими значениями заранее, а у счёта видна пометка «по правилу: ...». Все значения можно изменить.',
+              'Порядок: сначала правило распознанного поставщика, затем исходного отправителя, затем отправителя (точный адрес приоритетнее @домена). Счёт из правила приоритетнее истории прежних покупок, а история – предложения по содержанию документа. Код PVM из правила заполняется заранее (код из истории остаётся лишь предложением), потому что правило создали вы.',
+              'Быстрый способ: в форме проверки отметьте «Сохранить как правило для этого поставщика» и подтвердите документ – правило создаётся или обновляется по подтверждённым значениям. Счёт должен быть разрешён для покупки, а код PVM – из классификатора покупок. Для компании, не являющейся плательщиком PVM, вычитаемая доля всегда 0.',
             ],
           },
           {
@@ -417,7 +449,7 @@ export const recognitionPages: HelpPage[] = [
           {
             title: 'Receiving documents by e-mail',
             items: [
-              'The program can fetch invoices from a mailbox by itself: every 5 minutes it reads the mailbox you name and stores the PDF and photo attachments of messages from allowed senders in "Received documents" (source "E-mail", the sender is shown). A purchase is still created only after you confirm it. No DNS records of the company domain need to change.',
+              'The program can fetch invoices from a mailbox by itself: every 5 minutes (every 15 minutes on the cloud installation) it reads the mailbox you name and stores the PDF and photo attachments of messages from allowed senders in "Received documents" (source "E-mail", the sender is shown). A purchase is still created only after you confirm it. No DNS records of the company domain need to change.',
               'Settings: "Companies" > settings of the active company > "Mailbox for documents". Enter the IMAP server, the port (usually 993 with SSL/TLS), the username, the password and the folder, then "Test connection" and "Save".',
               'Option 1 - a new mailbox at your existing mail host: create a dedicated mailbox (for example invoices@your-company.lt) in the hosting control panel. Creating a mailbox is not a DNS change. Ask suppliers to send invoices to that address; the IMAP server address is in the hosting instructions.',
               'Option 2 - a free Gmail: create a separate Gmail account, turn on 2-step verification, create an "App password" and enable IMAP in the account settings. In the program press "Gmail preset" (imap.gmail.com, 993) and enter the app password in the password field, not the normal account password.',
@@ -426,6 +458,22 @@ export const recognitionPages: HelpPage[] = [
               'What happens to messages: the first run reads only unread messages so that old history does not enter the program. A processed message is marked as read or, if a "Folder for processed messages" is set, moved to it. The same message or file is not accepted twice. Small inline images (signatures, logos) are ignored; the limit per message is 10 attachments of 20 MB each.',
               'XML e-invoices (UBL) in a message: they are stored in the "Received documents" queue without the recognition service - the data is read straight from the file, and on confirmation the purchase is created the same way as by the XML import (credit notes too). If the message also holds a PDF with the same file name (or the only PDF), it becomes the XML\'s visual original: one queue item remains and the data source is the XML. An XML the program cannot read is not queued; the log shows the note "XML e-invoice not accepted" with the reason, and the PDF (if any) is processed as usual. HEIC photo attachments are accepted just like JPEG.',
               'Checks run every 5 minutes (on the cloud installation, where the program sleeps between visits, every 15 minutes and only while a mailbox is enabled); the "Check now" button runs one at once. The last check, the last error and the log of recent messages are shown in the same settings block. The password is stored encrypted and never shown; like SMTP it is not part of the company export package.',
+            ],
+          },
+          {
+            title: 'Known contractors and forwarded mail',
+            items: [
+              'In addition to the list you can turn on "Accept from known contractors" (on for new mailboxes, off for existing ones until you turn it on): messages are accepted from exactly the e-mail address on the client card ("E-mail" or "Correspondence e-mail") and from other addresses of the same company domain. Domains of public mail providers (gmail.com, outlook.com, inbox.lt, yandex, gmx and the like) never count by domain - only the exact address does.',
+              'Messages from your own users and addresses (company e-mail, SMTP sender, the mailbox itself) are always accepted: they are forwarders. When an accountant forwards a supplier message, the program tries to find the original sender (the lines "From:", "Nuo:", "От:", "Von:" after "Forwarded message", "Persiųstas laiškas", "Пересланное сообщение", or an attached .eml message). The document shows both the forwarder and the original sender; when the supplier is not found by code, it is looked up by the e-mail of the original sender.',
+              'Learning: after you confirm a document whose (original) sender no rule accepts, the program asks "Allow mail from ...?". "Allow" adds the address to the allowed senders. The list of refused messages is shown in "Received documents" and in the mailbox settings with the "Allow this sender" button; messages already refused are not read again. Messages that fail the DMARC check are always refused.',
+            ],
+          },
+          {
+            title: 'Supplier rules',
+            items: [
+              'In "Received documents" > "Rules" you can give a supplier (or a sender address or @domain) an account, a VAT code, a document type (invoice or receipt), a payment method, who paid and the deductible VAT share. The review form is pre-filled with these values and the account shows "by rule: ...". Every value can be changed.',
+              'Order: the rule of the recognized supplier first, then of the original sender, then of the sender (an exact address before an @domain). The account of a rule beats the history of earlier purchases, which beats the suggestion from the document content. The VAT code of a rule is pre-filled (a code from history stays a mere suggestion), because you created the rule yourself.',
+              'Quick way: tick "Save as a rule for this supplier" in the review form and confirm the document - the rule is created or updated from the confirmed values. The account must be allowed for a purchase and the VAT code must come from the purchase classifier. For a company that is not a VAT payer the deductible share is always 0.',
             ],
           },
           {

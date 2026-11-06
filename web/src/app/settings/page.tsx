@@ -21,6 +21,7 @@ export default async function SettingsPage() {
   const shortcuts = [
     { href: '/companies', label: t('settings.shortcutCompanies') },
     ...(admin ? [{ href: '/users', label: t('settings.shortcutUsers') }] : []),
+    { href: '/settings/api', label: t('settings.shortcutApi') },
     { href: '/accounts', label: t('settings.shortcutAccounts') },
     { href: '/rules', label: t('settings.shortcutRules') },
   ];

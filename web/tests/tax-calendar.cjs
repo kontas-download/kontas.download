@@ -57,7 +57,7 @@ test('calendar events, applicability and filed marks', async t => {
     });
 
     await t.test('FR0600 follows the VAT period and shows the unverified carry-over separately', async () => {
-      db.prepare("UPDATE Company SET taxMode='STANDARD_VAT',isVatPayer=1 WHERE id=1").run();
+      db.prepare("UPDATE Company SET taxMode='STANDARD_VAT',isVatPayer=1,vatCode='LT100000000' WHERE id=1").run();
       let events = (await get('2026-10-01', '2026-12-31')).events.filter(e => e.code === 'FR0600');
       assert.deepEqual(events.map(e => e.dueNominal), ['2026-10-25', '2026-11-25', '2026-12-25']);
       assert.equal(events[0].periodEnd, '2026-09-30'); assert.equal(events[0].dueWorkingDay, '2026-10-26');
@@ -71,6 +71,7 @@ test('calendar events, applicability and filed marks', async t => {
     });
 
     await t.test('manual obligations appear only when enabled, with sourced due dates', async () => {
+      for (const [y, m] of [[2025, 12], [2026, 1]]) db.prepare("INSERT INTO Payroll(companyId,year,month,sumWithVat,createdAt) VALUES(1,?,?,1000,datetime('now'))").run(y, m);
       assert.equal((await put({ code: 'GPM313', enabled: true })).status, 200);
       assert.equal((await put({ code: 'GPM312', enabled: true })).status, 200);
       assert.equal((await put({ code: 'PLN204', enabled: true })).status, 200);
@@ -88,7 +89,7 @@ test('calendar events, applicability and filed marks', async t => {
       const ev = (await get('2026-06-01', '2026-06-30')).events.find(e => e.code === 'PLN204');
       assert.equal(ev.done, true); assert.ok(ev.doneAt);
       jar.set('active_company_id', '2');
-      db.prepare("UPDATE Company SET taxMode='STANDARD_VAT',isVatPayer=1 WHERE id=2").run();
+      db.prepare("UPDATE Company SET taxMode='STANDARD_VAT',isVatPayer=1,vatCode='LT200000000' WHERE id=2").run();
       assert.equal((await get('2026-10-01', '2026-10-31')).events.find(e => e.code === 'FR0600').done, false);
       jar.set('active_company_id', '1');
       assert.equal((await put({ code: 'PLN204', periodEnd: '2025-12-31', done: false })).status, 200);

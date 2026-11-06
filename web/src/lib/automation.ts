@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3';
 import { HttpError } from './errors';
 import { todayVilnius } from './dates';
 import { validEmail } from './company-mail';
+import { appBaseUrl } from './api-access';
 import { mailConfiguration, sendInvoiceEmail } from './invoice-mail';
 import { invoiceDocument, invoiceEmailDraft } from './invoice-document';
 import { renderInvoicePdf } from './invoice-pdf';
@@ -163,7 +164,7 @@ function runBank(db: Database.Database, companyId: number): Detail[] {
 }
 
 function upcomingTax(db: Database.Database, companyId: number, today: string, horizon: number) {
-  return calendarEvents(db, companyId, today, addDays(today, horizon)).filter(e => !e.done && e.dueWorkingDay >= today && e.dueWorkingDay <= addDays(today, horizon));
+  return calendarEvents(db, companyId, today, addDays(today, horizon), today).filter(e => !e.done && e.dueWorkingDay >= today && e.dueWorkingDay <= addDays(today, horizon));
 }
 
 async function notify(db: Database.Database, companyId: number, email: string, subject: string, body: string) {
@@ -201,11 +202,13 @@ async function runDigest(db: Database.Database, companyId: number, s: Automation
   return [{ text: `suvestinė išsiųsta ${s.notifyEmail}`, ok: true }];
 }
 
-async function runTax(db: Database.Database, companyId: number, s: AutomationSettings, today: string): Promise<Detail[]> {
+// Reminder N days (taxDaysBefore, default 5) before each upcoming deadline that is not marked as submitted; AutomationSent keeps one letter per entry.
+export async function runTax(db: Database.Database, companyId: number, s: AutomationSettings, today: string): Promise<Detail[]> {
   const fresh = upcomingTax(db, companyId, today, s.taxDaysBefore).filter(e => !db.prepare('SELECT 1 FROM AutomationSent WHERE companyId=? AND key=?').get(companyId, `tax:${e.code}:${e.periodEnd}`));
   if (!fresh.length) return [];
   const company = (db.prepare('SELECT name FROM Company WHERE id=?').get(companyId) as { name: string }).name;
-  const body = [`${company}: artėja mokesčių terminai.`, '', ...fresh.map(e => `• ${e.dueWorkingDay}: ${e.title} (laikotarpis ${e.periodStart} – ${e.periodEnd})`), '', 'Pažymėti kaip atliktus galite skiltyje „Mokesčių kalendorius“.'].join('\n');
+  const link = (e: { code: string; periodEnd: string }) => `${appBaseUrl(db)}/tax-calendar?focus=${e.code}:${e.periodEnd}`;
+  const body = [`${company}: artėja mokesčių terminai.`, '', ...fresh.flatMap(e => [`• ${e.dueWorkingDay}: ${e.title} (laikotarpis ${e.periodStart} – ${e.periodEnd})`, `  ${link(e)}`]), '', 'Failą paruošti ir pažymėti pateiktą galite skiltyje „Mokesčių kalendorius“.'].join('\n');
   await notify(db, companyId, s.notifyEmail, `Mokesčių terminai – ${company}`, body);
   for (const e of fresh) db.prepare('INSERT OR IGNORE INTO AutomationSent(companyId,key) VALUES(?,?)').run(companyId, `tax:${e.code}:${e.periodEnd}`);
   return fresh.map(e => ({ text: `priminimas: ${e.dueWorkingDay} ${e.title}`, ok: true }));

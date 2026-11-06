@@ -14,8 +14,10 @@ export const emptyLine = (over: Partial<FormLine> = {}): FormLine => ({
   stockMode: '', stockItemId: '', stockCode: '', assetCreate: false, assetCategory: '', assetLife: '', assetCommissioning: '', assetCode: '', ...over,
 });
 // Where the expense account in the form came from; USER = typed or picked by the person (never overwritten automatically).
-export type AccountSource = 'HISTORY' | 'MODEL' | 'USER';
-export interface AccountInfo { purchaseId?: number; number?: string; date?: string; reason?: string }
+export type AccountSource = 'HISTORY' | 'MODEL' | 'RULE' | 'USER';
+export interface AccountInfo { purchaseId?: number; number?: string; date?: string; reason?: string; ruleId?: number; ruleName?: string }
+// The rule of a supplier as the server summarizes it (see ruleSummary in lib/purchase-recognition.ts).
+export interface RuleHint { id: number; name: string; debitAccount: string | null; taxCode: string | null }
 export interface AccountHistoryHint { account: string; purchaseId: number; number: string; date: string }
 export interface ReviewForm {
   clientId: string;
@@ -75,7 +77,7 @@ export function draftToForm(draft: Draft): ReviewForm {
 }
 
 function accountOrigin(draft: Draft): { accountSource: AccountSource | null; accountInfo: AccountInfo | null } {
-  const source = draft.accountSource === 'HISTORY' || draft.accountSource === 'MODEL' ? draft.accountSource : null;
+  const source = draft.accountSource === 'HISTORY' || draft.accountSource === 'MODEL' || draft.accountSource === 'RULE' ? draft.accountSource : null;
   const info = draft.accountInfo && typeof draft.accountInfo === 'object' ? draft.accountInfo as AccountInfo : null;
   return s(draft.debitAccount) && source ? { accountSource: source, accountInfo: info } : { accountSource: null, accountInfo: null };
 }
@@ -86,13 +88,20 @@ export function setDebitAccount(form: ReviewForm, debitAccount: string): ReviewF
 }
 
 // The supplier of the form changed (picked, found by code, or switched to "new"): re-fill the expense account unless the person set it.
-// The supplier's own history wins; without history the recognition suggestion for the document stays; without both an auto-filled value is cleared.
-export function refillAccountForSupplier(form: ReviewForm, history: AccountHistoryHint | null, model: { code: string; reason: string } | null): ReviewForm {
+// The supplier's rule wins, then its own history; without history the recognition suggestion for the document stays; without all of them an auto-filled value is cleared.
+export function refillAccountForSupplier(form: ReviewForm, history: AccountHistoryHint | null, model: { code: string; reason: string } | null, rule: RuleHint | null = null): ReviewForm {
   if (form.accountSource === 'USER') return form;
   if (form.debitAccount && form.accountSource === null) return form;
+  if (rule?.debitAccount) return { ...form, debitAccount: rule.debitAccount, accountSource: 'RULE', accountInfo: { ruleId: rule.id, ruleName: rule.name } };
   if (history) return { ...form, debitAccount: history.account, accountSource: 'HISTORY', accountInfo: { purchaseId: history.purchaseId, number: history.number, date: history.date } };
   if (model) return { ...form, debitAccount: model.code, accountSource: 'MODEL', accountInfo: { reason: model.reason } };
   return { ...form, debitAccount: '', accountSource: null, accountInfo: null };
+}
+
+// The VAT code of the supplier's rule goes into the lines that have none yet (a rule is the person's own choice, unlike a code from history).
+export function applyRuleTaxCode(form: ReviewForm, rule: RuleHint | null, allowedTaxCodes: string[]): ReviewForm {
+  if (!rule?.taxCode || !allowedTaxCodes.includes(rule.taxCode)) return form;
+  return { ...form, lines: form.lines.map(l => (l.taxCode ? l : { ...l, taxCode: rule.taxCode as string })) };
 }
 
 // A cash receipt without the buyer's details gives no VAT deduction: switching to a receipt fills an empty deduction with 0 so the

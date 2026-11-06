@@ -8,7 +8,7 @@ const input = 'block mt-1 w-full h-10 rounded-lg border border-slate-700 bg-slat
 const hintKey = { accurate: 'docs.modelAccurate', balanced: 'docs.modelBalanced', fast: 'docs.modelFast' } as const;
 
 // Per-company settings of purchase document recognition. The API key is write-only: the server only says whether one is stored.
-export function RecognitionSettingsSection() {
+export function RecognitionSettingsSection({ hideTitle = false }: { hideTitle?: boolean } = {}) {
   const { t, lang } = useI18n();
   const [enabled, setEnabled] = useState(false);
   const [model, setModel] = useState<string>(DEFAULT_RECOGNITION_MODEL);
@@ -52,7 +52,7 @@ export function RecognitionSettingsSection() {
   function removeKey() { setClearKey(true); setApiKey(''); setHasKey(false); setEnabled(false); }
 
   return <section className="space-y-3 rounded-xl border border-slate-800 p-4" aria-label={t('docs.settingsTitle')}>
-    <h3 className="font-bold text-white">{t('docs.settingsTitle')}</h3>
+    {!hideTitle && <h3 className="font-bold text-white">{t('docs.settingsTitle')}</h3>}
     <p className="text-sm text-slate-400">{t('docs.settingsIntro')} <a href="/help/document-recognition" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-300 underline">{t('docs.helpLink')}</a></p>
     {message && <p role={message.kind === 'error' ? 'alert' : 'status'} className={`rounded-lg border p-2 text-sm ${message.kind === 'error' ? 'border-rose-800 bg-rose-950/40 text-rose-300' : 'border-emerald-800 bg-emerald-950/40 text-emerald-300'}`}>{message.text}</p>}
     <fieldset disabled={loading || busy} className="space-y-3 disabled:opacity-50">

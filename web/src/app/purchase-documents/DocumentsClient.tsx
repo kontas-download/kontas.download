@@ -15,6 +15,7 @@ const STATUS_STYLE: Record<string, string> = {
   NEW: 'bg-sky-950 text-sky-300 border-sky-800', EXTRACTED: 'bg-amber-950 text-amber-300 border-amber-800', FAILED: 'bg-rose-950 text-rose-300 border-rose-800',
   CONFIRMED: 'bg-emerald-950 text-emerald-300 border-emerald-800', REJECTED: 'bg-slate-800 text-slate-300 border-slate-700',
 };
+interface RefusedRow { id: number; sender: string | null; subject: string | null; receivedAt: string; canAllow: boolean }
 const FILTERS = ['AWAITING', 'ALL', 'CONFIRMED', 'REJECTED'] as const;
 const OPEN = ['NEW', 'EXTRACTED', 'FAILED'];
 
@@ -28,6 +29,8 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
   const [progress, setProgress] = useState<string[]>([]);
   const [errors, setErrors] = useState<string[]>(shareErrors);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [refused, setRefused] = useState<RefusedRow[]>([]);
+  const [allowedNote, setAllowedNote] = useState('');
   const today = new Date().toISOString().slice(0, 10);
   const [archiveFrom, setArchiveFrom] = useState(`${today.slice(0, 4)}-01-01`);
   const [archiveTo, setArchiveTo] = useState(today);
@@ -44,6 +47,22 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
   }, []);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load
   useEffect(() => { load(); }, [load]);
+  // Messages refused only because their sender is not accepted (never the ones that failed the forgery check).
+  const loadRefused = useCallback(async () => {
+    const res = await fetch('/api/settings/document-inbox/log', { cache: 'no-store' }).catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => []) : [];
+    if (Array.isArray(data)) setRefused((data as RefusedRow[]).filter(r => r.canAllow).slice(0, 10));
+  }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load
+  useEffect(() => { void loadRefused(); }, [loadRefused]);
+  async function allowSender(address: string) {
+    setErrors([]); setAllowedNote('');
+    const res = await fetch('/api/settings/document-inbox/allow-sender', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { setErrors([data.error || t('common.error')]); return; }
+    setAllowedNote(t('docs.inboxSenderAllowed', { address }));
+    setRefused(rows => rows.filter(r => r.sender !== address));
+  }
 
   // Returns a failure text or null.
   async function recognize(id: number): Promise<string | null> {
@@ -113,13 +132,14 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
         <div className="flex flex-wrap items-center gap-4">
           {oldestWaiting && <Link href={`/purchase-documents/${oldestWaiting}`} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500">{t('docs.reviewQueue')}</Link>}
           <Link href="/help/document-recognition" className="text-sm font-semibold text-emerald-300 underline">{t('docs.helpLink')}</Link>
+          <Link href="/purchase-documents/rules" className="text-sm font-semibold text-emerald-300 underline">{t('docs.rulesLink')}</Link>
           <Link href="/purchases/reimbursements" className="text-sm font-semibold text-emerald-300 underline">{t('docs.reimbursementsLink')}</Link>
         </div>
       </div>
 
       {!recognitionReady && (
         <div role="note" className="rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-200">
-          {t('docs.notReady')} <Link href="/companies" className="font-semibold underline">{t('docs.notReadyLink')}</Link>
+          {t('docs.notReady')} <Link href="/settings/api" className="font-semibold underline">{t('docs.notReadyLink')}</Link>
         </div>
       )}
 
@@ -187,6 +207,23 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
           </tbody>
         </table>
       </div>
+      {allowedNote && <p role="status" className="rounded-xl border border-emerald-800 bg-emerald-950/40 p-3 text-sm text-emerald-200">{allowedNote}</p>}
+      {refused.length > 0 && (
+        <section className="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-2" aria-label={t('docs.inboxSkippedTitle')}>
+          <h2 className="font-bold text-white">{t('docs.inboxSkippedTitle')}</h2>
+          <p className="text-sm text-slate-400">{t('docs.inboxSkippedHint')}</p>
+          <ul className="divide-y divide-slate-800 text-xs text-slate-300">
+            {refused.map(r => (
+              <li key={r.id} className="flex flex-wrap items-center gap-3 py-1.5">
+                <span className="whitespace-nowrap text-slate-400">{when(r.receivedAt)}</span>
+                <span className="break-all font-semibold">{r.sender}</span>
+                {r.subject && <span className="max-w-[260px] truncate text-slate-500" title={r.subject}>{r.subject}</span>}
+                <button type="button" onClick={() => { void allowSender(r.sender as string); }} className={`${btn} ml-auto`}>{t('docs.inboxAllowSender')}</button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section className="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-3" aria-label={t('docs.archiveTitle')}>
         <h2 className="font-bold text-white">{t('docs.archiveTitle')}</h2>
         <p className="text-sm text-slate-400 max-w-3xl">{t('docs.archiveIntro')}</p>

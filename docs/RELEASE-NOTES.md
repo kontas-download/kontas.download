@@ -6,6 +6,23 @@
 
 Pagrindinė dokumentacijos kalba – lietuvių. Jei lietuviškas ir angliškas tekstai skiriasi, viršesnis lietuviškas.
 
+### 0.5.4 – debesies diegimas, išmanūs siuntėjai, mokesčių kalendorius, API nustatymai
+
+Archyvas: `kontas-download-0.5.4.zip`, šalia – kontrolinės sumos failas `kontas-download-0.5.4.zip.sha256`. Atnaujinti iš 0.4.0, 0.5.0, 0.5.1, 0.5.2 ar 0.5.3: `update.ps1` / `update.sh`.
+
+- Debesies diegimas: į atvaizdą nebeįdedama duomenų bazė, paleidimas vyksta tik sėkmingai atkūrus duomenis iš atsarginės kopijos; dokumentų originalai į atvaizdą neįtraukiami.
+- Gauti dokumentai: nurodytas pašto tikrinimo intervalas (debesies versijoje – kas 15 minučių).
+- Išmanūs siuntėjai: žinomi kontaktai, savi naudotojai, persiųstų laiškų pirminis siuntėjas, pasiūlymai leisti siuntėją ir atmestų laiškų sąrašas.
+- Tiekėjų taisyklės: atskiros taisyklės kiekvienam tiekėjui.
+- Pirkimų eilutės: importuotų kainų taisymas (vienkartinė migracija), naujas redagavimo langas, apsauga nuo nulinės sumos ir kainos su 4 ženklais po kablelio.
+- Mokesčių kalendorius: mygtukas „Paruošti“ (failai, patikrinimai, kur pateikti), žymėjimas pateikta su data ir registracijos nr., priminimai su nuorodomis.
+- Nustatymai – API: atpažinimo raktas, valstybinių paslaugų prisijungimai ir programos adresas; pateikimo sluoksnis su mygtukais „Pateikti“ ir „Tikrinti būseną“, kurie paaiškina, kad valstybinės paslaugos dar nejungiamos.
+
+Kontrolinė suma:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.4.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.4.zip.sha256).Split(' ')[0]` – turi būti `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.4.zip.sha256` – turi būti `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.4.zip.sha256` – turi būti `OK`.
+
 ### 0.5.3 – bankas, užsienio valiuta, kreditinės sąskaitos, archyvas patikrinimui
 
 Archyvas: `kontas-download-0.5.3.zip`, šalia – kontrolinės sumos failas `kontas-download-0.5.3.zip.sha256`. Atnaujinti iš 0.4.0, 0.5.0, 0.5.1 ar 0.5.2: `update.ps1` / `update.sh`.
@@ -207,6 +224,23 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 
 Основной язык документации – литовский; при расхождении текстов приоритет у литовского.
 
+### 0.5.4 – облачная установка, умные отправители, налоговый календарь, настройки API
+
+Архив: `kontas-download-0.5.4.zip`, рядом – файл контрольной суммы `kontas-download-0.5.4.zip.sha256`. Обновление с 0.4.0, 0.5.0, 0.5.1, 0.5.2 или 0.5.3: `update.ps1` / `update.sh`.
+
+- Облачная установка: в образ больше не включается база данных, запуск происходит только после успешного восстановления данных из резервной копии; оригиналы документов в образ не попадают.
+- Входящие документы: указан интервал проверки почты (в облачной версии – каждые 15 минут).
+- Умные отправители: известные контакты, собственные пользователи, исходный отправитель пересланных писем, предложения разрешить отправителя и список отклонённых писем.
+- Правила поставщиков: отдельные правила для каждого поставщика.
+- Строки закупок: исправление импортированных цен (разовая миграция), новое окно редактирования, защита от нулевой суммы и цены с 4 знаками после запятой.
+- Налоговый календарь: кнопка «Подготовить» (файлы, проверки, куда подавать), отметка о подаче с датой и регистрационным номером, напоминания со ссылками.
+- Настройки – API: ключ распознавания, учётные данные государственных сервисов и адрес программы; слой подачи с кнопками «Подать» и «Проверить статус», которые поясняют, что государственные сервисы пока не подключены.
+
+Контрольная сумма:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.4.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.4.zip.sha256).Split(' ')[0]` – должно быть `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.4.zip.sha256` – должно быть `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.4.zip.sha256` – должно быть `OK`.
+
 ### 0.5.3 – банк, иностранная валюта, кредитные счета, архив для проверки
 
 Архив: `kontas-download-0.5.3.zip`, рядом – файл контрольной суммы `kontas-download-0.5.3.zip.sha256`. Обновление с 0.4.0, 0.5.0, 0.5.1 или 0.5.2: `update.ps1` / `update.sh`.
@@ -407,6 +441,23 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 ## English
 
 The main documentation language is Lithuanian; if the texts differ, the Lithuanian one prevails.
+
+### 0.5.4 – cloud installation, smart senders, tax calendar, API settings
+
+Archive: `kontas-download-0.5.4.zip`, with the checksum file `kontas-download-0.5.4.zip.sha256` next to it. Updating from 0.4.0, 0.5.0, 0.5.1, 0.5.2 or 0.5.3: `update.ps1` / `update.sh`.
+
+- Cloud installation: the image no longer contains a database, and startup happens only after data has been restored and verified from a backup; document originals are excluded from the image.
+- Received documents: the mail check interval is stated (in the cloud version, every 15 minutes).
+- Smart senders: known contacts, own users, the original sender of forwarded mail, suggestions to allow a sender, and a list of refused mail.
+- Supplier rules: separate rules for each supplier.
+- Purchase lines: repair of imported prices (a one-time migration), a redesigned edit window, protection against a zero total and prices with 4 decimals.
+- Tax calendar: a "Prepare" button (files, checks, where to file), marking as submitted with a date and registration no., reminders with links.
+- Settings – API: the recognition key, state service credentials and the installation address; a filing layer with "Submit" and "Check status" buttons that explain that the state services are not connected yet.
+
+Checksum:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.4.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.4.zip.sha256).Split(' ')[0]` – must be `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.4.zip.sha256` – must be `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.4.zip.sha256` – must be `OK`.
 
 ### 0.5.3 – bank, foreign currency, credit notes, archive for inspection
 

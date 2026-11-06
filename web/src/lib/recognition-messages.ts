@@ -84,6 +84,11 @@ const EXACT: [string, string, string][] = [
   ['Kreditinių dokumentų suma viršija pradinio dokumento sumą', 'Сумма кредитных документов превышает сумму исходного документа', 'The amount of the credit notes exceeds the amount of the original document'],
   ['Korekcijos data negali būti ankstesnė už pradinį dokumentą', 'Дата корректировки не может быть раньше исходного документа', 'The correction date cannot be earlier than the original document'],
   ['Kreditinio dokumento pakartotinai koreguoti negalima', 'Кредитный документ повторно корректировать нельзя', 'A credit note cannot be corrected again'],
+  ['Neteisingas siuntėjo šablonas: nurodykite el. pašto adresą arba @domeną', 'Некорректный шаблон отправителя: укажите адрес эл. почты или @домен', 'Invalid sender pattern: enter an e-mail address or an @domain'],
+  ['Nurodykite tiekėją arba siuntėją, kuriam taikoma taisyklė', 'Укажите поставщика или отправителя, к которому применяется правило', 'Enter the supplier or the sender the rule applies to'],
+  ['Neteisingas PVM klasifikatoriaus kodas', 'Некорректный код классификатора PVM', 'Invalid VAT classifier code'],
+  ['Šiam tiekėjui arba siuntėjui taisyklė jau yra', 'Для этого поставщика или отправителя правило уже есть', 'A rule for this supplier or sender already exists'],
+  ['Taisyklė nerasta', 'Правило не найдено', 'Rule not found'],
 ];
 export const RECOGNITION_EXACT: Record<string, { ru: string; en: string }> = Object.fromEntries(EXACT.map(([lt, ru, en]) => [lt, { ru, en }]));
 

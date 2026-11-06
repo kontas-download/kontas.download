@@ -90,4 +90,33 @@ export function migratePurchaseDocuments(db: Database.Database) {
     if (!have.has('uploadedBy')) db.exec('ALTER TABLE PurchaseDocument ADD COLUMN uploadedBy INTEGER');
     db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-purchase-documents-v5');
   })();
+  // Forwarded mail: `sender` is the person who forwarded it, `originalSender` the address found in the forwarded message.
+  db.transaction(() => {
+    if (db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-11-purchase-documents-v6')) return;
+    const have = new Set((db.prepare('PRAGMA table_info(PurchaseDocument)').all() as { name: string }[]).map(c => c.name));
+    if (!have.has('originalSender')) db.exec('ALTER TABLE PurchaseDocument ADD COLUMN originalSender TEXT');
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-purchase-documents-v6');
+  })();
+  // Per-supplier rules pre-fill the review form (expense account, VAT code, document kind, payment).
+  db.transaction(() => {
+    if (db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-11-purchase-documents-v7')) return;
+    db.exec(`CREATE TABLE IF NOT EXISTS SupplierDocumentRule(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        companyId INTEGER NOT NULL REFERENCES Company(id) ON DELETE CASCADE,
+        clientId INTEGER REFERENCES Client(id) ON DELETE CASCADE,
+        senderPattern TEXT,
+        debitAccount TEXT,
+        taxCode TEXT,
+        evidenceType TEXT CHECK(evidenceType IN ('INVOICE','RECEIPT')),
+        paymentMethod TEXT CHECK(paymentMethod IN ('CARD','CASH','TRANSFER','OTHER')),
+        paidBy TEXT CHECK(paidBy IN ('COMPANY','PERSON')),
+        deductionPercent REAL,
+        notes TEXT,
+        createdAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        updatedAt TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        lastUsedAt TEXT,
+        CHECK(clientId IS NOT NULL OR senderPattern IS NOT NULL));
+      CREATE INDEX IF NOT EXISTS idx_supplier_rule_company ON SupplierDocumentRule(companyId,clientId);`);
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-purchase-documents-v7');
+  })();
 }

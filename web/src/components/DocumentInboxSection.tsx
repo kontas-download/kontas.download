@@ -4,7 +4,7 @@ import { useT } from '@/lib/i18n/client';
 
 const input = 'block mt-1 w-full h-10 rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none';
 const area = 'block mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none';
-interface LogRow { id: number; sender: string | null; subject: string | null; receivedAt: string; status: string; detail: string[] }
+interface LogRow { id: number; sender: string | null; subject: string | null; receivedAt: string; status: string; detail: string[]; canAllow?: boolean }
 
 // Per-company mailbox for received purchase documents. The password is write-only: the server only says whether one is stored.
 export function DocumentInboxSection() {
@@ -20,6 +20,7 @@ export function DocumentInboxSection() {
   const [folder, setFolder] = useState('INBOX');
   const [processedFolder, setProcessedFolder] = useState('');
   const [allowedSenders, setAllowedSenders] = useState('');
+  const [acceptKnown, setAcceptKnown] = useState(true);
   const [lastRunAt, setLastRunAt] = useState<string | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [log, setLog] = useState<LogRow[]>([]);
@@ -30,7 +31,7 @@ export function DocumentInboxSection() {
 
   const apply = useCallback((d: Record<string, unknown>) => {
     setEnabled(Boolean(d.enabled)); setHost(String(d.host ?? '')); setPort(Number(d.port) || 993); setSecure(d.secure !== false); setUsername(String(d.username ?? ''));
-    setHasPassword(Boolean(d.hasPassword)); setFolder(String(d.folder || 'INBOX')); setProcessedFolder(String(d.processedFolder ?? '')); setAllowedSenders(String(d.allowedSenders ?? ''));
+    setHasPassword(Boolean(d.hasPassword)); setFolder(String(d.folder || 'INBOX')); setProcessedFolder(String(d.processedFolder ?? '')); setAllowedSenders(String(d.allowedSenders ?? '')); setAcceptKnown(d.acceptKnownContacts !== false);
     setLastRunAt((d.lastRunAt as string | null) ?? null); setLastError((d.lastError as string | null) ?? null);
   }, []);
   const loadLog = useCallback(() => fetch('/api/settings/document-inbox/log').then(r => r.json()).then(d => { if (Array.isArray(d)) setLog(d); }).catch(() => undefined), []);
@@ -42,7 +43,7 @@ export function DocumentInboxSection() {
     return () => { cancelled = true; };
   }, [t, apply, loadLog]);
 
-  const form = () => ({ enabled, host, port, secure, username, folder, processedFolder, allowedSenders, ...(password ? { password } : {}), ...(clearPassword ? { clearPassword: true } : {}) });
+  const form = () => ({ enabled, host, port, secure, username, folder, processedFolder, allowedSenders, acceptKnownContacts: acceptKnown, ...(password ? { password } : {}), ...(clearPassword ? { clearPassword: true } : {}) });
   async function call(url: string, method: string, body: unknown, onOk: (data: Record<string, unknown>) => void) {
     setBusy(true); setMessage(null);
     try {
@@ -58,6 +59,8 @@ export function DocumentInboxSection() {
     setMessage({ kind: 'ok', text: t('docs.inboxPolled', { messages: Number(d.messages), imported: Number(d.imported), skipped: Number(d.skipped) }) });
     fetch('/api/settings/document-inbox').then(r => r.json()).then(apply).catch(() => undefined); loadLog();
   });
+  // From the refusal log: the sender joins the allowed list at once (the stored list is reloaded into the form).
+  const allow = (address: string) => call('/api/settings/document-inbox/allow-sender', 'POST', { address }, d => { apply(d); setMessage({ kind: 'ok', text: t('docs.inboxSenderAllowed', { address }) }); });
   function useGmail() { setHost('imap.gmail.com'); setPort(993); setSecure(true); setFolder('INBOX'); setGmail(true); }
   function removePassword() { setClearPassword(true); setPassword(''); setHasPassword(false); setEnabled(false); }
 
@@ -87,7 +90,8 @@ export function DocumentInboxSection() {
         <textarea rows={4} value={allowedSenders} onChange={e => setAllowedSenders(e.target.value)} placeholder={'tiekejas@example.com\n@example.org'} className={area} />
         <span className="mt-1 block font-normal">{t('docs.inboxSendersHint')}</span>
       </label>
-      {!allowedSenders.trim() && <p className="text-xs text-amber-300">{t('docs.inboxSendersEmpty')}</p>}
+      <label className="flex items-start gap-2 text-sm text-slate-200"><input type="checkbox" className="mt-1 h-4 w-4 accent-emerald-500" checked={acceptKnown} onChange={e => setAcceptKnown(e.target.checked)} /><span>{t('docs.inboxAcceptKnown')}<span className="mt-0.5 block text-xs text-slate-400">{t('docs.inboxAcceptKnownHint')}</span></span></label>
+      {!allowedSenders.trim() && !acceptKnown && <p className="text-xs text-amber-300">{t('docs.inboxSendersEmpty')}</p>}
     </fieldset>
     <p className="text-xs text-slate-400">{t('docs.inboxLastRun')}: {lastRunAt ? new Date(lastRunAt).toLocaleString() : t('docs.inboxNever')}{lastError && <span className="text-rose-300"> · {t('docs.inboxLastError')}: {lastError}</span>}</p>
     <div className="flex flex-wrap justify-end gap-3">
@@ -102,7 +106,7 @@ export function DocumentInboxSection() {
         <tbody>{log.map(r => <tr key={r.id} className="border-t border-slate-800 align-top">
           <td className="p-1 whitespace-nowrap">{new Date(r.receivedAt).toLocaleString()}</td>
           <td className="p-1 break-all">{r.sender || '—'}{r.subject && <div className="text-slate-500 truncate max-w-[220px]" title={r.subject}>{r.subject}</div>}</td>
-          <td className="p-1"><span className="font-semibold">{t(`docs.inboxStatus${r.status}`)}</span>{r.detail.map((d, i) => <div key={i} className="text-slate-400">{d}</div>)}</td>
+          <td className="p-1"><span className="font-semibold">{t(`docs.inboxStatus${r.status}`)}</span>{r.detail.map((d, i) => <div key={i} className="text-slate-400">{d}</div>)}{r.canAllow && r.sender && <button type="button" disabled={busy} onClick={() => { void allow(r.sender as string); }} className="mt-1 rounded-lg border border-emerald-700 px-2 py-0.5 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-950 disabled:opacity-40">{t('docs.inboxAllowSender')}</button>}</td>
         </tr>)}</tbody>
       </table></div>}
     </div>

@@ -37,4 +37,15 @@ export function migrateDocumentInbox(db: Database.Database) {
       CREATE INDEX IF NOT EXISTS idx_document_inbox_message_msgid ON DocumentInboxMessage(companyId,messageId);`);
     db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-document-inbox-v1');
   })();
+  // "Accept from known contractors": senders that are contacts of the company's clients are accepted without listing them. On for new mailboxes;
+  // existing mailboxes keep their behaviour (off) until the person turns it on.
+  db.transaction(() => {
+    if (db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-11-document-inbox-v2')) return;
+    const have = new Set((db.prepare('PRAGMA table_info(CompanyDocumentInbox)').all() as { name: string }[]).map(c => c.name));
+    if (!have.has('acceptKnownContacts')) {
+      db.exec('ALTER TABLE CompanyDocumentInbox ADD COLUMN acceptKnownContacts INTEGER NOT NULL DEFAULT 1');
+      db.exec('UPDATE CompanyDocumentInbox SET acceptKnownContacts=0');
+    }
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-document-inbox-v2');
+  })();
 }

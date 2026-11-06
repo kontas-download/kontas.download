@@ -8,7 +8,7 @@ import { askConfirm } from '@/components/ConfirmHost';
 import { PurchaseBankMatches } from '@/components/PurchaseBankMatches';
 import { neighbourId, reviewShortcut, waitingIds } from '@/lib/review-queue';
 import { TAX_CODES } from '@/lib/tax-codes';
-import { applyEvidenceType, draftToForm, emptyLine, eurTotals, isForeign, formToPayload, manualNotice, refillAccountForSupplier, setDebitAccount, shouldShowLowQualityBanner, validateForm, type AccountHistoryHint, type FormLine, type ReviewForm } from '@/lib/purchase-document-form';
+import { applyEvidenceType, applyRuleTaxCode, draftToForm, emptyLine, eurTotals, isForeign, formToPayload, manualNotice, refillAccountForSupplier, setDebitAccount, shouldShowLowQualityBanner, validateForm, type AccountHistoryHint, type FormLine, type ReviewForm, type RuleHint } from '@/lib/purchase-document-form';
 
 interface Totals { net: number | null; vat: number | null; gross: number | null }
 interface Preview {
@@ -19,9 +19,10 @@ interface Preview {
   referencedDocument?: string | null;
   suggestions: { debitAccount: string | null; debitAccountFromPurchaseId: number | null; modelAccount: { code: string; reason: string } | null };
   inventoryActive: boolean; fixedAssetAccounts: { code: string; category: string | null }[]; lineStockItems: (number | null)[];
+  rule?: RuleHint | null; supplierFromEmail?: string | null;
 }
 const ASSET_CATEGORIES = ['BUILDING', 'MACHINERY', 'VEHICLE', 'COMPUTER', 'FURNITURE', 'INTANGIBLE', 'OTHER'];
-interface DocumentInfo { id: number; fileName: string; mimeType: string; status: string; error: string | null; source: string; sender: string | null; receivedAt: string; hasVisual?: boolean; costEur?: number | null }
+interface DocumentInfo { id: number; fileName: string; mimeType: string; status: string; error: string | null; source: string; sender: string | null; originalSender?: string | null; receivedAt: string; hasVisual?: boolean; costEur?: number | null }
 // XML e-invoice (UBL) from the queue: the preview of the XML import, not a recognition draft.
 interface CreditOriginalRow { id: number; number: string; series: string | null; purchaseDate: string; sumWithVat: number }
 interface XmlPreview {
@@ -116,7 +117,10 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
   const [rateBusy, setRateBusy] = useState(false);
   const [rateMessage, setRateMessage] = useState('');
   const [bankPurchaseId, setBankPurchaseId] = useState<number | null>(null);
-  const [supplierHit, setSupplierHit] = useState<{ id: number; name: string; code: string | null; vatCode: string | null; address: string | null; accountHistory: AccountHistoryHint | null } | null>(null);
+  const [supplierHit, setSupplierHit] = useState<{ id: number; name: string; code: string | null; vatCode: string | null; address: string | null; accountHistory: AccountHistoryHint | null; rule?: RuleHint | null } | null>(null);
+  const [saveRule, setSaveRule] = useState(false);
+  // After a confirmation the person may be offered to allow the (original) sender; `proceed` continues to the next step afterwards.
+  const [allowOffer, setAllowOffer] = useState<{ address: string; proceed: () => void } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -138,7 +142,7 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
     const p: Preview | null = detail.data.draft ? detail.data : null;
     setPreview(p);
     setForm(p ? draftToForm(p.draft) : null);
-    setTouched({}); setServerFields({}); setSupplierHit(null); setNotDuplicate(false);
+    setTouched({}); setServerFields({}); setSupplierHit(null); setNotDuplicate(false); setSaveRule(false);
     setQueue(waitingIds(list.documents));
     setLoading(false);
   }, [documentId, t]);
@@ -222,10 +226,12 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
     const data = await fetch(`/api/purchase-documents/supplier-lookup?${query}`, { cache: 'no-store' }).then(r => r.json()).catch(() => ({}));
     setSupplierHit(data.supplier || null);
   }
+  // A rule account the chart does not offer (any more) is left out, so the select never shows a blank for an account it cannot hold.
+  const usableRule = (rule?: RuleHint | null): RuleHint | null => (rule ? { ...rule, debitAccount: rule.debitAccount && accounts.some(a => a.code === rule.debitAccount) ? rule.debitAccount : null } : null);
   function useFoundSupplier() {
     const c = supplierHit;
     if (!c) return;
-    edit(['supplier', 'supplier.name', 'supplier.code'], f => refillAccountForSupplier({ ...f, clientId: String(c.id), supplier: { name: c.name, code: c.code || '', vatCode: c.vatCode || '', address: c.address || '' } }, c.accountHistory, preview?.suggestions.modelAccount ?? null));
+    edit(['supplier', 'supplier.name', 'supplier.code'], f => applyRuleTaxCode(refillAccountForSupplier({ ...f, clientId: String(c.id), supplier: { name: c.name, code: c.code || '', vatCode: c.vatCode || '', address: c.address || '' } }, c.accountHistory, preview?.suggestions.modelAccount ?? null, usableRule(c.rule)), usableRule(c.rule), allowedTaxCodes));
     setSupplierHit(null);
   }
   // Supplier picked from the list: the expense account follows the supplier's history unless the person set it.
@@ -236,22 +242,27 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
     setForm(f => (f && f.clientId === value ? refillAccountForSupplier(f, null, model) : f));
     if (!value) return;
     const data = await fetch(`/api/purchase-documents/supplier-lookup?clientId=${encodeURIComponent(value)}`, { cache: 'no-store' }).then(r => r.json()).catch(() => ({}));
-    setForm(f => (f && f.clientId === value ? refillAccountForSupplier(f, data.accountHistory || null, model) : f));
+    const rule = usableRule(data.rule);
+    setForm(f => (f && f.clientId === value ? applyRuleTaxCode(refillAccountForSupplier(f, data.accountHistory || null, model, rule), rule, allowedTaxCodes) : f));
   }
 
   async function confirm() {
     if (!form) return;
     setBusy(true); setMessage(''); setServerFields({});
     try {
-      const { ok, data } = await post('confirm', { companyId, ...formToPayload(form), confirmDuplicate: notDuplicate });
+      const { ok, data } = await post('confirm', { companyId, ...formToPayload(form), confirmDuplicate: notDuplicate, saveRule });
       if (!ok) { setServerFields(data.fields || {}); setMessage(data.error || t('common.error')); return; }
       // A bank line that probably paid this document is offered right away (the person still has to link it).
       const purchaseId = (data.purchase as { id?: number } | undefined)?.id;
-      if (purchaseId) {
-        const found = await fetch(`/api/purchases/${purchaseId}/bank-matches`, { cache: 'no-store' }).then(r => r.json()).catch(() => null);
-        if (found?.candidates?.length) { setBankPurchaseId(purchaseId); return; }
-      }
-      goNext();
+      const proceed = async () => {
+        if (purchaseId) {
+          const found = await fetch(`/api/purchases/${purchaseId}/bank-matches`, { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+          if (found?.candidates?.length) { setBankPurchaseId(purchaseId); return; }
+        }
+        goNext();
+      };
+      if (typeof data.suggestAllowSender === 'string') { setAllowOffer({ address: data.suggestAllowSender, proceed }); return; }
+      await proceed();
     } finally { setBusy(false); }
   }
   // XML credit note without a reference: the chosen original is checked by the server preview before anything is confirmed.
@@ -270,6 +281,7 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
         deductionPercent: xmlOptions.deduction.trim() ? Number(xmlOptions.deduction.replace(',', '.')) : undefined, debitAccount: xmlOptions.debitAccount || undefined, accountSource: xmlOptions.accountSource || undefined,
       });
       if (!ok) { setServerFields(data.fields || {}); setMessage(data.error || t('common.error')); return; }
+      if (typeof data.suggestAllowSender === 'string') { setAllowOffer({ address: data.suggestAllowSender, proceed: goNext }); return; }
       goNext();
     } finally { setBusy(false); }
   }
@@ -304,6 +316,34 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
     } finally { setBusy(false); }
   }
 
+  async function answerAllow(allow: boolean) {
+    const offer = allowOffer;
+    if (!offer) return;
+    if (allow) {
+      setBusy(true);
+      const res = await fetch('/api/settings/document-inbox/allow-sender', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: offer.address }) }).catch(() => null);
+      setBusy(false);
+      if (!res?.ok) setMessage((res && (await res.json().catch(() => ({}))).error) || t('common.error'));
+    }
+    setAllowOffer(null);
+    offer.proceed();
+  }
+
+  if (allowOffer) {
+    return (
+      <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
+        <div role="alertdialog" aria-label={t('docs.allowOfferTitle', { address: allowOffer.address })} className="space-y-3 rounded-xl border border-emerald-800 bg-emerald-950/30 p-4">
+          <h2 className="font-bold text-white">{t('docs.allowOfferTitle', { address: allowOffer.address })}</h2>
+          <p className="text-sm text-slate-300">{t('docs.allowOfferBody')}</p>
+          <div className="flex gap-3">
+            <button type="button" disabled={busy} onClick={() => { void answerAllow(true); }} className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-40">{t('docs.allowOfferYes')}</button>
+            <button type="button" disabled={busy} onClick={() => { void answerAllow(false); }} className="rounded-lg border border-slate-700 px-5 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-40">{t('docs.allowOfferNo')}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (bankPurchaseId) {
     return (
       <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
@@ -332,7 +372,7 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-lg font-bold text-white truncate">{t('docs.reviewTitle')}: {info.fileName}</h1>
-          <p className="text-xs text-slate-400">{t(`docs.status_${info.status}`)}{info.source === 'EMAIL' && info.sender ? ` · ${info.sender}` : ''}{info.costEur ? ` · ${t('docs.costApprox', { cost: info.costEur.toLocaleString(LOCALES[lang], { minimumFractionDigits: 2, maximumFractionDigits: 4 }) })}` : ''}</p>
+          <p className="text-xs text-slate-400">{t(`docs.status_${info.status}`)}{info.source === 'EMAIL' && info.sender ? ` · ${info.originalSender ? t('docs.originalSender', { sender: info.sender, original: info.originalSender }) : info.sender}` : ''}{info.costEur ? ` · ${t('docs.costApprox', { cost: info.costEur.toLocaleString(LOCALES[lang], { minimumFractionDigits: 2, maximumFractionDigits: 4 }) })}` : ''}</p>
         </div>
         <div className="flex gap-2">
           <Link href="/purchase-documents" className={btn}>{t('docs.backToList')}</Link>
@@ -378,7 +418,7 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
           {preview && !preview.recognized && open && (
             <div className={card}>
               {notice.messageKey && <p className="text-sm text-slate-300">{t(notice.messageKey)}</p>}
-              {notice.settingsLink && <p className="text-sm text-amber-200">{t('docs.notReady')} <Link href="/companies" className="underline">{t('docs.notReadyLink')}</Link></p>}
+              {notice.settingsLink && <p className="text-sm text-amber-200">{t('docs.notReady')} <Link href="/settings/api" className="underline">{t('docs.notReadyLink')}</Link></p>}
               {recognitionReady && <div><button disabled={busy} onClick={recognizeAgain} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-40">{busy ? t('docs.recognizingShort') : t('docs.recognize')}</button></div>}
             </div>
           )}
@@ -448,6 +488,8 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
             </>
           )}
 
+          {preview && form && open && preview.rule && <p role="note" className="rounded-xl border border-emerald-800 bg-emerald-950/30 p-3 text-sm text-emerald-100">{t('docs.ruleApplied', { name: preview.rule.name })} <Link href="/purchase-documents/rules" className="underline">{t('docs.rulesLink')}</Link></p>}
+          {preview && form && open && preview.supplierFromEmail && <p role="note" className="rounded-xl border border-sky-800 bg-sky-950/30 p-3 text-sm text-sky-100">{t('docs.supplierFromEmail', { address: preview.supplierFromEmail })}</p>}
           {preview && form && (
             <fieldset disabled={!open || busy} className="space-y-4 disabled:opacity-70">
               <section className={card} aria-label={t('docs.sectionSupplier')}>
@@ -659,6 +701,7 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
                     </select>
                     {err('debitAccount')}
                     {form.debitAccount && form.accountSource === 'HISTORY' && form.accountInfo && <span className="mt-0.5 block text-[11px] text-emerald-300">{t('docs.accountFromHistory', { number: form.accountInfo.number || '', date: form.accountInfo.date || '' })}</span>}
+                    {form.debitAccount && form.accountSource === 'RULE' && form.accountInfo && <span className="mt-0.5 block text-[11px] text-emerald-300">{t('docs.accountFromRule', { name: form.accountInfo.ruleName || '' })}</span>}
                     {form.debitAccount && form.accountSource === 'MODEL' && form.accountInfo && <span className="mt-0.5 block text-[11px] text-sky-300">{t('docs.accountFromModel', { reason: form.accountInfo.reason || '' })}</span>}
                   </label>
                 </div>
@@ -677,6 +720,7 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
               <button type="button" disabled={!open || busy} onClick={reject} className={btn}>{t('docs.reject')}</button>
               {recognitionReady && preview.recognized && <button type="button" disabled={!open || busy} onClick={recognizeAgain} className={btn}>{t('docs.recognizeAgain')}</button>}
               <span className="text-xs text-slate-400" aria-live="polite">{issueCount > 0 ? t('docs.unresolved', { count: issueCount }) : t('docs.readyToConfirm')}</span>
+              {open && !form.isCredit && <label className="flex w-full items-start gap-2 text-xs text-slate-300"><input type="checkbox" className="mt-0.5 h-4 w-4 accent-emerald-500" checked={saveRule} disabled={busy} onChange={e => setSaveRule(e.target.checked)} /><span>{t('docs.saveRule')}<span className="block text-slate-500">{t('docs.saveRuleHint')}</span></span></label>}
               {preview.extracted.totals.gross !== null && <span className="ml-auto text-xs text-slate-400">{t('docs.recognizedTotal')}: €{money(preview.extracted.totals.gross)}</span>}
             </div>
           )}

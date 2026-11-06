@@ -321,13 +321,13 @@ test('inbox counts, listing, reject and delete', async () => {
   assert.equal(c1.awaiting, c1.NEW + c1.EXTRACTED + c1.FAILED);
 });
 
-test('the cloud vendor is named only inside the provider adapter (and its one-line factory)', () => {
+test('the cloud vendor is named only inside the provider adapter, its one-line factory and the label constant', () => {
   const vendor = new RegExp(['anthro', 'pic'].join(''), 'i');
   const root = path.join(__dirname, '../src');
   const hits = [];
   const walk = dir => { for (const entry of fs.readdirSync(dir, { withFileTypes: true })) { const full = path.join(dir, entry.name); if (entry.isDirectory()) walk(full); else if (vendor.test(fs.readFileSync(full, 'utf8')) || vendor.test(entry.name)) hits.push(path.relative(root, full).replace(/\\/g, '/')); } };
   walk(root);
-  assert.deepEqual(hits.sort(), ['lib/help/pages-recognition.ts', 'lib/recognition/factory.ts', ['lib/recognition/provider-anthro', 'pic.ts'].join('')]);
+  assert.deepEqual(hits.sort(), ['lib/help/pages-recognition.ts', 'lib/recognition/factory.ts', 'lib/recognition/models.ts', ['lib/recognition/provider-anthro', 'pic.ts'].join('')]);
   // Model names live in one small constant module; the UI imports the labels from it and never spells them.
   const model = new RegExp(['clau', 'de'].join(''), 'i');
   const modelHits = [];
