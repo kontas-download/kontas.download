@@ -6,6 +6,24 @@
 
 Pagrindinė dokumentacijos kalba – lietuvių. Jei lietuviškas ir angliškas tekstai skiriasi, viršesnis lietuviškas.
 
+### 0.5.5 – gavimas el. paštu debesyje, antrasis atpažinimo teikėjas, kvitų taisymai
+
+Archyvas: `kontas-download-0.5.5.zip`, šalia – kontrolinės sumos failas `kontas-download-0.5.5.zip.sha256`. Atnaujinti iš 0.4.0, 0.5.0, 0.5.1, 0.5.2, 0.5.3 ar 0.5.4: `update.ps1` / `update.sh`.
+
+- Debesies diegimas gauna sąskaitas el. paštu tiesiogiai: pašto persiuntimas (Cloudflare Email Routing) per pošakį, atskiras kiekvienos įmonės adresas, gavimas iš karto, kartojimas nepavykus, neapdoroto laiško saugojimas R2 saugykloje.
+- Gauti dokumentai: mygtukas „Tikrinti paštą dabar“.
+- Antrasis atpažinimo teikėjas: nustatymuose renkamas alternatyvus teikėjas su savo raktu ir modelių sąrašu.
+- PDF puslapiai paverčiami paveikslėliais teikėjams, kurie skaito tik paveikslėlius.
+- Rakto patikra: ištaisyta mąstančių modelių atveju (nutraukto atsakymo nebelaikoma klaida).
+- Kvitai: nuolaidos eilutė prijungiama prie prekės eilutės.
+- PVM kodas iš anksto parenkamas pagal kvite nurodytą tarifą (taisyklių registras).
+- Debesies atsarginė kopija: D1 kopijos laukimo riba pratęsta.
+
+Kontrolinė suma:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.5.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.5.zip.sha256).Split(' ')[0]` – turi būti `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.5.zip.sha256` – turi būti `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.5.zip.sha256` – turi būti `OK`.
+
 ### 0.5.4 – debesies diegimas, išmanūs siuntėjai, mokesčių kalendorius, API nustatymai
 
 Archyvas: `kontas-download-0.5.4.zip`, šalia – kontrolinės sumos failas `kontas-download-0.5.4.zip.sha256`. Atnaujinti iš 0.4.0, 0.5.0, 0.5.1, 0.5.2 ar 0.5.3: `update.ps1` / `update.sh`.
@@ -224,6 +242,24 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 
 Основной язык документации – литовский; при расхождении текстов приоритет у литовского.
 
+### 0.5.5 – приём почты в облаке, второй провайдер распознавания, исправления по чекам
+
+Архив: `kontas-download-0.5.5.zip`, рядом – файл контрольной суммы `kontas-download-0.5.5.zip.sha256`. Обновление с 0.4.0, 0.5.0, 0.5.1, 0.5.2, 0.5.3 или 0.5.4: `update.ps1` / `update.sh`.
+
+- Облачная установка принимает счета по e-mail напрямую: пересылка почты (Cloudflare Email Routing) через поддомен, отдельный адрес для каждой компании, мгновенный приём, повторные попытки при сбое, хранение исходного письма в хранилище R2.
+- Входящие документы: кнопка «Проверить почту сейчас».
+- Второй провайдер распознавания: в настройках выбирается альтернативный провайдер со своим ключом и списком моделей.
+- Страницы PDF преобразуются в изображения для провайдеров, которые читают только изображения.
+- Проверка ключа: исправлена для «думающих» моделей (оборванный ответ больше не считается ошибкой).
+- Чеки: строка скидки присоединяется к строке товара.
+- Код PVM заполняется заранее по ставке, указанной в чеке (реестр правил).
+- Резервная копия в облаке: увеличен лимит ожидания копии D1.
+
+Контрольная сумма:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.5.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.5.zip.sha256).Split(' ')[0]` – должно быть `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.5.zip.sha256` – должно быть `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.5.zip.sha256` – должно быть `OK`.
+
 ### 0.5.4 – облачная установка, умные отправители, налоговый календарь, настройки API
 
 Архив: `kontas-download-0.5.4.zip`, рядом – файл контрольной суммы `kontas-download-0.5.4.zip.sha256`. Обновление с 0.4.0, 0.5.0, 0.5.1, 0.5.2 или 0.5.3: `update.ps1` / `update.sh`.
@@ -441,6 +477,24 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 ## English
 
 The main documentation language is Lithuanian; if the texts differ, the Lithuanian one prevails.
+
+### 0.5.5 – cloud e-mail intake, second recognition provider, receipt fixes
+
+Archive: `kontas-download-0.5.5.zip`, with the checksum file `kontas-download-0.5.5.zip.sha256` next to it. Updating from 0.4.0, 0.5.0, 0.5.1, 0.5.2, 0.5.3 or 0.5.4: `update.ps1` / `update.sh`.
+
+- The cloud installation receives invoices by e-mail directly: mail forwarding (Cloudflare Email Routing) on a subdomain, a separate address for each company, instant intake, retries on failure, raw mail kept in R2 storage.
+- Received documents: a "Check mail now" button.
+- Second recognition provider: an alternative provider with its own key and model list can be selected in settings.
+- PDF pages are rendered to images for providers that read only images.
+- Key check: fixed for reasoning models (a truncated reply is no longer treated as an error).
+- Receipts: a discount line is merged into the item line.
+- The PVM code is pre-filled from the VAT rate printed on the receipt (rules registry).
+- Cloud backup: the D1 backup wait limit was extended.
+
+Checksum:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.5.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.5.zip.sha256).Split(' ')[0]` – must be `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.5.zip.sha256` – must be `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.5.zip.sha256` – must be `OK`.
 
 ### 0.5.4 – cloud installation, smart senders, tax calendar, API settings
 

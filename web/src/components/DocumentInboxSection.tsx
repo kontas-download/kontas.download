@@ -23,6 +23,9 @@ export function DocumentInboxSection() {
   const [acceptKnown, setAcceptKnown] = useState(true);
   const [lastRunAt, setLastRunAt] = useState<string | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [inboundAddress, setInboundAddress] = useState<string | null>(null);
+  const [lastInboundAt, setLastInboundAt] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [log, setLog] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -33,7 +36,9 @@ export function DocumentInboxSection() {
     setEnabled(Boolean(d.enabled)); setHost(String(d.host ?? '')); setPort(Number(d.port) || 993); setSecure(d.secure !== false); setUsername(String(d.username ?? ''));
     setHasPassword(Boolean(d.hasPassword)); setFolder(String(d.folder || 'INBOX')); setProcessedFolder(String(d.processedFolder ?? '')); setAllowedSenders(String(d.allowedSenders ?? '')); setAcceptKnown(d.acceptKnownContacts !== false);
     setLastRunAt((d.lastRunAt as string | null) ?? null); setLastError((d.lastError as string | null) ?? null);
+    if ('inboundAddress' in d) { setInboundAddress((d.inboundAddress as string | null) ?? null); setLastInboundAt((d.lastInboundAt as string | null) ?? null); }
   }, []);
+  const copyAddress = () => { if (inboundAddress) navigator.clipboard?.writeText(inboundAddress).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => undefined); };
   const loadLog = useCallback(() => fetch('/api/settings/document-inbox/log').then(r => r.json()).then(d => { if (Array.isArray(d)) setLog(d); }).catch(() => undefined), []);
 
   useEffect(() => {
@@ -68,6 +73,12 @@ export function DocumentInboxSection() {
     <h3 className="font-bold text-white">{t('docs.inboxTitle')}</h3>
     <p className="text-sm text-slate-400">{t('docs.inboxIntro')} <a href="/help/document-recognition" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-300 underline">{t('docs.helpLink')}</a></p>
     {message && <p role={message.kind === 'error' ? 'alert' : 'status'} className={`rounded-lg border p-2 text-sm ${message.kind === 'error' ? 'border-rose-800 bg-rose-950/40 text-rose-300' : 'border-emerald-800 bg-emerald-950/40 text-emerald-300'}`}>{message.text}</p>}
+    {inboundAddress && <div className="space-y-1 rounded-lg border border-emerald-800 bg-emerald-950/30 p-3">
+      <p className="text-sm font-semibold text-emerald-200">{t('docs.inboundTitle')}: <span className="select-all break-all font-mono">{inboundAddress}</span>
+        <button type="button" onClick={copyAddress} className="ml-3 rounded-lg border border-emerald-700 px-2 py-0.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-950">{copied ? t('docs.inboundCopied') : t('docs.inboundCopy')}</button></p>
+      <p className="text-xs text-slate-400">{t('docs.inboundStatus')}: {lastInboundAt ? t('docs.inboundLast', { date: new Date(lastInboundAt).toLocaleString() }) : t('docs.inboundNone')}</p>
+      <p className="text-xs text-slate-400">{t('docs.inboundHint')}</p>
+    </div>}
     <fieldset disabled={loading || busy} className="space-y-3 disabled:opacity-50">
       <label className="flex items-center gap-2 text-sm text-slate-200"><input type="checkbox" className="h-4 w-4 accent-emerald-500" checked={enabled} onChange={e => setEnabled(e.target.checked)} /> {t('docs.inboxEnable')}</label>
       <button type="button" onClick={useGmail} className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800">{t('docs.inboxGmail')}</button>

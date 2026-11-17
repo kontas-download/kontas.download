@@ -2,14 +2,15 @@ import { NextResponse } from 'next/server';
 import { requireApiAccess, checkOrigin } from '@/lib/access';
 import { apiError, HttpError } from '@/lib/errors';
 import { getActiveCompanyId } from '@/lib/company';
-import { getInboxSettings, saveInboxSettings } from '@/lib/document-inbox';
+import { getInboxSettings, saveInboxSettings, inboundAddressFor, lastInboundAt } from '@/lib/document-inbox';
 
 // The password is never returned: only `hasPassword`.
 export async function GET() {
   try {
     const denied = await requireApiAccess();
     if (denied) return denied;
-    return NextResponse.json(getInboxSettings(await getActiveCompanyId()), { headers: { 'Cache-Control': 'no-store' } });
+    const companyId = await getActiveCompanyId();
+    return NextResponse.json({ ...getInboxSettings(companyId), inboundAddress: inboundAddressFor(companyId), lastInboundAt: lastInboundAt(companyId) }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     return apiError(err);
   }

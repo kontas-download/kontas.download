@@ -1,18 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { z } from 'zod';
 import { DEFAULT_RECOGNITION_MODEL } from './models';
-import { RecognitionError, RecognizedDocumentSchema, type RecognitionProvider } from './types';
+import { RecognitionError, RecognitionRequestSchema, type RecognitionProvider } from './types';
 
 // The only module that names the cloud vendor. Core code receives it through the injectable provider factory.
 export const DEFAULT_MODEL: string = DEFAULT_RECOGNITION_MODEL;
-
-// Structured output: every property is required (nullable instead of optional), so the request schema is strict-safe. The stored
-// schema keeps suggestedAccount optional only so extractions saved before this field existed still parse.
-const RequestSchema = RecognizedDocumentSchema.extend({
-  suggestedAccount: z.object({ code: z.string().nullable(), reason: z.string().nullable() }).nullable(),
-  referencedDocument: z.string().nullable(),
-});
 
 const PROMPT = `Extract the data of a Lithuanian or EU purchase invoice or cash register receipt from the attached document (a PDF or a photo of a paper document).
 Rules:
@@ -56,7 +48,7 @@ export const provider: RecognitionProvider = {
       const response = await client.messages.parse({
         model: opts.model || DEFAULT_MODEL,
         max_tokens: 16000,
-        output_config: { format: zodOutputFormat(RequestSchema) },
+        output_config: { format: zodOutputFormat(RecognitionRequestSchema) },
         messages: [{ role: 'user', content: [source, { type: 'text', text: opts.accounts?.length ? PROMPT + accountPrompt(opts.accounts) : PROMPT }] }],
       });
       opts.onUsage?.({ model: opts.model || DEFAULT_MODEL, inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0 });

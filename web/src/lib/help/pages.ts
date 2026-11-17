@@ -14,9 +14,10 @@ import { demoPages } from './pages-demo';
 import { rulesPages } from './pages-rules';
 import { payrollPages } from './pages-payroll';
 import { recognitionPages } from './pages-recognition';
+import { recognitionPollinationsPages } from './pages-recognition-pollinations';
 
 // Table of contents order.
-export const helpPages: HelpPage[] = [...startPages, ...demoPages, ...salesPages, ...purchasePages, ...recognitionPages, ...bankPages, ...accountingPages, ...payrollPages, ...taxPages, ...systemPages, ...rulesPages, ...userPages, ...dataPages, ...assetPages, ...inventoryPages];
+export const helpPages: HelpPage[] = [...startPages, ...demoPages, ...salesPages, ...purchasePages, ...recognitionPages, ...recognitionPollinationsPages, ...bankPages, ...accountingPages, ...payrollPages, ...taxPages, ...systemPages, ...rulesPages, ...userPages, ...dataPages, ...assetPages, ...inventoryPages];
 
 export function helpPage(slug: string): HelpPage | undefined {
   return helpPages.find(page => page.slug === slug);

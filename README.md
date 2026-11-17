@@ -12,6 +12,7 @@ Programa paruošta veikti Docker konteineryje (Next.js 16, React 19, TypeScript,
 
 - **Pardavimai:** pardavimų sąskaitos faktūros (SF), kreditinės sąskaitos (KS), periodinės sąskaitos.
 - **Pirkimai:** pirkimų dokumentai, PVM atskaita, tiekėjų kreditinės sąskaitos, tiekėjų e. sąskaitų (UBL XML) importas.
+- **Gauti dokumentai:** pirkimų dokumentų juodraščiai iš nuotraukų ir PDF (atpažinimas, kurį visada patvirtina žmogus; galima rinktis atpažinimo teikėją), gavimas el. paštu (debesies diegime – tiesiogiai per įmonės adresą) ir mygtukas „Tikrinti paštą dabar“.
 - **PVM režimai:** PVM mokėtojas, ne PVM mokėtojas ir SVS; pardavėjas ir pirkėjas gali būti PVM mokėtojais nepriklausomai vienas nuo kito. Istorinių sąskaitų mokesčių statusas išsaugomas.
 - **PDF ir el. paštas:** sąskaitos PDF pirkėjo kalba (lietuvių, rusų ar anglų); siuntimas el. paštu per pardavėjo įmonės SMTP; išsiųstos sąskaitos PDF archyvas. Kliento PDF neturi vidinių apmokėjimo statusų ir pastabų.
 - **Bankas:** banko išrašų importas (CSV, camt.053, MT940), mokėjimų susiejimas su dokumentais, atsiskaitymai ne per banką.

@@ -87,6 +87,8 @@ function client(): DocumentR2 | null {
   return process.env.APP_ENV === 'cloudflare-containers' && process.env.R2_BRIDGE_URL ? bridgeClient : null;
 }
 export const documentR2Enabled = () => client() !== null;
+// Raw objects outside documents/ (received mail under inbound/). Null when no R2 bridge is configured.
+export const rawR2 = (): Pick<DocumentR2, 'get' | 'put' | 'remove'> | null => client();
 
 const keyOf = (rel: string) => PREFIX + rel;
 // Originals and visual PDFs are named by their SHA-256; the derived <hash>.prep.jpg copy is not verifiable that way.

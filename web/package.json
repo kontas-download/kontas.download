@@ -1,6 +1,6 @@
 {
   "name": "kontas-download",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "private": true,
   "scripts": {
     "postinstall": "node -e \"try{require('./scripts/ensure-local-extensions.cjs')}catch(e){}\"",
@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
+    "@napi-rs/canvas": "^1.1.1",
     "@phosphor-icons/react": "^2.1.10",
     "@prisma/client": "^7.10.1",
     "better-sqlite3": "^13.0.3",
@@ -25,8 +26,9 @@
     "heic-convert": "^2.1.0",
     "imapflow": "^2.10.2",
     "mailparser": "^3.14.2",
-    "next": "16.4.3",
+    "next": "16.4.6",
     "nodemailer": "^10.2.1",
+    "pdfjs-dist": "^6.5.438",
     "pdfmake": "^0.3.13",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -44,7 +46,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.6",
     "prisma": "^7.10.1",
     "tailwindcss": "^4",
     "typescript": "^5",

@@ -119,4 +119,16 @@ export function migratePurchaseDocuments(db: Database.Database) {
       CREATE INDEX IF NOT EXISTS idx_supplier_rule_company ON SupplierDocumentRule(companyId,clientId);`);
     db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-purchase-documents-v7');
   })();
+  // Second recognition provider: the active one, one encrypted key and one model per provider (switching keeps the other key), and the
+  // provider of every usage row (existing rows and settings belong to the first provider).
+  db.transaction(() => {
+    if (db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-11-purchase-documents-v8')) return;
+    const settings = new Set((db.prepare('PRAGMA table_info(CompanyRecognitionSettings)').all() as { name: string }[]).map(c => c.name));
+    if (!settings.has('provider')) db.exec("ALTER TABLE CompanyRecognitionSettings ADD COLUMN provider TEXT NOT NULL DEFAULT 'PRIMARY' CHECK(provider IN ('PRIMARY','POLLINATIONS'))");
+    if (!settings.has('pollinationsKeyEncrypted')) db.exec('ALTER TABLE CompanyRecognitionSettings ADD COLUMN pollinationsKeyEncrypted TEXT');
+    if (!settings.has('pollinationsModel')) db.exec("ALTER TABLE CompanyRecognitionSettings ADD COLUMN pollinationsModel TEXT NOT NULL DEFAULT ''");
+    const usage = new Set((db.prepare('PRAGMA table_info(RecognitionUsage)').all() as { name: string }[]).map(c => c.name));
+    if (!usage.has('provider')) db.exec("ALTER TABLE RecognitionUsage ADD COLUMN provider TEXT NOT NULL DEFAULT 'PRIMARY'");
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-purchase-documents-v8');
+  })();
 }

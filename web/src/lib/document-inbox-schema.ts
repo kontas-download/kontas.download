@@ -48,4 +48,11 @@ export function migrateDocumentInbox(db: Database.Database) {
     }
     db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-document-inbox-v2');
   })();
+  // Where a log row came from: IMAP (polled mailbox) or CLOUDFLARE (mail routed straight to the Worker; uidValidity then holds the R2 key, uid 0).
+  db.transaction(() => {
+    if (db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-11-document-inbox-v3')) return;
+    const have = new Set((db.prepare('PRAGMA table_info(DocumentInboxMessage)').all() as { name: string }[]).map(c => c.name));
+    if (have.size && !have.has('source')) db.exec("ALTER TABLE DocumentInboxMessage ADD COLUMN source TEXT NOT NULL DEFAULT 'IMAP'");
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-document-inbox-v3');
+  })();
 }

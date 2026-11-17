@@ -28,14 +28,22 @@ export const RecognizedDocumentSchema = z.object({
 });
 export type RecognizedDocument = z.infer<typeof RecognizedDocumentSchema>;
 
-export interface RecognitionUsage { model: string; inputTokens: number; outputTokens: number }
+// Strict request schema: every property is required (nullable instead of optional). The stored schema above keeps suggestedAccount and
+// referencedDocument optional only so extractions saved before those fields existed still parse.
+export const RecognitionRequestSchema = RecognizedDocumentSchema.extend({
+  suggestedAccount: z.object({ code: z.string().nullable(), reason: z.string().nullable() }).nullable(),
+  referencedDocument: z.string().nullable(),
+});
+
+export type RecognitionProviderKind = 'PRIMARY' | 'POLLINATIONS';
+export interface RecognitionUsage { model: string; inputTokens: number; outputTokens: number; provider?: RecognitionProviderKind }
 
 export interface RecognitionProvider {
   // `accounts` is the compact chart (code + name) the model may pick the suggested account from; empty or missing = no suggestion requested.
   // `onUsage` receives the token usage reported by the provider (also for a call that ended without a usable result).
-  recognize(file: { data: Buffer; mimeType: string }, opts: { apiKey: string; model: string; accounts?: { code: string; name: string }[]; onUsage?: (usage: RecognitionUsage) => void }): Promise<RecognizedDocument>;
+  recognize(file: { data: Buffer; mimeType: string }, opts: { apiKey: string; model: string; accounts?: { code: string; name: string }[]; onUsage?: (usage: RecognitionUsage) => void; provider?: RecognitionProviderKind }): Promise<RecognizedDocument>;
   // Tiny text-only request that proves the key and the model work. Throws RecognitionError.
-  testKey(apiKey: string, model: string): Promise<void>;
+  testKey(apiKey: string, model: string, provider?: RecognitionProviderKind): Promise<void>;
 }
 
 // Typed failure of a recognition attempt; the message is shown to the user and saved on the document.

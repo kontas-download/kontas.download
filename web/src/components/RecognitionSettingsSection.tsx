@@ -2,17 +2,37 @@
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALES } from '@/lib/i18n/config';
-import { DEFAULT_RECOGNITION_MODEL, RECOGNITION_MODELS } from '@/lib/recognition/models';
+import { DEFAULT_RECOGNITION_MODEL, RECOGNITION_MODELS, RECOGNITION_VENDOR } from '@/lib/recognition/models';
+import { DEFAULT_POLLINATIONS_MODEL, POLLINATIONS_KEYS_URL, POLLINATIONS_MODELS } from '@/lib/recognition/pollinations-models';
 
 const input = 'block mt-1 w-full h-10 rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none';
-const hintKey = { accurate: 'docs.modelAccurate', balanced: 'docs.modelBalanced', fast: 'docs.modelFast' } as const;
+const hintKey = { accurate: 'docs.modelAccurate', balanced: 'docs.modelBalanced', fast: 'docs.modelFast', cheapest: 'docs.modelCheapest' } as const;
+type Kind = 'PRIMARY' | 'POLLINATIONS';
+const OTHER = '__other__';
+const emptyByKind = <T,>(a: T, b: T): Record<Kind, T> => ({ PRIMARY: a, POLLINATIONS: b });
 
 // Per-company settings of purchase document recognition. The API key is write-only: the server only says whether one is stored.
 export function RecognitionSettingsSection({ hideTitle = false }: { hideTitle?: boolean } = {}) {
   const { t, lang } = useI18n();
   const [enabled, setEnabled] = useState(false);
-  const [model, setModel] = useState<string>(DEFAULT_RECOGNITION_MODEL);
-  const [hasKey, setHasKey] = useState(false);
+  const [provider, setProvider] = useState<Kind>('PRIMARY');
+  // Each provider keeps its own model and its own stored key; switching the select never loses the other one.
+  const [models, setModels] = useState<Record<Kind, string>>(emptyByKind<string>(DEFAULT_RECOGNITION_MODEL, DEFAULT_POLLINATIONS_MODEL));
+  const [hasKeys, setHasKeys] = useState<Record<Kind, boolean>>(emptyByKind(false, false));
+  const [otherMode, setOtherMode] = useState(false);
+  const model = models[provider];
+  const hasKey = hasKeys[provider];
+  const setModel = (value: string) => setModels(m => ({ ...m, [provider]: value }));
+  const setHasKey = (value: boolean) => setHasKeys(k => ({ ...k, [provider]: value }));
+  function applySettings(d: { enabled?: boolean; provider?: Kind; providers?: Record<Kind, { model: string; hasKey: boolean }> }) {
+    setEnabled(Boolean(d.enabled)); setProvider(d.provider === 'POLLINATIONS' ? 'POLLINATIONS' : 'PRIMARY');
+    if (d.providers) {
+      setModels({ PRIMARY: d.providers.PRIMARY.model || DEFAULT_RECOGNITION_MODEL, POLLINATIONS: d.providers.POLLINATIONS.model || DEFAULT_POLLINATIONS_MODEL });
+      setHasKeys({ PRIMARY: d.providers.PRIMARY.hasKey, POLLINATIONS: d.providers.POLLINATIONS.hasKey });
+      setOtherMode(Boolean(d.providers.POLLINATIONS.model) && !POLLINATIONS_MODELS.some(m => m.id === d.providers!.POLLINATIONS.model));
+    }
+  }
+  function chooseProvider(next: Kind) { setProvider(next); setApiKey(''); setClearKey(false); setMessage(null); }
   const [apiKey, setApiKey] = useState('');
   const [clearKey, setClearKey] = useState(false);
   const [limit, setLimit] = useState('');
@@ -25,7 +45,7 @@ export function RecognitionSettingsSection({ hideTitle = false }: { hideTitle?: 
     let cancelled = false;
     fetch('/api/settings/recognition').then(r => r.json()).then(d => {
       if (cancelled) return;
-      setEnabled(Boolean(d.enabled)); setHasKey(Boolean(d.hasKey)); setModel(d.model || DEFAULT_RECOGNITION_MODEL); setLimit(d.monthlyLimitEur == null ? '' : String(d.monthlyLimitEur)); setUsage(d.usage || null);
+      applySettings(d); setLimit(d.monthlyLimitEur == null ? '' : String(d.monthlyLimitEur)); setUsage(d.usage || null);
     }).catch(() => { if (!cancelled) setMessage({ kind: 'error', text: t('common.error') }); }).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [t]);
@@ -33,17 +53,17 @@ export function RecognitionSettingsSection({ hideTitle = false }: { hideTitle?: 
   async function save() {
     setBusy(true); setMessage(null);
     try {
-      const res = await fetch('/api/settings/recognition', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled, model, monthlyLimitEur: limit.trim() ? Number(limit.replace(',', '.')) : null, ...(apiKey ? { apiKey } : {}), ...(clearKey ? { clearKey: true } : {}) }) });
+      const res = await fetch('/api/settings/recognition', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled, provider, model, monthlyLimitEur: limit.trim() ? Number(limit.replace(',', '.')) : null, ...(apiKey ? { apiKey } : {}), ...(clearKey ? { clearKey: true } : {}) }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t('common.error'));
-      setEnabled(Boolean(data.enabled)); setHasKey(Boolean(data.hasKey)); setLimit(data.monthlyLimitEur == null ? '' : String(data.monthlyLimitEur)); setUsage(data.usage || null); setApiKey(''); setClearKey(false);
+      applySettings(data); setLimit(data.monthlyLimitEur == null ? '' : String(data.monthlyLimitEur)); setUsage(data.usage || null); setApiKey(''); setClearKey(false);
       setMessage({ kind: 'ok', text: t('docs.settingsSaved') });
     } catch (error) { setMessage({ kind: 'error', text: error instanceof Error ? error.message : t('common.error') }); } finally { setBusy(false); }
   }
   async function test() {
     setBusy(true); setMessage(null);
     try {
-      const res = await fetch('/api/settings/recognition/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model, ...(apiKey ? { apiKey } : {}) }) });
+      const res = await fetch('/api/settings/recognition/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, model, ...(apiKey ? { apiKey } : {}) }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t('common.error'));
       setMessage(data.ok ? { kind: 'ok', text: t('docs.keyWorks') } : { kind: 'error', text: data.error || t('common.error') });
@@ -56,17 +76,40 @@ export function RecognitionSettingsSection({ hideTitle = false }: { hideTitle?: 
     <p className="text-sm text-slate-400">{t('docs.settingsIntro')} <a href="/help/document-recognition" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-300 underline">{t('docs.helpLink')}</a></p>
     {message && <p role={message.kind === 'error' ? 'alert' : 'status'} className={`rounded-lg border p-2 text-sm ${message.kind === 'error' ? 'border-rose-800 bg-rose-950/40 text-rose-300' : 'border-emerald-800 bg-emerald-950/40 text-emerald-300'}`}>{message.text}</p>}
     <fieldset disabled={loading || busy} className="space-y-3 disabled:opacity-50">
+      <label className="block text-xs font-medium text-slate-400">{t('docs.settingsProvider')}
+        <select value={provider} onChange={e => chooseProvider(e.target.value as Kind)} className={input}>
+          <option value="PRIMARY">{RECOGNITION_VENDOR}</option>
+          <option value="POLLINATIONS">Pollinations</option>
+        </select>
+      </label>
       <label className="flex items-center gap-2 text-sm text-slate-200"><input type="checkbox" className="h-4 w-4 accent-emerald-500" checked={enabled} onChange={e => setEnabled(e.target.checked)} /> {t('docs.settingsEnable')}</label>
       <label className="block text-xs font-medium text-slate-400">{t('docs.settingsKey')}
         <input type="password" autoComplete="new-password" onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }} value={apiKey} onChange={e => { setApiKey(e.target.value); setClearKey(false); }} placeholder={hasKey ? t('docs.keyStored') : ''} className={input} />
       </label>
       {hasKey && !apiKey && <div className="flex items-center gap-3 text-sm"><span className="text-emerald-400">{t('docs.keyStored')}</span><button type="button" onClick={removeKey} className="text-rose-300 underline">{t('docs.keyClear')}</button></div>}
       {clearKey && <p className="text-xs text-amber-300">{t('docs.keyWillClear')}</p>}
-      <label className="block text-xs font-medium text-slate-400">{t('docs.settingsModel')}
-        <select value={model} onChange={e => setModel(e.target.value)} className={input}>
-          {RECOGNITION_MODELS.map(m => <option key={m.id} value={m.id}>{m.label} — {t(hintKey[m.hint])}{m.id === DEFAULT_RECOGNITION_MODEL ? ` (${t('docs.modelDefault')})` : ''}</option>)}
-        </select>
-      </label>
+      {provider === 'PRIMARY' ? (
+        <label className="block text-xs font-medium text-slate-400">{t('docs.settingsModel')}
+          <select value={model} onChange={e => setModel(e.target.value)} className={input}>
+            {RECOGNITION_MODELS.map(m => <option key={m.id} value={m.id}>{m.label} — {t(hintKey[m.hint])}{m.id === DEFAULT_RECOGNITION_MODEL ? ` (${t('docs.modelDefault')})` : ''}</option>)}
+          </select>
+        </label>
+      ) : (
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-slate-400">{t('docs.settingsModel')}
+            <select value={otherMode ? OTHER : model} onChange={e => { if (e.target.value === OTHER) { setOtherMode(true); setModel(''); } else { setOtherMode(false); setModel(e.target.value); } }} className={input}>
+              {POLLINATIONS_MODELS.map(m => <option key={m.id} value={m.id}>{m.label} — {t(hintKey[m.hint])}{m.id === DEFAULT_POLLINATIONS_MODEL ? ` (${t('docs.modelDefault')})` : ''}</option>)}
+              <option value={OTHER}>{t('docs.modelOther')}</option>
+            </select>
+          </label>
+          {otherMode && <label className="block text-xs font-medium text-slate-400">{t('docs.modelOtherName')}
+            <input type="text" onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }} value={model} onChange={e => setModel(e.target.value.trim())} className={input} />
+            <span className="mt-1 block text-[11px] text-slate-500">{t('docs.modelOtherHelp')}</span>
+          </label>}
+          <p className="text-xs text-slate-400">{t('docs.gatewayKeyHelp')} <a href={POLLINATIONS_KEYS_URL} target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-300 underline">{t('docs.gatewayKeyLink')}</a></p>
+          <p className="text-xs text-amber-300/90">{t('docs.gatewayPrivacy')}</p>
+        </div>
+      )}
       <label className="block text-xs font-medium text-slate-400">{t('docs.limitLabel')}
         <input type="text" inputMode="decimal" onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }} value={limit} onChange={e => setLimit(e.target.value)} placeholder={t('docs.limitNone')} className={input} />
         <span className="mt-1 block text-[11px] text-slate-500">{t('docs.limitHelp')}</span>

@@ -6,7 +6,7 @@ EN: kontas.download uses the open-source components listed below. They remain un
 
 RU: kontas.download использует перечисленные ниже компоненты с открытым кодом. Они остаются под лицензиями своих авторов; лицензия kontas.download (LICENSE) их не меняет. В этой программе/репозитории их нет: они устанавливаются командой `npm ci` из публичных реестров.
 
-Sugeneruota / generated / сгенерировано: `node web/scripts/third-party-notices.cjs` (151 packages).
+Sugeneruota / generated / сгенерировано: `node web/scripts/third-party-notices.cjs` (164 packages).
 
 | Package | Version | Licence |
 |---|---|---|
@@ -40,15 +40,27 @@ Sugeneruota / generated / сгенерировано: `node web/scripts/third-pa
 | @img/sharp-win32-arm64 | 0.35.5 | Apache-2.0 AND LGPL-3.0-or-later |
 | @img/sharp-win32-ia32 | 0.35.5 | Apache-2.0 AND LGPL-3.0-or-later |
 | @img/sharp-win32-x64 | 0.35.5 | Apache-2.0 AND LGPL-3.0-or-later |
-| @next/env | 16.4.3 | MIT |
-| @next/swc-darwin-arm64 | 16.4.3 | MIT |
-| @next/swc-darwin-x64 | 16.4.3 | MIT |
-| @next/swc-linux-arm64-gnu | 16.4.3 | MIT |
-| @next/swc-linux-arm64-musl | 16.4.3 | MIT |
-| @next/swc-linux-x64-gnu | 16.4.3 | MIT |
-| @next/swc-linux-x64-musl | 16.4.3 | MIT |
-| @next/swc-win32-arm64-msvc | 16.4.3 | MIT |
-| @next/swc-win32-x64-msvc | 16.4.3 | MIT |
+| @napi-rs/canvas | 1.1.1 | MIT |
+| @napi-rs/canvas-android-arm64 | 1.1.1 | MIT |
+| @napi-rs/canvas-darwin-arm64 | 1.1.1 | MIT |
+| @napi-rs/canvas-darwin-x64 | 1.1.1 | MIT |
+| @napi-rs/canvas-linux-arm-gnueabihf | 1.1.1 | MIT |
+| @napi-rs/canvas-linux-arm64-gnu | 1.1.1 | MIT |
+| @napi-rs/canvas-linux-arm64-musl | 1.1.1 | MIT |
+| @napi-rs/canvas-linux-riscv64-gnu | 1.1.1 | MIT |
+| @napi-rs/canvas-linux-x64-gnu | 1.1.1 | MIT |
+| @napi-rs/canvas-linux-x64-musl | 1.1.1 | MIT |
+| @napi-rs/canvas-win32-arm64-msvc | 1.1.1 | MIT |
+| @napi-rs/canvas-win32-x64-msvc | 1.1.1 | MIT |
+| @next/env | 16.4.6 | MIT |
+| @next/swc-darwin-arm64 | 16.4.6 | MIT |
+| @next/swc-darwin-x64 | 16.4.6 | MIT |
+| @next/swc-linux-arm64-gnu | 16.4.6 | MIT |
+| @next/swc-linux-arm64-musl | 16.4.6 | MIT |
+| @next/swc-linux-x64-gnu | 16.4.6 | MIT |
+| @next/swc-linux-x64-musl | 16.4.6 | MIT |
+| @next/swc-win32-arm64-msvc | 16.4.6 | MIT |
+| @next/swc-win32-x64-msvc | 16.4.6 | MIT |
 | @noble/ciphers | 1.3.0 | MIT |
 | @noble/hashes | 1.8.0 | MIT |
 | @nodable/entities | 3.1.0 | MIT |
@@ -109,13 +121,14 @@ Sugeneruota / generated / сгенерировано: `node web/scripts/third-pa
 | linkify-it | 5.0.2 | MIT |
 | mailparser | 3.14.2 | MIT |
 | nanoid | 3.3.20 | MIT |
-| next | 16.4.3 | MIT |
+| next | 16.4.6 | MIT |
 | node-addon-api | 8.9.2 | MIT |
 | nodemailer | 10.3.1 | MIT-0 |
 | on-exit-leak-free | 2.1.2 | MIT |
 | pako | 0.2.9 | MIT |
 | parseley | 0.13.1 | MIT |
 | path-expression-matcher | 1.6.2 | MIT |
+| pdfjs-dist | 6.5.438 | Apache-2.0 |
 | pdfkit | 0.20.2 | MIT |
 | pdfmake | 0.3.13 | MIT |
 | peberminta | 0.10.0 | MIT |

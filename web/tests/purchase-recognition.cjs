@@ -92,14 +92,14 @@ test('store: keeps the original byte for byte, write-once, refuses duplicates an
 
 test('settings: the API key is encrypted, round-trips and is never returned', () => {
   const settings = rec.getRecognitionSettings(1);
-  assert.deepEqual(settings, { enabled: true, model: '', hasKey: true, monthlyLimitEur: null });
+  assert.deepEqual(settings, { enabled: true, provider: 'PRIMARY', model: '', hasKey: true, monthlyLimitEur: null, providers: { PRIMARY: { model: '', hasKey: true }, POLLINATIONS: { model: '', hasKey: false } } });
   assert.ok(!JSON.stringify(settings).includes('sk-test'));
   const stored = db.prepare('SELECT apiKeyEncrypted FROM CompanyRecognitionSettings WHERE companyId=1').get().apiKeyEncrypted;
   assert.ok(stored && !stored.includes('sk-test'));
   assert.equal(decryptSecret(stored, 1), 'sk-test-secret-key');
   assert.throws(() => decryptSecret(stored, 2), e => e.status === 503);
   assert.throws(() => rec.saveRecognitionSettings(2, { enabled: true }), e => e.status === 400);
-  assert.deepEqual(rec.saveRecognitionSettings(1, { enabled: true, model: 'model-x' }), { enabled: true, model: 'model-x', hasKey: true, monthlyLimitEur: null });
+  assert.deepEqual(rec.saveRecognitionSettings(1, { enabled: true, model: 'model-x' }), { enabled: true, provider: 'PRIMARY', model: 'model-x', hasKey: true, monthlyLimitEur: null, providers: { PRIMARY: { model: 'model-x', hasKey: true }, POLLINATIONS: { model: '', hasKey: false } } });
   assert.equal(decryptSecret(db.prepare('SELECT apiKeyEncrypted FROM CompanyRecognitionSettings WHERE companyId=1').get().apiKeyEncrypted, 1), 'sk-test-secret-key');
   assert.throws(() => rec.saveRecognitionSettings(1, { enabled: true, model: 'bad model!' }), e => e.status === 400);
   rec.saveRecognitionSettings(1, { enabled: true, model: '' });
@@ -137,16 +137,17 @@ test('preview: supplier match, new supplier, arithmetic, buyer, duplicates, sugg
   assert.equal(rec.previewDocument(1, id).supplier.clientId, known);
   id = await extractedDoc(1, null, extracted());
   p = rec.previewDocument(1, id);
-  assert.equal(p.needsSupplier, true); assert.equal(p.suggestedEvidenceType, 'INVOICE'); assert.deepEqual(p.warnings, []);
-  assert.ok(p.missing['lines.0.taxCode'] && p.missing['supplier.name'] === undefined);
-  assert.equal(p.draft.lines[0].taxCode, null);
+  assert.equal(p.needsSupplier, true); assert.equal(p.suggestedEvidenceType, 'INVOICE'); assert.deepEqual(p.warnings, ['PVM klasifikatoriaus kodai parinkti pagal PVM tarifą: patikrinkite.']);
+  // No supplier history: the PVM code of the printed 21 % rate is pre-filled for a domestic supplier.
+  assert.ok(!p.missing['lines.0.taxCode'] && p.missing['supplier.name'] === undefined);
+  assert.equal(p.draft.lines[0].taxCode, 'PVM1');
 
   id = await extractedDoc(1, null, extracted({ totals: { net: 20, vat: 4.2, gross: 25 }, lines: [{ name: 'x', quantity: 1, unitPrice: 20, net: 20, vatRate: 21, vat: 4.2, gross: 24.2 }], vatBreakdown: [{ rate: 21, net: 20, vat: 5 }] }));
   p = rec.previewDocument(1, id);
   assert.ok(p.warnings.some(w => w.includes('nesutampa su bendra suma')));
   assert.ok(p.warnings.some(w => w.includes('nesudaro')));
   assert.ok(p.warnings.some(w => w.includes('tarifo')));
-  assert.ok(rec.previewDocument(1, await extractedDoc(1, null, extracted({ totals: { net: 20.01, vat: 4.2, gross: 24.21 } }))).warnings.length === 0, '0.01 tolerance');
+  assert.ok(rec.previewDocument(1, await extractedDoc(1, null, extracted({ totals: { net: 20.01, vat: 4.2, gross: 24.21 } }))).warnings.filter(w => !w.includes('pagal PVM tarif')).length === 0, '0.01 tolerance');
 
   id = await extractedDoc(1, null, extracted({ docKind: 'RECEIPT', buyer: { name: null, code: null, vatCode: null }, receipt: { cashRegisterNo: 'KA123456', receiptNo: '0042', time: '14:05', storeAddress: 'Kaunas' }, payment: { method: 'CARD', cardLast4: '1234' }, number: null }));
   p = rec.previewDocument(1, id);
@@ -244,7 +245,8 @@ test('confirm refuses incomplete input with a field map and creates nothing', as
   assert.equal(err.status, 400);
   // The preview reports the same fields the confirmation would refuse.
   const p = rec.previewDocument(1, id);
-  assert.ok(p.missing['lines.0.taxCode']);
+  // Without history the code of the printed 21 % rate is pre-filled (PVM1), so it is no longer missing.
+  assert.equal(p.draft.lines[0].taxCode, 'PVM1'); assert.ok(!p.missing['lines.0.taxCode']);
   // Foreign currency needs an explicit EUR confirmation; a credit note needs its original purchase (see purchase-document-credit.cjs).
   const usd = await extractedDoc(1, null, extracted({ currency: 'USD', number: 'USD-1' }));
   assert.ok(fieldsOf(() => rec.confirmDocument(1, usd, 7, good({ number: 'USD-1' }))).currency);
@@ -435,4 +437,26 @@ test('expense account: supplier history pre-fill, validated model suggestion, pr
   assert.equal(await audit('AU-5', { debitAccount: A }), 'USER');
   assert.equal(await audit('AU-6', { debitAccount: undefined, accountSource: 'HISTORY' }), null, 'empty account has no source');
   assert.equal(await audit('AU-7', { debitAccount: '', accountSource: 'USER' }), null);
+});
+
+test('preview: a receipt discount line is folded into the item line and the PVM code follows the printed rate', async () => {
+  // Seen live: "VYR. KELNES 119,99" + "Spec. kaina -0,04" on a 21 % receipt; a negative purchase line cannot be stored.
+  const row = rec.storeDocument(1, { buffer: pdf(), fileName: 'kvitas-nuolaida.pdf', mimeType: 'application/pdf' });
+  await rec.recognizeDocument(1, row.id, fake(extracted({
+    docKind: 'RECEIPT', number: 'KV-148', supplier: { name: 'UAB Nuolaidos', code: null, vatCode: 'LT100000000023', address: null },
+    lines: [
+      { name: 'VYR. KELNES', quantity: 1, unitPrice: 119.99, net: 99.17, vatRate: 21, vat: 20.82, gross: 119.99 },
+      { name: 'Spec. kaina', quantity: 1, unitPrice: -0.04, net: -0.03, vatRate: 21, vat: -0.01, gross: -0.04 },
+    ],
+    totals: { net: 99.13, vat: 20.82, gross: 119.95 }, vatBreakdown: [{ rate: 21, net: 99.13, vat: 20.82 }],
+  })));
+  const p = rec.previewDocument(1, row.id);
+  assert.equal(p.draft.lines.length, 1);
+  const [line] = p.draft.lines;
+  assert.equal(line.gross, 119.95); assert.equal(line.net, 99.13); assert.equal(line.vat, 20.82);
+  assert.match(line.itemName, /nuolaida 0,04/);
+  assert.equal(line.taxCode, 'PVM1');
+  assert.ok(p.warnings.some(w => /Nuolaidos eilut/.test(w)));
+  assert.ok(p.warnings.some(w => /pagal PVM tarif/.test(w)));
+  assert.ok(!Object.keys(p.missing).some(k => /^lines\.\d+\.(taxCode|net|gross|vat)$/.test(k)), JSON.stringify(p.missing));
 });

@@ -31,6 +31,7 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
   const [busyId, setBusyId] = useState<number | null>(null);
   const [refused, setRefused] = useState<RefusedRow[]>([]);
   const [allowedNote, setAllowedNote] = useState('');
+  const [checkingMail, setCheckingMail] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
   const [archiveFrom, setArchiveFrom] = useState(`${today.slice(0, 4)}-01-01`);
   const [archiveTo, setArchiveTo] = useState(today);
@@ -62,6 +63,18 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
     if (!res.ok) { setErrors([data.error || t('common.error')]); return; }
     setAllowedNote(t('docs.inboxSenderAllowed', { address }));
     setRefused(rows => rows.filter(r => r.sender !== address));
+  }
+
+  // "Tikrinti pasta dabar": reads the company's mailbox at once instead of waiting for the scheduled check.
+  async function checkMailNow() {
+    setCheckingMail(true); setErrors([]); setAllowedNote('');
+    try {
+      const res = await fetch('/api/settings/document-inbox/poll', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setErrors([data.error || t('common.error')]); return; }
+      setAllowedNote(t('docs.inboxPolled', { messages: Number(data.messages ?? 0), imported: Number(data.imported ?? 0), skipped: Number(data.skipped ?? 0) }));
+      await load(); await loadRefused();
+    } finally { setCheckingMail(false); }
   }
 
   // Returns a failure text or null.
@@ -130,6 +143,7 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
           <p className="text-sm text-slate-400 max-w-3xl">{t('docs.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
+          <button type="button" onClick={checkMailNow} disabled={checkingMail} className="rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-950 disabled:opacity-50">{checkingMail ? t('docs.checkingMail') : t('docs.checkMailNow')}</button>
           {oldestWaiting && <Link href={`/purchase-documents/${oldestWaiting}`} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500">{t('docs.reviewQueue')}</Link>}
           <Link href="/help/document-recognition" className="text-sm font-semibold text-emerald-300 underline">{t('docs.helpLink')}</Link>
           <Link href="/purchase-documents/rules" className="text-sm font-semibold text-emerald-300 underline">{t('docs.rulesLink')}</Link>

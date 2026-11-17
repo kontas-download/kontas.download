@@ -1,4 +1,4 @@
-import { simpleParser } from 'mailparser';
+import { simpleParser, type ParsedMail } from 'mailparser';
 import { getDb } from './db';
 import { HttpError } from './errors';
 import { encryptSecret, decryptSecret, validEmail } from './company-mail';
@@ -181,17 +181,22 @@ const imageExt = /\.(pdf|jpe?g|png|webp|heic|heif)$/i;
 const isXmlAttachment = (name: string, type: string) => /\.xml$/i.test(name) || /^(application|text)\/xml/i.test(type);
 const stem = (name: string) => name.replace(/\.[^.]+$/, '').trim().toLowerCase();
 
-function log(companyId: number, uidValidity: string, uid: number, m: { messageId: string | null; sender: string | null; subject: string | null; status: string; detail: string[] }) {
-  getDb().prepare('INSERT OR IGNORE INTO DocumentInboxMessage(companyId,uidValidity,uid,messageId,sender,subject,status,detail) VALUES(?,?,?,?,?,?,?,?)')
-    .run(companyId, uidValidity, uid, m.messageId?.slice(0, 500) ?? null, m.sender?.slice(0, 254) ?? null, m.subject?.slice(0, 300) ?? null, m.status, m.detail.join('\n').slice(0, 2000));
+export type MessageSource = 'IMAP' | 'CLOUDFLARE';
+export interface MessageMeta { source: MessageSource; uidValidity: string; uid: number; ctx: SenderContext; deps: InboxDeps; recognizing: boolean }
+
+function log(companyId: number, source: MessageSource, uidValidity: string, uid: number, m: { messageId: string | null; sender: string | null; subject: string | null; status: string; detail: string[] }) {
+  getDb().prepare('INSERT OR IGNORE INTO DocumentInboxMessage(companyId,uidValidity,uid,messageId,sender,subject,status,detail,source) VALUES(?,?,?,?,?,?,?,?,?)')
+    .run(companyId, uidValidity, uid, m.messageId?.slice(0, 500) ?? null, m.sender?.slice(0, 254) ?? null, m.subject?.slice(0, 300) ?? null, m.status, m.detail.join('\n').slice(0, 2000), source);
 }
 
-async function handleMessage(companyId: number, uidValidity: string, uid: number, source: Buffer, ctx: SenderContext, deps: InboxDeps, recognizing: boolean): Promise<'IMPORTED' | 'SKIPPED' | 'OTHER'> {
-  const parsed = await simpleParser(source);
+// The one processing path of a received message, shared by the IMAP poll and the Cloudflare mail routing: sender rules, DMARC, forwarded
+// original sender, attachments, duplicates, the log row and the recognition trigger.
+export async function processMessage(companyId: number, parsed: ParsedMail, meta: MessageMeta): Promise<'IMPORTED' | 'SKIPPED' | 'OTHER'> {
+  const { source: origin, uidValidity, uid, ctx, deps, recognizing } = meta;
   const messageId = parsed.messageId ?? null;
   const subject = parsed.subject ?? null;
   const sender = parsed.from?.value?.[0]?.address?.trim().toLowerCase() || null;
-  const entry = (status: string, detail: string[]) => log(companyId, uidValidity, uid, { messageId, sender, subject, status, detail });
+  const entry = (status: string, detail: string[]) => log(companyId, origin, uidValidity, uid, { messageId, sender, subject, status, detail });
   if (messageId && getDb().prepare('SELECT 1 FROM DocumentInboxMessage WHERE companyId=? AND messageId=?').get(companyId, messageId.slice(0, 500))) return 'OTHER'; // the same message under a new UID
   const via = sender ? classifySender(ctx, sender) : null;
   if (!sender || !via) { entry('SKIPPED_SENDER', [`Siuntėjas nėra leidžiamų sąraše: ${sender ?? 'nežinomas'}`]); return 'SKIPPED'; }
@@ -308,7 +313,7 @@ export async function pollInbox(companyId: number, deps: InboxDeps): Promise<Pol
       for (const uid of uids) {
         result.messages++;
         if (!db.prepare('SELECT 1 FROM DocumentInboxMessage WHERE companyId=? AND uidValidity=? AND uid=?').get(companyId, uidValidity, uid)) {
-          const outcome = await handleMessage(companyId, uidValidity, uid, await session.fetchSource(uid), ctx, deps, recognizing);
+          const outcome = await processMessage(companyId, await simpleParser(await session.fetchSource(uid)), { source: 'IMAP', uidValidity, uid, ctx, deps, recognizing });
           if (outcome === 'IMPORTED') result.imported++;
           if (outcome === 'SKIPPED') result.skipped++;
         }
@@ -346,4 +351,43 @@ export function inboxLog(companyId: number, limit = 50) {
   const rows = getDb().prepare('SELECT id, uid, sender, subject, receivedAt, status, detail FROM DocumentInboxMessage WHERE companyId=? ORDER BY id DESC LIMIT ?').all(companyId, limit) as
     { id: number; uid: number; sender: string | null; subject: string | null; receivedAt: string; status: string; detail: string }[];
   return rows.map(r => ({ ...r, canAllow: r.status === 'SKIPPED_SENDER' && Boolean(r.sender) && !r.detail.startsWith('DMARC patikra') }));
+}
+
+// ---------- direct receiving (Cloudflare Email Routing -> Worker -> R2 -> this program) ----------
+
+export const INBOUND_KEY = /^inbound\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.eml$/;
+export const processedInboundKey = (key: string) => key.replace(/^inbound\//, 'inbound/processed/');
+export interface InboundRaw { get(key: string): Buffer | null; put(key: string, data: Buffer): void; remove(key: string): void }
+export interface InboundResult { status: 'PROCESSED' | 'DUPLICATE' | 'MISSING'; outcome?: 'IMPORTED' | 'SKIPPED' | 'OTHER' }
+
+// The addresses the Worker accepts: INBOUND_ADDRESSES = {"address": companyId}. The same variable feeds the Worker's routing and this display.
+export function inboundAddresses(): Record<string, number> {
+  try {
+    const parsed = JSON.parse(process.env.INBOUND_ADDRESSES || '{}') as Record<string, unknown>;
+    const out: Record<string, number> = {};
+    for (const [address, id] of Object.entries(parsed)) if (Number.isInteger(id)) out[address.trim().toLowerCase()] = Number(id);
+    return out;
+  } catch { return {}; }
+}
+export const inboundAddressFor = (companyId: number) => Object.entries(inboundAddresses()).find(([, id]) => id === companyId)?.[0] ?? null;
+export function lastInboundAt(companyId: number): string | null {
+  return (getDb().prepare("SELECT MAX(receivedAt) AS at FROM DocumentInboxMessage WHERE companyId=? AND source='CLOUDFLARE'").get(companyId) as { at: string | null }).at;
+}
+
+// Processes one raw message the Worker stored in R2. Idempotent per R2 key and per Message-ID: a re-delivery or a retry never duplicates.
+// Afterwards the raw message moves to inbound/processed/ (the Worker deletes those after 30 days). An error leaves it in place for the retry.
+export async function ingestInbound(companyId: number, r2Key: string, raw: InboundRaw, deps: InboxDeps): Promise<InboundResult> {
+  if (!INBOUND_KEY.test(r2Key)) throw new HttpError(400, 'Neteisingas laiško raktas');
+  const db = getDb();
+  if (!db.prepare('SELECT 1 FROM Company WHERE id=?').get(companyId)) throw new HttpError(404, 'Įmonė nerasta');
+  const source = raw.get(r2Key);
+  if (!source) return { status: raw.get(processedInboundKey(r2Key)) ? 'DUPLICATE' : 'MISSING' };
+  let outcome: InboundResult['outcome'];
+  if (!db.prepare('SELECT 1 FROM DocumentInboxMessage WHERE companyId=? AND uidValidity=? AND uid=0').get(companyId, r2Key)) {
+    const recognition = getRecognitionSettings(companyId);
+    outcome = await processMessage(companyId, await simpleParser(source), { source: 'CLOUDFLARE', uidValidity: r2Key, uid: 0, ctx: senderContext(db, companyId), deps, recognizing: recognition.enabled && recognition.hasKey });
+  }
+  raw.put(processedInboundKey(r2Key), source);
+  raw.remove(r2Key);
+  return { status: outcome ? 'PROCESSED' : 'DUPLICATE', outcome };
 }

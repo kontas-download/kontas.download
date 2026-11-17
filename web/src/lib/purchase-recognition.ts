@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { domesticTaxCode } from './isaf';
 import fs from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
@@ -24,7 +25,8 @@ import { setLineCodes } from './tax-line-codes';
 import { dateValue } from './validation';
 import { findDuplicates, type DuplicateHit } from './purchase-duplicates';
 import { DEFAULT_USD_TO_EUR, estimateCostUsd } from './recognition/models';
-import { RecognitionError, RecognizedDocumentSchema, type RecognitionProvider, type RecognizedDocument } from './recognition/types';
+import { estimatePollinationsCostUsd } from './recognition/pollinations-models';
+import { RecognitionError, RecognizedDocumentSchema, type RecognitionProvider, type RecognitionProviderKind, type RecognizedDocument } from './recognition/types';
 
 export type DocumentStatus = 'NEW' | 'EXTRACTED' | 'FAILED' | 'CONFIRMED' | 'REJECTED';
 export interface PurchaseDocumentRow {
@@ -46,10 +48,30 @@ const NOT_FINAL = ['NEW', 'EXTRACTED', 'FAILED'];
 
 // ---------- settings ----------
 
+// Model ids may carry a vendor prefix with a slash (gateway ids).
+const MODEL_NAME = /^[A-Za-z0-9._:/-]{1,100}$/;
+export const RECOGNITION_PROVIDERS: RecognitionProviderKind[] = ['PRIMARY', 'POLLINATIONS'];
+interface SettingsRow { enabled: number; provider: RecognitionProviderKind; apiKeyEncrypted: string | null; model: string; pollinationsKeyEncrypted: string | null; pollinationsModel: string; monthlyLimitEur: number | null }
+const SETTINGS_COLUMNS = 'enabled, provider, apiKeyEncrypted, model, pollinationsKeyEncrypted, pollinationsModel, monthlyLimitEur';
+// Key and model of one provider (a company keeps one of each per provider).
+function credentialsOf(row: SettingsRow | undefined, provider: RecognitionProviderKind) {
+  return provider === 'POLLINATIONS'
+    ? { provider, encrypted: row?.pollinationsKeyEncrypted || null, model: row?.pollinationsModel || '' }
+    : { provider, encrypted: row?.apiKeyEncrypted || null, model: row?.model || '' };
+}
+const activeProvider = (row: SettingsRow | undefined): RecognitionProviderKind => (row?.provider === 'POLLINATIONS' ? 'POLLINATIONS' : 'PRIMARY');
+
 export function getRecognitionSettings(companyId: number) {
-  const row = getDb().prepare('SELECT enabled, apiKeyEncrypted, model, monthlyLimitEur FROM CompanyRecognitionSettings WHERE companyId=?').get(companyId) as { enabled: number; apiKeyEncrypted: string | null; model: string; monthlyLimitEur: number | null } | undefined;
-  // The key itself never leaves the server: only whether one is stored.
-  return { enabled: Boolean(row?.enabled), model: row?.model || '', hasKey: Boolean(row?.apiKeyEncrypted), monthlyLimitEur: row?.monthlyLimitEur ?? null };
+  const row = getDb().prepare(`SELECT ${SETTINGS_COLUMNS} FROM CompanyRecognitionSettings WHERE companyId=?`).get(companyId) as SettingsRow | undefined;
+  const active = credentialsOf(row, activeProvider(row));
+  // The key itself never leaves the server: only whether one is stored. `model` and `hasKey` describe the active provider.
+  return {
+    enabled: Boolean(row?.enabled), provider: active.provider, model: active.model, hasKey: Boolean(active.encrypted), monthlyLimitEur: row?.monthlyLimitEur ?? null,
+    providers: {
+      PRIMARY: { model: row?.model || '', hasKey: Boolean(row?.apiKeyEncrypted) },
+      POLLINATIONS: { model: row?.pollinationsModel || '', hasKey: Boolean(row?.pollinationsKeyEncrypted) },
+    },
+  };
 }
 
 // ---------- estimated cost and the monthly limit ----------
@@ -61,10 +83,12 @@ export function usdToEur(): number {
 }
 const toEur = (usd: number) => Math.round(usd * usdToEur() * 10000) / 10000;
 
-export function recordRecognitionUsage(companyId: number, documentId: number | null, usage: { model: string; inputTokens: number; outputTokens: number }) {
+export function recordRecognitionUsage(companyId: number, documentId: number | null, usage: { model: string; inputTokens: number; outputTokens: number; provider?: RecognitionProviderKind }) {
   const input = Math.max(0, Math.round(Number(usage.inputTokens) || 0)), output = Math.max(0, Math.round(Number(usage.outputTokens) || 0));
-  getDb().prepare('INSERT INTO RecognitionUsage(companyId,documentId,model,inputTokens,outputTokens,costUsd) VALUES(?,?,?,?,?,?)')
-    .run(companyId, documentId, String(usage.model || '').slice(0, 100), input, output, estimateCostUsd(usage.model, input, output));
+  const provider: RecognitionProviderKind = usage.provider === 'POLLINATIONS' ? 'POLLINATIONS' : 'PRIMARY';
+  const cost = provider === 'POLLINATIONS' ? estimatePollinationsCostUsd(usage.model, input, output) : estimateCostUsd(usage.model, input, output);
+  getDb().prepare('INSERT INTO RecognitionUsage(companyId,documentId,model,inputTokens,outputTokens,costUsd,provider) VALUES(?,?,?,?,?,?,?)')
+    .run(companyId, documentId, String(usage.model || '').slice(0, 100), input, output, cost, provider);
 }
 
 // Spend of the calendar month (UTC) of `now`: calls, tokens and the estimated cost in EUR, against the optional limit.
@@ -88,31 +112,44 @@ function documentCosts(companyId: number, ids?: number[]): Map<number, number> {
 export function saveRecognitionSettings(companyId: number, body: Record<string, unknown>) {
   const { enabled, apiKey, clearKey, model, monthlyLimitEur } = body;
   if (typeof enabled !== 'boolean') throw new HttpError(400, 'Nurodykite, ar atpažinimas įjungtas');
-  if (model !== undefined && model !== null && (typeof model !== 'string' || (model !== '' && !/^[A-Za-z0-9._:-]{1,100}$/.test(model)))) throw new HttpError(400, 'Neteisingas modelio pavadinimas');
+  if (body.provider !== undefined && !RECOGNITION_PROVIDERS.includes(body.provider as RecognitionProviderKind)) throw new HttpError(400, 'Neteisingas atpažinimo teikėjas');
+  if (model !== undefined && model !== null && (typeof model !== 'string' || (model !== '' && !MODEL_NAME.test(model)))) throw new HttpError(400, 'Neteisingas modelio pavadinimas');
   if (apiKey !== undefined && apiKey !== null && (typeof apiKey !== 'string' || apiKey.length > 500 || /\s/.test(apiKey))) throw new HttpError(400, 'Neteisingas API raktas');
   // undefined = keep the stored limit; null or '' = no limit.
   if (monthlyLimitEur !== undefined && monthlyLimitEur !== null && monthlyLimitEur !== '' && (typeof monthlyLimitEur !== 'number' || !Number.isFinite(monthlyLimitEur) || monthlyLimitEur <= 0 || monthlyLimitEur > 100000)) throw new HttpError(400, 'Mėnesio limitas turi būti teigiamas skaičius eurais');
-  const previous = getDb().prepare('SELECT apiKeyEncrypted, model, monthlyLimitEur FROM CompanyRecognitionSettings WHERE companyId=?').get(companyId) as { apiKeyEncrypted: string | null; model: string; monthlyLimitEur: number | null } | undefined;
+  const previous = getDb().prepare(`SELECT ${SETTINGS_COLUMNS} FROM CompanyRecognitionSettings WHERE companyId=?`).get(companyId) as SettingsRow | undefined;
+  const provider: RecognitionProviderKind = (body.provider as RecognitionProviderKind | undefined) ?? activeProvider(previous);
   const limit = monthlyLimitEur === undefined ? previous?.monthlyLimitEur ?? null : typeof monthlyLimitEur === 'number' ? Math.round(monthlyLimitEur * 100) / 100 : null;
-  const secret = clearKey === true ? '' : typeof apiKey === 'string' && apiKey ? encryptSecret(apiKey, companyId) : previous?.apiKeyEncrypted || '';
-  if (enabled && !secret) throw new HttpError(400, 'Norėdami įjungti atpažinimą, įveskite API raktą.');
-  getDb().prepare(`INSERT INTO CompanyRecognitionSettings(companyId,enabled,apiKeyEncrypted,model,monthlyLimitEur,updatedAt) VALUES(?,?,?,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-    ON CONFLICT(companyId) DO UPDATE SET enabled=excluded.enabled,apiKeyEncrypted=excluded.apiKeyEncrypted,model=excluded.model,monthlyLimitEur=excluded.monthlyLimitEur,updatedAt=excluded.updatedAt`)
-    .run(companyId, enabled ? 1 : 0, secret || null, typeof model === 'string' ? model : previous?.model || '', limit);
+  // The key and model typed in the form belong to the selected provider; the other provider's key and model stay as they are.
+  const keyFor = (kind: RecognitionProviderKind) => {
+    const stored = credentialsOf(previous, kind).encrypted || '';
+    if (kind !== provider) return stored;
+    return clearKey === true ? '' : typeof apiKey === 'string' && apiKey ? encryptSecret(apiKey, companyId) : stored;
+  };
+  const primaryKey = keyFor('PRIMARY'), pollinationsKey = keyFor('POLLINATIONS');
+  if (enabled && !(provider === 'POLLINATIONS' ? pollinationsKey : primaryKey)) throw new HttpError(400, 'Norėdami įjungti atpažinimą, įveskite API raktą.');
+  const modelFor = (kind: RecognitionProviderKind) => kind === provider && typeof model === 'string' ? model : credentialsOf(previous, kind).model;
+  getDb().prepare(`INSERT INTO CompanyRecognitionSettings(companyId,enabled,provider,apiKeyEncrypted,model,pollinationsKeyEncrypted,pollinationsModel,monthlyLimitEur,updatedAt) VALUES(?,?,?,?,?,?,?,?,strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    ON CONFLICT(companyId) DO UPDATE SET enabled=excluded.enabled,provider=excluded.provider,apiKeyEncrypted=excluded.apiKeyEncrypted,model=excluded.model,pollinationsKeyEncrypted=excluded.pollinationsKeyEncrypted,pollinationsModel=excluded.pollinationsModel,monthlyLimitEur=excluded.monthlyLimitEur,updatedAt=excluded.updatedAt`)
+    .run(companyId, enabled ? 1 : 0, provider, primaryKey || null, modelFor('PRIMARY'), pollinationsKey || null, modelFor('POLLINATIONS'), limit);
   return getRecognitionSettings(companyId);
 }
 
 // Checks the key (typed in the form, or the stored one) and the model with a tiny request. Provider failures come back as { ok:false, error }.
 export async function testRecognitionKey(companyId: number, body: Record<string, unknown>, provider: RecognitionProvider): Promise<{ ok: true } | { ok: false; error: string }> {
-  const stored = getDb().prepare('SELECT apiKeyEncrypted, model FROM CompanyRecognitionSettings WHERE companyId=?').get(companyId) as { apiKeyEncrypted: string | null; model: string } | undefined;
+  const stored = getDb().prepare(`SELECT ${SETTINGS_COLUMNS} FROM CompanyRecognitionSettings WHERE companyId=?`).get(companyId) as SettingsRow | undefined;
+  if (body.provider !== undefined && !RECOGNITION_PROVIDERS.includes(body.provider as RecognitionProviderKind)) throw new HttpError(400, 'Neteisingas atpažinimo teikėjas');
+  // body.provider selects whose stored key and model are used (default: the active provider).
+  const kind: RecognitionProviderKind = (body.provider as RecognitionProviderKind | undefined) ?? activeProvider(stored);
+  const credentials = credentialsOf(stored, kind);
   const typed = typeof body.apiKey === 'string' ? body.apiKey.trim() : '';
   if (typed && (typed.length > 500 || /\s/.test(typed))) throw new HttpError(400, 'Neteisingas API raktas');
-  if (!typed && !stored?.apiKeyEncrypted) throw new HttpError(400, 'Pirmiausia įveskite API raktą.');
-  const model = typeof body.model === 'string' ? body.model : stored?.model || '';
-  if (model && !/^[A-Za-z0-9._:-]{1,100}$/.test(model)) throw new HttpError(400, 'Neteisingas modelio pavadinimas');
-  const apiKey = typed || decryptSecret(stored!.apiKeyEncrypted!, companyId, 'Nepavyko nuskaityti išsaugoto API rakto. Patikrinkite šifravimo raktą.');
+  if (!typed && !credentials.encrypted) throw new HttpError(400, 'Pirmiausia įveskite API raktą.');
+  const model = typeof body.model === 'string' ? body.model : credentials.model;
+  if (model && !MODEL_NAME.test(model)) throw new HttpError(400, 'Neteisingas modelio pavadinimas');
+  const apiKey = typed || decryptSecret(credentials.encrypted!, companyId, 'Nepavyko nuskaityti išsaugoto API rakto. Patikrinkite šifravimo raktą.');
   try {
-    await provider.testKey(apiKey, model);
+    await provider.testKey(apiKey, model, kind);
     return { ok: true };
   } catch (error) {
     if (error instanceof RecognitionError) return { ok: false, error: error.message };
@@ -316,20 +353,21 @@ export async function recognizeDocument(companyId: number, id: number, provider:
   const row = getDocument(companyId, id);
   if (isXmlDocument(row)) throw new HttpError(409, 'XML e-sąskaitos duomenys imami tiesiai iš failo: atpažinimas nereikalingas');
   if (!NOT_FINAL.includes(row.status)) throw new HttpError(409, 'Šis dokumentas jau apdorotas');
-  const settingsRow = db.prepare('SELECT enabled, apiKeyEncrypted, model FROM CompanyRecognitionSettings WHERE companyId=?').get(companyId) as { enabled: number; apiKeyEncrypted: string | null; model: string } | undefined;
-  if (!settingsRow?.enabled || !settingsRow.apiKeyEncrypted) throw new HttpError(409, 'Dokumentų atpažinimas neįjungtas: nurodykite API raktą įmonės nustatymuose.');
-  const apiKey = decryptSecret(settingsRow.apiKeyEncrypted, companyId, 'Nepavyko nuskaityti išsaugoto API rakto. Patikrinkite šifravimo raktą.');
+  const settingsRow = db.prepare(`SELECT ${SETTINGS_COLUMNS} FROM CompanyRecognitionSettings WHERE companyId=?`).get(companyId) as SettingsRow | undefined;
+  const credentials = credentialsOf(settingsRow, activeProvider(settingsRow));
+  if (!settingsRow?.enabled || !credentials.encrypted) throw new HttpError(409, 'Dokumentų atpažinimas neįjungtas: nurodykite API raktą įmonės nustatymuose.');
+  const apiKey = decryptSecret(credentials.encrypted, companyId, 'Nepavyko nuskaityti išsaugoto API rakto. Patikrinkite šifravimo raktą.');
   // Over the monthly limit the document stays as it is for manual entry; nothing is sent to the provider.
   if (recognitionUsageSummary(companyId).limitReached) throw new HttpError(409, LIMIT_MESSAGE);
   try {
     // A photo goes to the provider as the prepared copy (the stored original stays as it is); other files as they are.
     const file = isImageDocument(row) ? await preparedImage(companyId, id).then(p => ({ data: p.data, mimeType: p.mimeType }), error => { throw error instanceof HttpError ? new RecognitionError('API', error.message) : error; }) : { data: readDocumentFile(companyId, id).data, mimeType: row.mimeType };
-    const result = await provider.recognize(file, { apiKey, model: settingsRow.model, accounts: purchaseAccountChoices(db), onUsage: usage => recordRecognitionUsage(companyId, id, usage) });
+    const result = await provider.recognize(file, { apiKey, model: credentials.model, provider: credentials.provider, accounts: purchaseAccountChoices(db), onUsage: usage => recordRecognitionUsage(companyId, id, usage) });
     const parsed = RecognizedDocumentSchema.safeParse(result);
     if (!parsed.success) throw new RecognitionError('EMPTY', 'Atpažinimo rezultatas neatitinka laukiamo formato.');
     // A suggested account that is not in the chart or not allowed as a purchase debit account is dropped before anything is stored.
     const stored = { ...parsed.data, suggestedAccount: sanitizeSuggestedAccount(db, parsed.data.suggestedAccount) };
-    db.prepare("UPDATE PurchaseDocument SET status='EXTRACTED', extractedJson=?, error=NULL, model=? WHERE id=?").run(JSON.stringify(stored), settingsRow.model || null, id);
+    db.prepare("UPDATE PurchaseDocument SET status='EXTRACTED', extractedJson=?, error=NULL, model=? WHERE id=?").run(JSON.stringify(stored), credentials.model || null, id);
   } catch (error) {
     const message = error instanceof RecognitionError ? error.message : 'Atpažinimas nepavyko dėl netikėtos klaidos.';
     if (!(error instanceof RecognitionError)) console.error('Document recognition failed', error);
@@ -826,15 +864,47 @@ export function previewDocument(companyId: number, id: number, options: { origin
   // A credit note is shown with positive amounts (the credit logic negates them); printed minus signs are dropped.
   const abs = <T extends number | null>(v: T): T => (x.docKind === 'CREDIT_NOTE' && typeof v === 'number' ? Math.abs(v) as T : v);
   const ruleTaxCode: string | null = rule?.taxCode && codesFor('PURCHASE').includes(rule.taxCode) ? rule.taxCode : null;
-  const draftLines = x.lines.map((l, i) => {
+  // Without a rule and without a code from the supplier's history (that one stays a one-click hint), a domestic purchase gets the
+  // standard Lithuanian code of its printed VAT rate pre-filled; the reviewer can change it. Foreign suppliers and 0 % lines stay empty: their code depends on facts the
+  // document does not show (goods or services, exemption reason).
+  const domesticSupplier = !x.supplier.vatCode || /^LT/i.test(x.supplier.vatCode.replace(/\s+/g, ''));
+  // Rate -> code comes from the rules registry (the same mapping i.SAF uses), valid on the document date.
+  const rateCode = (rate: number | null): string | null => (!domesticSupplier || rate === null ? null : domesticTaxCode(rate, x.issueDate || new Date().toISOString().slice(0, 10)));
+  let rateCodesUsed = false;
+  const rawLines = x.lines.map((l, i) => {
     const rate = l.vatRate;
     const quantity = l.quantity ?? 1;
     const net = l.net ?? (l.gross !== null && rate !== null ? r2(l.gross / (1 + rate / 100)) : l.unitPrice !== null ? r2(l.unitPrice * quantity) : null);
     const gross = l.gross ?? (net !== null && l.vat !== null ? r2(net + l.vat) : net !== null && rate !== null ? r2(net * (1 + rate / 100)) : null);
     const vat = l.vat ?? (net !== null && gross !== null ? r2(gross - net) : null);
     // A code from history stays a suggestion until the reviewer picks it; the code of the person's own rule is pre-filled.
-    return { itemName: l.name || '', quantity: abs(quantity), net: abs(net), vat: abs(vat), gross: abs(gross), vatRate: rate, taxCode: ruleTaxCode, suggestedTaxCode: suggestions.taxCodes[i]?.taxCode ?? null, suggestedFromPurchaseId: suggestions.taxCodes[i]?.purchaseId ?? null };
+    return { itemName: l.name || '', quantity: abs(quantity), net: abs(net), vat: abs(vat), gross: abs(gross), vatRate: rate, taxCode: ruleTaxCode ?? (() => { if (suggestions.taxCodes[i]?.taxCode) return null; const c = rateCode(rate); if (c && codesFor('PURCHASE').includes(c)) { rateCodesUsed = true; return c; } return null; })(), suggestedTaxCode: suggestions.taxCodes[i]?.taxCode ?? null, suggestedFromPurchaseId: suggestions.taxCodes[i]?.purchaseId ?? null };
   });
+  // Receipts print discounts as their own negative line ("Spec. kaina -0,04"). A purchase line may not be negative, so a discount
+  // line is folded into the preceding positive line (same VAT rate preferred): its amounts are added and the name notes the
+  // discount. Totals stay exactly as printed. Credit notes keep their lines (their amounts are already shown as positive).
+  const draftLines: typeof rawLines = [];
+  let discountsFolded = 0;
+  for (const line of rawLines) {
+    const negative = x.docKind !== 'CREDIT_NOTE' && ((line.gross ?? 0) < 0 || (line.net ?? 0) < 0);
+    const target = negative ? [...draftLines].reverse().find(t => t.vatRate === line.vatRate && (t.gross ?? 0) > 0) ?? [...draftLines].reverse().find(t => (t.gross ?? 0) > 0) : undefined;
+    if (!negative || !target) { draftLines.push(line); continue; }
+    const add2 = (u: number | null, v: number | null) => (u === null ? null : r2(u + (v ?? 0)));
+    target.net = add2(target.net, line.net);
+    target.vat = add2(target.vat, line.vat);
+    target.gross = add2(target.gross, line.gross);
+    const amount = Math.abs(line.gross ?? line.net ?? 0).toFixed(2).replace('.', ',');
+    target.itemName = `${target.itemName} (nuolaida ${amount})`;
+    discountsFolded++;
+  }
+  // One item line left after folding: rounding of the separate discount line can leave a cent between the line and the printed
+  // totals; when the gross matches, the printed net and VAT win.
+  const t0 = x.totals;
+  if (discountsFolded && draftLines.length === 1 && t0.gross !== null && t0.net !== null && t0.vat !== null && draftLines[0].gross !== null && Math.abs(draftLines[0].gross - t0.gross) < 0.005) {
+    draftLines[0].net = t0.net; draftLines[0].vat = t0.vat;
+  }
+  if (discountsFolded) warnings.push(`Nuolaidos eilutės (${discountsFolded}) pridėtos prie prekių eilučių.`);
+  if (rateCodesUsed) warnings.push('PVM klasifikatoriaus kodai parinkti pagal PVM tarifą: patikrinkite.');
   // Pre-fill of the expense account: the supplier's history first, else the validated suggestion from the document content. Never a guess.
   const modelAccount = sanitizeSuggestedAccount(db, x.suggestedAccount);
   const history = suggestions.debitAccount;
