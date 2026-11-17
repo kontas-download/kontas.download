@@ -1,3 +1,4 @@
+import { normalizeTimeOfDay } from './time-of-day';
 // Form model of the purchase document review screen: conversion from the server draft, the payload for the confirmation and the
 // client-side validation that mirrors the server checks (lib/purchase-recognition.ts, validateEdit). Messages are i18n keys of the
 // `docs` namespace so the same checks are testable without a browser. Pure functions, no imports from the server code.
@@ -168,7 +169,7 @@ export function validateForm(form: ReviewForm, ctx: ValidationContext): Record<s
     if (form.rateDate && !validDate(form.rateDate)) add('foreign.rateDate', 'docs.v_rateDate');
   }
   if (!form.number.trim() && !form.receiptNo.trim()) add('number', 'docs.v_number');
-  if (form.documentTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(form.documentTime)) add('documentTime', 'docs.v_time');
+  if (form.documentTime && normalizeTimeOfDay(form.documentTime) === null) add('documentTime', 'docs.v_time');
   if (form.paidBy === 'PERSON' && !form.paidByName.trim()) add('paidByName', 'docs.v_paidByName');
   if (form.cardLast4 && (!/^\d{4}$/.test(form.cardLast4) || form.paymentMethod !== 'CARD')) add('cardLast4', 'docs.v_cardLast4');
 

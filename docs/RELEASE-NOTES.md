@@ -6,6 +6,24 @@
 
 Pagrindinė dokumentacijos kalba – lietuvių. Jei lietuviškas ir angliškas tekstai skiriasi, viršesnis lietuviškas.
 
+### 0.5.6 – keli pirkimo originalai, sąskaitos ir kvito poravimas, laikotarpio filtras
+
+Archyvas: `kontas-download-0.5.6.zip`, šalia – kontrolinės sumos failas `kontas-download-0.5.6.zip.sha256`. Atnaujinti iš 0.4.0, 0.5.0, 0.5.1, 0.5.2, 0.5.3, 0.5.4 ar 0.5.5: `update.ps1` / `update.sh`.
+
+- Vienas pirkimas gali turėti kelis originalus: sąskaita faktūra kaip pagrindinis dokumentas ir mokėjimo kvitas ar priedas; originalą galima prijungti prie esamo pirkimo, vėlesnę sąskaitą – paskelbti pagrindine; kvito duomenys užpildo tuščius mokėjimo laukus, o grynųjų kvitas pažymi pirkimą apmokėtu.
+- Kartu gauta sąskaita ir mokėjimo kvitas sujungiami automatiškai, o prireikus – ranka mygtuku „Sujungti“ su aiškiu pasirinkimu, kuris yra sąskaita, kuris kvitas.
+- Peržiūros lange kortelės leidžia perjungti originalus (šis dokumentas, mokėjimo kvitas, kiti to paties pirkimo originalai, kartu gauti).
+- Paros laikas priimamas formatais HH:MM ir HH:MM:SS (normalizuojama, sekundės išsaugomos).
+- Atpažinimas: kvito nuolaidų eilutės prijungiamos prie prekės eilutės; PVM kodas iš anksto parenkamas pagal atspausdintą tarifą (taisyklių registras); laikinos paslaugos klaidos kartojamos, o paslaugos paaiškinimas paliekamas klaidos tekste; PDF puslapiai paverčiami paveikslėliais ir konteinerio versijoje.
+- Pirkimai ir pardavimai pagal nutylėjimą rodo paskutinius 12 mėnesių; laikotarpio filtras turi paruoštus intervalus ir pasirinktines datas; kita sąskaitos numerio reikšmė skaičiuojama pagal visas sąskaitas.
+- Saugumo atnaujinimai: `fast-xml-parser` (npm audit: 0 pažeidžiamumų).
+- Kūrimo režimas nebeskenuoja duomenų aplanko.
+
+Kontrolinė suma:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.6.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.6.zip.sha256).Split(' ')[0]` – turi būti `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.6.zip.sha256` – turi būti `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.6.zip.sha256` – turi būti `OK`.
+
 ### 0.5.5 – gavimas el. paštu debesyje, antrasis atpažinimo teikėjas, kvitų taisymai
 
 Archyvas: `kontas-download-0.5.5.zip`, šalia – kontrolinės sumos failas `kontas-download-0.5.5.zip.sha256`. Atnaujinti iš 0.4.0, 0.5.0, 0.5.1, 0.5.2, 0.5.3 ar 0.5.4: `update.ps1` / `update.sh`.
@@ -242,6 +260,24 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 
 Основной язык документации – литовский; при расхождении текстов приоритет у литовского.
 
+### 0.5.6 – несколько оригиналов закупки, сопоставление счёта и чека, фильтр периода
+
+Архив: `kontas-download-0.5.6.zip`, рядом – файл контрольной суммы `kontas-download-0.5.6.zip.sha256`. Обновление с 0.4.0, 0.5.0, 0.5.1, 0.5.2, 0.5.3, 0.5.4 или 0.5.5: `update.ps1` / `update.sh`.
+
+- У одной закупки может быть несколько оригиналов: счёт-фактура как основной документ и чек об оплате или приложение; оригинал можно прикрепить к существующей закупке, более поздний счёт – сделать основным; данные чека заполняют пустые поля оплаты, а кассовый чек отмечает закупку оплаченной.
+- Счёт и чек об оплате, полученные вместе, сопоставляются автоматически, а при необходимости – вручную кнопкой «Sujungti» с явным выбором, что является счётом, а что чеком.
+- В окне просмотра вкладки переключают оригиналы (этот документ, чек об оплате, другие оригиналы той же закупки, полученные вместе).
+- Время суток принимается в форматах HH:MM и HH:MM:SS (нормализуется, секунды сохраняются).
+- Распознавание: строки скидок в чеке присоединяются к строке товара; код PVM заполняется заранее по напечатанной ставке (реестр правил); временные ошибки сервиса повторяются, а пояснение сервиса сохраняется в тексте ошибки; страницы PDF преобразуются в изображения также в контейнерной сборке.
+- Закупки и продажи по умолчанию показывают последние 12 месяцев; фильтр периода содержит готовые интервалы и произвольные даты; следующий номер счёта вычисляется по всем счетам.
+- Обновления безопасности: `fast-xml-parser` (npm audit: 0 уязвимостей).
+- Режим разработки больше не сканирует папку данных.
+
+Контрольная сумма:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.6.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.6.zip.sha256).Split(' ')[0]` – должно быть `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.6.zip.sha256` – должно быть `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.6.zip.sha256` – должно быть `OK`.
+
 ### 0.5.5 – приём почты в облаке, второй провайдер распознавания, исправления по чекам
 
 Архив: `kontas-download-0.5.5.zip`, рядом – файл контрольной суммы `kontas-download-0.5.5.zip.sha256`. Обновление с 0.4.0, 0.5.0, 0.5.1, 0.5.2, 0.5.3 или 0.5.4: `update.ps1` / `update.sh`.
@@ -477,6 +513,24 @@ Programa ir jos pagalba nėra mokesčių ar teisinė konsultacija; už deklaraci
 ## English
 
 The main documentation language is Lithuanian; if the texts differ, the Lithuanian one prevails.
+
+### 0.5.6 – several originals per purchase, invoice and receipt pairing, period filter
+
+Archive: `kontas-download-0.5.6.zip`, with the checksum file `kontas-download-0.5.6.zip.sha256` next to it. Update from 0.4.0, 0.5.0, 0.5.1, 0.5.2, 0.5.3, 0.5.4 or 0.5.5: `update.ps1` / `update.sh`.
+
+- One purchase can have several originals: an invoice as the main document plus a payment receipt or an attachment; an original can be attached to an existing purchase, and a later invoice can be promoted to main; receipt data fills empty payment fields, and a cash receipt marks the purchase as paid.
+- An invoice and a payment receipt that arrive together are paired automatically, or manually with the "Sujungti" button and an explicit choice of which one is the invoice and which the receipt.
+- In the review window, tabs switch between the originals (this document, payment receipt, other originals of the same purchase, received together).
+- Time of day accepts HH:MM and HH:MM:SS (normalized, seconds are kept).
+- Recognition: receipt discount lines are merged into the item line; the PVM code is pre-filled from the printed rate (rules registry); temporary service errors are retried and the service's explanation is kept in the error text; PDF pages are rendered to images in the container build too.
+- Purchases and sales show the last 12 months by default; the period filter offers presets and custom dates; the next invoice number is computed from all invoices.
+- Security updates: `fast-xml-parser` (npm audit: 0 vulnerabilities).
+- The development build no longer scans the data folder.
+
+Checksum:
+- Windows (PowerShell): `(Get-FileHash .\kontas-download-0.5.6.zip -Algorithm SHA256).Hash -eq (Get-Content .\kontas-download-0.5.6.zip.sha256).Split(' ')[0]` – must be `True`.
+- macOS: `shasum -a 256 -c kontas-download-0.5.6.zip.sha256` – must be `OK`.
+- Linux: `sha256sum -c kontas-download-0.5.6.zip.sha256` – must be `OK`.
 
 ### 0.5.5 – cloud e-mail intake, second recognition provider, receipt fixes
 

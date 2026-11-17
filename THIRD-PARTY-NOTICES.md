@@ -96,8 +96,8 @@ Sugeneruota / generated / сгенерировано: `node web/scripts/third-pa
 | entities | 7.0.1 | BSD-2-Clause |
 | fast-deep-equal | 3.1.3 | MIT |
 | fast-sha256 | 1.3.0 | Unlicense |
-| fast-xml-builder | 1.3.1 | MIT |
-| fast-xml-parser | 5.11.2 | MIT |
+| fast-xml-builder | 1.3.2 | MIT |
+| fast-xml-parser | 5.12.1 | MIT |
 | fflate | 0.8.3 | MIT |
 | fontkit | 2.0.4 | MIT |
 | geist | 1.8.2 | SIL OPEN FONT LICENSE |
@@ -109,7 +109,7 @@ Sugeneruota / generated / сгенерировано: `node web/scripts/third-pa
 | iconv-lite | 0.7.3 | MIT |
 | imapflow | 2.10.2 | MIT |
 | ip-address | 10.7.6 | MIT |
-| is-unsafe | 2.0.2 | MIT |
+| is-unsafe | 2.0.3 | MIT |
 | jpeg-js | 0.4.4 | BSD-3-Clause |
 | json-schema-to-ts | 3.1.1 | MIT |
 | leac | 0.7.0 | MIT |

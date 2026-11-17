@@ -4,7 +4,10 @@ const fs = require('node:fs');
 const env = require('./helpers/recognition-env.cjs')('erp-recognition-gateway-');
 const { db, rec, src, extracted } = env;
 const models = src('recognition/pollinations-models.ts');
-const { provider } = src('recognition/provider-pollinations.ts');
+const pollinations = src('recognition/provider-pollinations.ts');
+const { provider } = pollinations;
+// Retries of transient upstream errors run without the real pauses in tests.
+pollinations.RETRY_DELAYS_MS.splice(0, pollinations.RETRY_DELAYS_MS.length, 0, 0);
 const { defaultRecognitionProvider } = src('recognition/factory.ts');
 const { RecognitionError } = src('recognition/types.ts');
 const [GLM, , , KIMI] = models.POLLINATIONS_MODELS.map(m => m.id);
@@ -211,4 +214,25 @@ test('the key test endpoint logic uses the chosen provider key and model', async
   assert.equal(seen[0].kind, 'POLLINATIONS'); assert.equal(seen[0].key, 'sk_gateway'); assert.equal(seen[0].model, KIMI);
   assert.equal(seen[1].kind, 'PRIMARY'); assert.equal(seen[1].key, 'sk-test-secret-key');
   rec.saveRecognitionSettings(1, { enabled: true, provider: 'PRIMARY' });
+});
+
+test('transient upstream errors (502/503/504, dropped connection) are retried; other errors are not', async () => {
+  // Seen live: "Atpazinimo paslaugos klaida (502)" on one of two receipts sent together.
+  mockFetch({ status: 502, text: 'bad gateway' }, { status: 503, text: 'busy' }, reply(JSON.stringify(full())));
+  const out = await provider.recognize({ data: JPEG, mimeType: 'image/jpeg' }, { apiKey: 'k', model: GLM });
+  assert.equal(out.supplier.name, full().supplier.name);
+  assert.equal(calls.length, 3);
+  mockFetch({ status: 502, text: 'x' }, { status: 502, text: 'x' }, { status: 502, text: 'x' }, reply(JSON.stringify(full())));
+  await assert.rejects(provider.recognize({ data: JPEG, mimeType: 'image/jpeg' }, { apiKey: 'k', model: GLM }), e => e.code === 'API' && /502/.test(e.message));
+  assert.equal(calls.length, 3, 'two retries, then the error');
+  mockFetch({ status: 401, text: '{}' }, reply(JSON.stringify(full())));
+  await assert.rejects(provider.recognize({ data: JPEG, mimeType: 'image/jpeg' }, { apiKey: 'k', model: GLM }), e => e.code === 'AUTH');
+  assert.equal(calls.length, 1, 'an auth error is final');
+});
+
+test('a final service error keeps the service explanation, so the stored error shows the real cause', async () => {
+  mockFetch({ status: 502, text: '{"success":false,"error":{"code":"UPSTREAM_ERROR","message":"Model returned malformed output"}}' });
+  await assert.rejects(provider.recognize({ data: JPEG, mimeType: 'image/jpeg' }, { apiKey: 'k', model: GLM }), e => /\(502\): UPSTREAM_ERROR: Model returned malformed output\./.test(e.message));
+  mockFetch({ status: 500, text: '<html><body>Internal <b>error</b></body></html>' });
+  await assert.rejects(provider.recognize({ data: JPEG, mimeType: 'image/jpeg' }, { apiKey: 'k', model: GLM }), e => /\(500\): Internal error\./.test(e.message));
 });

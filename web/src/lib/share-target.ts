@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { HttpError } from './errors';
 
 // Web Share Target: files shared from the phone's "Share" sheet arrive as a multipart POST. This module holds the logic without framework imports.
@@ -8,9 +9,11 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_ERRORS = 5;
 
 export interface ShareDeps {
-  store: (input: { buffer: Buffer; fileName: string; mimeType: string; source: 'UPLOAD'; sender: string | null }) => { id: number };
+  store: (input: { buffer: Buffer; fileName: string; mimeType: string; source: 'UPLOAD'; sender: string | null; batchId?: string | null }) => { id: number };
   // null when recognition is not enabled for the company.
   recognize: ((id: number) => Promise<unknown>) | null;
+  // Pairs an invoice and a receipt shared together (called once, after the recognition of all files of the batch).
+  pair?: (batchId: string) => void;
 }
 export interface ShareResult { location: string; stored: number[]; errors: string[] }
 
@@ -20,10 +23,12 @@ export async function processSharedFiles(files: File[], sender: string | null, d
   const stored: number[] = [];
   const errors: string[] = [];
   let single: number | null = null;
+  // Several files in one share are one batch (an invoice and its receipt).
+  const batchId = Math.min(files.length, SHARE_MAX_FILES) > 1 ? randomUUID() : null;
   for (const file of files.slice(0, SHARE_MAX_FILES)) {
     try {
       if (file.size > MAX_FILE_SIZE) throw new HttpError(413, 'Failas per didelis: leidžiama iki 20 MB');
-      const row = deps.store({ buffer: Buffer.from(await file.arrayBuffer()), fileName: file.name, mimeType: file.type, source: 'UPLOAD', sender });
+      const row = deps.store({ buffer: Buffer.from(await file.arrayBuffer()), fileName: file.name, mimeType: file.type, source: 'UPLOAD', sender, batchId });
       stored.push(row.id);
       single = row.id;
       if (deps.recognize) await deps.recognize(row.id).catch(() => undefined); // a failed recognition is saved on the document itself
@@ -33,6 +38,7 @@ export async function processSharedFiles(files: File[], sender: string | null, d
       errors.push(`${file.name}: ${translate(error instanceof Error ? error.message : 'Klaida')}`.slice(0, 300));
     }
   }
+  if (batchId && deps.pair && stored.length > 1) deps.pair(batchId);
   if (files.length > SHARE_MAX_FILES) errors.push(translate('Per daug failų'));
   const query = errors.slice(0, MAX_ERRORS).map(e => `shareError=${encodeURIComponent(e)}`).join('&');
   // One file: its review page (for an already uploaded file, the existing document). Otherwise the inbox, with the failures.

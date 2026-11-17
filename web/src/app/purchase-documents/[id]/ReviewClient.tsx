@@ -13,7 +13,7 @@ import { applyEvidenceType, applyRuleTaxCode, draftToForm, emptyLine, eurTotals,
 interface Totals { net: number | null; vat: number | null; gross: number | null }
 interface Preview {
   recognized: boolean; draft: Parameters<typeof draftToForm>[0]; missing: Record<string, string>; warnings: string[]; uncertainFields: string[]; companyVatPayer: boolean; duplicatePurchaseId: number | null;
-  duplicates: { kind: 'purchase' | 'document'; id: number; number: string; date: string; gross: number | null; strength: 'strong' | 'possible' }[];
+  duplicates: { kind: 'purchase' | 'document'; id: number; number: string; date: string; gross: number | null; strength: 'strong' | 'possible'; evidenceType?: 'INVOICE' | 'RECEIPT' | null; promotable?: boolean }[];
   extracted: { docKind: string; currency: string | null; supplier: { code: string | null }; totals: Totals };
   // (credit notes) the invoice number printed on the document
   referencedDocument?: string | null;
@@ -34,6 +34,7 @@ interface XmlPreview {
     credit: { reference: { number: string; issueDate: string | null } | null; original: CreditOriginalRow | null; candidates: CreditOriginalRow[]; effect: { net: number; vat: number; gross: number; deductibleVatReversed: number | null } | null } | null;
   };
 }
+interface FoundPurchase { id: number; number: string; date: string; supplier: string | null; gross: number; evidenceType: 'INVOICE' | 'RECEIPT' | null; documentCount: number }
 interface Props { documentId: number; companyId: number; clients: { id: number; name: string; code: string | null; vatCode: string | null }[]; accounts: { code: string; name: string }[]; stockItems: { id: number; name: string; code: string; warehouseName: string }[]; recognitionReady: boolean }
 
 const control = 'block mt-1 w-full rounded-lg border bg-slate-950 px-2.5 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none';
@@ -120,6 +121,15 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
   const [supplierHit, setSupplierHit] = useState<{ id: number; name: string; code: string | null; vatCode: string | null; address: string | null; accountHistory: AccountHistoryHint | null; rule?: RuleHint | null } | null>(null);
   const [saveRule, setSaveRule] = useState(false);
   // After a confirmation the person may be offered to allow the (original) sender; `proceed` continues to the next step afterwards.
+  // Attaching to an existing purchase: the result notice, the manual purchase search and its hits.
+  const [attachNotice, setAttachNotice] = useState('');
+  // The receipt received together with this invoice (or the invoice this receipt waits for) and the note of an ambiguous batch.
+  const [pairing, setPairing] = useState<{ receipt: { id: number; fileName: string; mimeType: string; gross: number | null; supplier: string | null } | null; pairedWithId: number | null; note: string | null; siblings?: { id: number; fileName: string; mimeType: string }[]; related?: { id: number; fileName: string; mimeType: string; role: string | null }[] } | null>(null);
+  // Which original is shown on the left: this document, its paired receipt, another original of the same purchase or a batch sibling.
+  const [shownId, setShownId] = useState<number | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [found, setFound] = useState<FoundPurchase[] | null>(null);
   const [allowOffer, setAllowOffer] = useState<{ address: string; proceed: () => void } | null>(null);
 
   const load = useCallback(async () => {
@@ -130,6 +140,7 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
     ]);
     if (!detail.ok) { setMessage(detail.data.error || t('common.error')); setLoading(false); return; }
     setInfo(detail.data.document);
+    setPairing(detail.data.pairing ?? null);
     if (detail.data.kind === 'xml') {
       const x = detail.data as XmlPreview;
       setXml(x); setPreview(null); setForm(null);
@@ -254,6 +265,7 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
       if (!ok) { setServerFields(data.fields || {}); setMessage(data.error || t('common.error')); return; }
       // A bank line that probably paid this document is offered right away (the person still has to link it).
       const purchaseId = (data.purchase as { id?: number } | undefined)?.id;
+      pairNotice(data.pairedReceipt as { attached: boolean; reason?: string; message?: string } | null | undefined);
       const proceed = async () => {
         if (purchaseId) {
           const found = await fetch(`/api/purchases/${purchaseId}/bank-matches`, { cache: 'no-store' }).then(r => r.json()).catch(() => null);
@@ -264,6 +276,66 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
       if (typeof data.suggestAllowSender === 'string') { setAllowOffer({ address: data.suggestAllowSender, proceed }); return; }
       await proceed();
     } finally { setBusy(false); }
+  }
+  // What happened to the receipt received together with the confirmed invoice.
+  function pairNotice(outcome: { attached: boolean; reason?: string; message?: string } | null | undefined) {
+    if (!outcome) return;
+    window.alert(outcome.attached ? t('docs.pairAttached') : outcome.reason === 'MISMATCH' ? t('docs.pairMismatch') : t('docs.pairFailed', { message: outcome.message || t('common.error') }));
+  }
+  async function unpair() {
+    if (!await askConfirm(t('docs.unpairConfirm'))) return;
+    setBusy(true); setMessage('');
+    try {
+      const { ok, data } = await post('unpair');
+      if (!ok) { setMessage(data.error || t('common.error')); return; }
+      await load();
+    } finally { setBusy(false); }
+  }
+  // A sibling received together is paired by hand: it is this invoice's receipt, or this document is the receipt of the sibling.
+  async function pairSibling(siblingId: number, siblingIsReceipt: boolean) {
+    setBusy(true); setMessage('');
+    try {
+      const { ok, data } = await post('pair', siblingIsReceipt ? { receiptId: siblingId } : { invoiceId: siblingId });
+      if (!ok) { setMessage(data.error || t('common.error')); return; }
+      if (siblingIsReceipt) await load(); else router.push(`/purchase-documents/${siblingId}`);
+    } finally { setBusy(false); }
+  }
+  // The document joins an existing purchase (no new purchase). A different supplier or total is asked about once, then repeated with the confirmation.
+  async function attach(purchaseId: number, number: string, role: 'PAYMENT_RECEIPT' | 'ATTACHMENT') {
+    if (!await askConfirm(t('docs.attachConfirm', { number }))) return;
+    setBusy(true); setMessage(''); setAttachNotice('');
+    try {
+      let { ok, data } = await post('attach', { companyId, purchaseId, role });
+      if (!ok && data.fields?.confirmMismatch) {
+        if (!await askConfirm(t('docs.attachMismatch', { number }))) return;
+        ({ ok, data } = await post('attach', { companyId, purchaseId, role, confirmMismatch: true }));
+      }
+      if (!ok) { setMessage(data.error || t('common.error')); return; }
+      const enriched = (data.enriched as string[] | undefined) || [];
+      const settlement = data.settlement as { settled: boolean; reason?: string } | null;
+      setAttachNotice([t('docs.attachDone'), enriched.length ? t('docs.attachDoneEnriched', { fields: enriched.join(', ') }) : '', settlement?.settled ? t('docs.attachDonePaidCash') : '', settlement?.reason === 'SKIPPED' ? t('docs.attachDoneSkipped') : ''].filter(Boolean).join(' '));
+      await load();
+    } finally { setBusy(false); }
+  }
+  // The reviewed invoice becomes the main document of the receipt-based purchase (the purchase is updated by the invoice form).
+  async function promote(purchaseId: number, number: string) {
+    if (!form || !await askConfirm(t('docs.makePrimaryConfirm', { number }))) return;
+    setBusy(true); setMessage(''); setServerFields({});
+    try {
+      const body = { companyId, ...formToPayload(form), confirmDuplicate: notDuplicate, promote: true, intoPurchaseId: purchaseId };
+      let { ok, data } = await post('confirm', body);
+      if (!ok && data.fields?.confirmMismatch) {
+        if (!await askConfirm(t('docs.attachMismatch', { number }))) return;
+        ({ ok, data } = await post('confirm', { ...body, confirmMismatch: true }));
+      }
+      if (!ok) { setServerFields(data.fields || {}); setMessage(data.error || t('common.error')); return; }
+      goNext();
+    } finally { setBusy(false); }
+  }
+  async function searchPurchases(text: string) {
+    setSearchText(text);
+    const data = await fetch(`/api/purchase-documents/purchase-search?q=${encodeURIComponent(text)}`, { cache: 'no-store' }).then(r => r.json()).catch(() => ({}));
+    setFound(Array.isArray(data.purchases) ? data.purchases : []);
   }
   // XML credit note without a reference: the chosen original is checked by the server preview before anything is confirmed.
   async function chooseOriginal(value: string) {
@@ -281,6 +353,7 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
         deductionPercent: xmlOptions.deduction.trim() ? Number(xmlOptions.deduction.replace(',', '.')) : undefined, debitAccount: xmlOptions.debitAccount || undefined, accountSource: xmlOptions.accountSource || undefined,
       });
       if (!ok) { setServerFields(data.fields || {}); setMessage(data.error || t('common.error')); return; }
+      pairNotice(data.pairedReceipt as { attached: boolean; reason?: string; message?: string } | null | undefined);
       if (typeof data.suggestAllowSender === 'string') { setAllowOffer({ address: data.suggestAllowSender, proceed: goNext }); return; }
       goNext();
     } finally { setBusy(false); }
@@ -384,7 +457,40 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
       <p className="hidden text-[11px] text-slate-500 sm:block">{t('docs.shortcutHint')}</p>
       {!open && <p role="status" className="rounded-xl border border-slate-700 bg-slate-900 p-3 text-sm text-slate-300">{t('docs.alreadyDone')}</p>}
       {info.error && <p role="alert" className="rounded-xl border border-rose-800 bg-rose-950/40 p-3 text-sm text-rose-200">{info.error}</p>}
+      {attachNotice && <p role="status" className="rounded-xl border border-emerald-800 bg-emerald-950/30 p-3 text-sm text-emerald-100">{attachNotice}</p>}
       {message && <p role="alert" className="rounded-xl border border-rose-800 bg-rose-950/40 p-3 text-sm text-rose-200">{message}</p>}
+      {open && pairing?.receipt && (
+        <section aria-label={t('docs.pairedTitle')} className="rounded-xl border border-emerald-800 bg-emerald-950/30 p-3 text-sm text-emerald-100">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <strong>{t('docs.pairedTitle')}</strong>
+              <div className="text-[11px] text-emerald-200/80">{[pairing.receipt.fileName, pairing.receipt.supplier, pairing.receipt.gross != null ? `€${money(pairing.receipt.gross)}` : null].filter(Boolean).join(' · ')}</div>
+              <div className="text-[11px] text-emerald-200/80">{t('docs.pairedHint')}</div>
+            </div>
+            <div className="flex gap-2">
+              <a href={`/api/purchase-documents/${pairing.receipt.id}/file`} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-700 px-2.5 py-1.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-900">{t('docs.pairedOpen')}</a>
+              <button type="button" disabled={busy} onClick={unpair} className="rounded-lg border border-slate-600 px-2.5 py-1.5 text-xs font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-40">{t('docs.unpair')}</button>
+            </div>
+          </div>
+        </section>
+      )}
+      {open && pairing?.pairedWithId && !pairing.receipt && (
+        <p role="note" className="rounded-xl border border-emerald-800 bg-emerald-950/30 p-3 text-sm text-emerald-100">{t('docs.pairBadge')}: <Link href={`/purchase-documents/${pairing.pairedWithId}`} className="font-semibold underline">#{pairing.pairedWithId}</Link> <button type="button" disabled={busy} onClick={unpair} className="ml-2 rounded-lg border border-slate-600 px-2.5 py-1 text-xs font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-40">{t('docs.unpair')}</button></p>
+      )}
+      {open && pairing?.siblings && pairing.siblings.length > 0 && (
+        <section aria-label={t('docs.batchGroup', { n: pairing.siblings.length + 1 })} className="space-y-2 rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-100">
+          <p>{t('docs.siblingsInfo', { n: pairing.siblings.length })}</p>
+          {pairing.siblings.map(s => (
+            <div key={s.id} className="flex flex-wrap items-center gap-2">
+              <span className="max-w-[240px] truncate font-semibold" title={s.fileName}>{s.fileName}</span>
+              <a href={`/api/purchase-documents/${s.id}/file`} target="_blank" rel="noreferrer" className="rounded-lg border border-amber-700 px-2.5 py-1.5 text-xs font-semibold hover:bg-amber-900">{t('docs.pairOpenFile')}</a>
+              <button type="button" disabled={busy} onClick={() => { void pairSibling(s.id, true); }} className="rounded-lg border border-emerald-700 px-2.5 py-1.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-900 disabled:opacity-40">{t('docs.siblingIsReceipt')}</button>
+              <button type="button" disabled={busy} onClick={() => { void pairSibling(s.id, false); }} className="rounded-lg border border-slate-600 px-2.5 py-1.5 text-xs font-semibold text-slate-100 hover:bg-slate-800 disabled:opacity-40">{t('docs.siblingIsMain')}</button>
+            </div>
+          ))}
+        </section>
+      )}
+      {open && pairing?.note && <p role="note" className="rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-100">{pairing.note}</p>}
       {lowQuality && <p role="alert" className="rounded-xl border border-amber-700 bg-amber-950/40 p-3 text-sm font-semibold text-amber-200">{t('docs.blurry')}</p>}
       {preview && preview.warnings.length > 0 && (
         <div role="note" className="rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-100">
@@ -411,8 +517,76 @@ export function ReviewClient({ documentId, companyId, clients, accounts, stockIt
         </div>
       ) : null}
 
+      {open && preview && !xml && (
+        <section aria-label={t('docs.samePurchaseTitle')} className="space-y-2 rounded-xl border border-sky-800 bg-sky-950/30 p-3 text-sm text-sky-100">
+          {(() => {
+            const receiptDoc = preview.extracted.docKind === 'RECEIPT';
+            const invoiceDoc = preview.extracted.docKind === 'INVOICE';
+            const primary = 'rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-sky-500 disabled:opacity-40';
+            const secondary = 'rounded-lg border border-sky-700 px-3 py-1.5 text-xs font-semibold text-sky-100 hover:bg-sky-900/50 disabled:opacity-40';
+            const actions = (id: number, number: string, evidence: 'INVOICE' | 'RECEIPT' | null | undefined, promotable: boolean) => (
+              <div className="mt-1 flex flex-wrap gap-2">
+                <button type="button" disabled={busy} className={receiptDoc ? primary : secondary} onClick={() => { void attach(id, number, 'PAYMENT_RECEIPT'); }}>{t('docs.attachAsReceipt')}</button>
+                <button type="button" disabled={busy} className={secondary} onClick={() => { void attach(id, number, 'ATTACHMENT'); }}>{t('docs.attachAsAttachment')}</button>
+                {invoiceDoc && evidence === 'RECEIPT' && promotable && <button type="button" disabled={busy || issueCount > 0} className={primary} title={issueCount > 0 ? t('docs.unresolved', { count: issueCount }) : undefined} onClick={() => { void promote(id, number); }}>{t('docs.makePrimary')}</button>}
+              </div>
+            );
+            const hits = preview.duplicates.filter(d => d.kind === 'purchase');
+            const queued = preview.duplicates.filter(d => d.kind === 'document');
+            return (
+              <>
+                {hits.length > 0 && <strong>{t('docs.samePurchaseTitle')}</strong>}
+                {hits.length > 0 && <p className="text-xs text-sky-200">{t('docs.samePurchaseHint')}</p>}
+                {hits.map(d => (
+                  <div key={`p-${d.id}`} className="rounded-lg border border-sky-900 p-2">
+                    <span className="font-semibold">{d.number || `#${d.id}`}</span>{d.date ? ` · ${d.date}` : ''}{d.gross !== null ? ` · €${money(d.gross)}` : ''}{d.evidenceType ? ` · ${t(`docs.purchaseEvidence_${d.evidenceType}`)}` : ''}
+                    {actions(d.id, d.number || `#${d.id}`, d.evidenceType, Boolean(d.promotable))}
+                  </div>
+                ))}
+                {queued.length > 0 && <p className="text-xs text-sky-200">{t('docs.queueDuplicateNote')} {queued.map(d => <Link key={`q-${d.id}`} href={`/purchase-documents/${d.id}`} className="mr-2 underline">{t('docs.dupInQueue', { number: d.number || `#${d.id}` })}</Link>)}</p>}
+                <div>
+                  <button type="button" disabled={busy} className={secondary} onClick={() => { setSearchOpen(o => !o); if (!searchOpen && found === null) void searchPurchases(searchText); }}>{t('docs.attachManual')}</button>
+                </div>
+                {searchOpen && (
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-sky-200">{t('docs.attachSearchLabel')}
+                      <input value={searchText} onChange={e => { void searchPurchases(e.target.value); }} className={`${control} border-slate-700`} />
+                    </label>
+                    {found && found.length === 0 && <p className="text-xs text-sky-200">{t('docs.attachSearchNone')}</p>}
+                    {found?.map(p => (
+                      <div key={`s-${p.id}`} className="rounded-lg border border-sky-900 p-2">
+                        <span className="font-semibold">{p.number}</span> · {p.date} · {p.supplier || '—'} · €{money(p.gross)}{p.evidenceType ? ` · ${t(`docs.purchaseEvidence_${p.evidenceType}`)}` : ''}
+                        {actions(p.id, p.number, p.evidenceType, p.evidenceType === 'RECEIPT')}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </section>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="min-w-0 lg:sticky lg:top-4 lg:self-start"><OriginalViewer id={info.id} mimeType={info.mimeType} fileName={info.fileName} hasVisual={info.hasVisual} /></div>
+        <div className="min-w-0 space-y-2 lg:sticky lg:top-4 lg:self-start">
+          {(() => {
+            const others = [
+              ...(pairing?.receipt ? [{ id: pairing.receipt.id, fileName: pairing.receipt.fileName, mimeType: pairing.receipt.mimeType, label: t('docs.pairRoleReceipt') }] : []),
+              ...(pairing?.related ?? []).map(d => ({ id: d.id, fileName: d.fileName, mimeType: d.mimeType, label: d.role === 'PAYMENT_RECEIPT' ? t('docs.pairRoleReceipt') : d.role === 'ATTACHMENT' ? t('docs.roleAttachment') : t('docs.roleMain') })),
+              ...(pairing?.siblings ?? []).map(d => ({ id: d.id, fileName: d.fileName, mimeType: d.mimeType, label: t('docs.batchShort') })),
+            ];
+            const tabs = [{ id: info.id, fileName: info.fileName, mimeType: info.mimeType, label: t('docs.thisDocument') }, ...others.filter((d, i, all) => all.findIndex(x => x.id === d.id) === i)];
+            const current = tabs.find(d => d.id === shownId) ?? tabs[0];
+            return <>
+              {tabs.length > 1 && (
+                <div role="tablist" className="flex flex-wrap gap-1">
+                  {tabs.map(d => <button key={d.id} type="button" role="tab" aria-selected={d.id === current.id} onClick={() => setShownId(d.id)} title={d.fileName} className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${d.id === current.id ? 'border-emerald-600 bg-emerald-900/40 text-emerald-100' : 'border-slate-700 text-slate-300 hover:bg-slate-800'}`}>{d.label}: <span className="font-normal">{d.fileName}</span></button>)}
+                </div>
+              )}
+              <OriginalViewer key={current.id} id={current.id} mimeType={current.mimeType} fileName={current.fileName} hasVisual={current.id === info.id ? info.hasVisual : false} />
+            </>;
+          })()}
+        </div>
 
         <div className="space-y-4">
           {preview && !preview.recognized && open && (

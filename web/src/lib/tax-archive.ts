@@ -9,17 +9,20 @@ import { zipStream, type ZipSource } from './zip-stream';
 // "Archyvas patikrinimui": a ZIP of the stored originals of the purchases of a period, a register of them (CSV) and a README for the inspector.
 // Files are streamed from disk; only the register (one line per document) is built in memory.
 
+const ROLE_LABELS: Record<string, string> = { PRIMARY: 'pagrindinis dokumentas', PAYMENT_RECEIPT: 'mokėjimo kvitas', ATTACHMENT: 'priedas' };
+const ROLE_ORDER: Record<string, number> = { PRIMARY: 0, PAYMENT_RECEIPT: 1, ATTACHMENT: 2 };
+const ROLE_SUFFIX: Record<string, string> = { PAYMENT_RECEIPT: '_kvitas', ATTACHMENT: '_priedas' };
 export const MISSING_ORIGINAL = 'originalas nepateiktas';
 const MAX_PERIOD_DAYS = 366 * 5;
 
 export interface RegisterRow {
   date: string; supplier: string; supplierCode: string; supplierVatCode: string; document: string; net: number; vat: number; gross: number; currency: string;
-  evidence: string; taxCodes: string; debitAccount: string; paidBy: string; bankLink: string; originalName: string; sha256: string; zipFile: string;
+  evidence: string; role: string; taxCodes: string; debitAccount: string; paidBy: string; bankLink: string; originalName: string; sha256: string; zipFile: string;
   visualZipFile: string; visualSha256: string; uploadedAt: string; uploadedBy: string; confirmedBy: string; confirmedAt: string; note: string;
 }
 export const REGISTER_COLUMNS: [keyof RegisterRow, string][] = [
   ['date', 'Data'], ['supplier', 'Tiekėjas'], ['supplierCode', 'Tiekėjo kodas'], ['supplierVatCode', 'Tiekėjo PVM kodas'], ['document', 'Serija ir numeris'],
-  ['net', 'Suma be PVM'], ['vat', 'PVM'], ['gross', 'Suma su PVM'], ['currency', 'Valiuta'], ['evidence', 'Dokumento rūšis'], ['taxCodes', 'PVM kodai'],
+  ['net', 'Suma be PVM'], ['vat', 'PVM'], ['gross', 'Suma su PVM'], ['currency', 'Valiuta'], ['evidence', 'Dokumento rūšis'], ['role', 'Originalo paskirtis'], ['taxCodes', 'PVM kodai'],
   ['debitAccount', 'Debeto sąskaita'], ['paidBy', 'Apmokėjo'], ['bankLink', 'Banko ryšys'], ['originalName', 'Originalo failo pavadinimas'], ['sha256', 'SHA-256'],
   ['zipFile', 'Failas archyve'], ['visualZipFile', 'Vaizdinis PDF archyve'], ['visualSha256', 'Vaizdinio PDF SHA-256'], ['uploadedAt', 'Įkelta'], ['uploadedBy', 'Įkėlė'],
   ['confirmedBy', 'Patvirtino'], ['confirmedAt', 'Patvirtinta'], ['note', 'Pastaba'],
@@ -90,25 +93,28 @@ export function planTaxArchive(companyId: number, fromInput: unknown, toInput: u
       paidBy: p.paidBy === 'PERSON' ? `asmens lėšomis${p.paidByName ? `: ${p.paidByName}` : ''}` : p.paidBy === 'COMPANY' ? 'įmonė' : '', bankLink: (banks.get(p.id) || []).join(' | '),
     };
     const stem = `${p.purchaseDate.slice(0, 10)}_${slug(p.clientName || '', 40)}_${slug(documentNumber || `pirkimas${p.id}`, 40)}`;
-    const docs = docsByPurchase.get(p.id) || [];
+    // The main original first, then the payment receipt and attachments (a missing role is the main one).
+    const docs = (docsByPurchase.get(p.id) || []).sort((a, b) => ROLE_ORDER[a.role || 'PRIMARY'] - ROLE_ORDER[b.role || 'PRIMARY'] || a.id - b.id);
     if (!docs.length) {
       missing++;
-      register.push({ ...base, originalName: '', sha256: '', zipFile: '', visualZipFile: '', visualSha256: '', uploadedAt: '', uploadedBy: '', confirmedBy: '', confirmedAt: '', note: MISSING_ORIGINAL });
+      register.push({ ...base, role: '', originalName: '', sha256: '', zipFile: '', visualZipFile: '', visualSha256: '', uploadedAt: '', uploadedBy: '', confirmedBy: '', confirmedAt: '', note: MISSING_ORIGINAL });
       continue;
     }
     for (const d of docs) {
       const path = absolutePath(d.storagePath);
       const exists = ensureStoredFile(d.storagePath);
-      const zipFile = exists ? `originalai/${uniqueName(stem, extensionOf(d.storagePath))}` : '';
+      const role = d.role || 'PRIMARY';
+      const docStem = stem + (ROLE_SUFFIX[role] || '');
+      const zipFile = exists ? `originalai/${uniqueName(docStem, extensionOf(d.storagePath))}` : '';
       if (exists) files.push({ name: zipFile, path, modified: new Date(d.createdAt) });
       let visualZipFile = '';
       if (d.visualSha256) {
         const visualPath = absolutePath(visualStoragePath(d));
-        if (ensureStoredFile(visualStoragePath(d))) { visualZipFile = `originalai/${uniqueName(stem, 'pdf')}`; files.push({ name: visualZipFile, path: visualPath, modified: new Date(d.createdAt) }); }
+        if (ensureStoredFile(visualStoragePath(d))) { visualZipFile = `originalai/${uniqueName(docStem, 'pdf')}`; files.push({ name: visualZipFile, path: visualPath, modified: new Date(d.createdAt) }); }
       }
       if (!exists) missing++;
       register.push({
-        ...base, originalName: d.fileName, sha256: d.sha256, zipFile, visualZipFile, visualSha256: d.visualSha256 || '', uploadedAt: d.receivedAt,
+        ...base, role: ROLE_LABELS[role], originalName: d.fileName, sha256: d.sha256, zipFile, visualZipFile, visualSha256: d.visualSha256 || '', uploadedAt: d.receivedAt,
         uploadedBy: person(d.uploadedBy) || d.sender || (d.source === 'UPLOAD' ? 'įkelta programoje' : ''), confirmedBy: person(d.confirmedBy), confirmedAt: d.confirmedAt || '',
         note: exists ? '' : 'failas nerastas saugykloje',
       });
@@ -132,8 +138,8 @@ export function readmeText(plan: TaxArchivePlan, generatedAt: Date): string {
     `Registre įrašų: ${plan.register.length}; failų archyve: ${plan.files.length}; be originalo: ${plan.missing}`,
     '',
     'KAS YRA ARCHYVE',
-    '- registras.csv – pirkimų registras (vienas įrašas kiekvienam dokumentui; UTF-8, skirtukas „;“, atidaroma Excel). Stulpeliai: data, tiekėjas ir jo kodai, serija ir numeris, sumos, valiuta, dokumento rūšis, PVM kodai, debeto sąskaita, kas apmokėjo, banko ryšys, originalo failo pavadinimas, SHA-256, failas archyve, įkėlimo ir patvirtinimo duomenys.',
-    '- originalai/ – gauti dokumentai tokie, kokie buvo įkelti ar gauti (PDF, nuotraukos, XML e-sąskaitos). Failų pavadinimai: <data>_<tiekėjas>_<numeris>.<plėtinys>. XML e-sąskaitos vaizdinis PDF (jei buvo) yra atskiras failas tuo pačiu pavadinimu.',
+    '- registras.csv – pirkimų registras (vienas įrašas kiekvienam dokumentui; UTF-8, skirtukas „;“, atidaroma Excel). Stulpeliai: data, tiekėjas ir jo kodai, serija ir numeris, sumos, valiuta, dokumento rūšis, originalo paskirtis (pagrindinis dokumentas, mokėjimo kvitas ar priedas), PVM kodai, debeto sąskaita, kas apmokėjo, banko ryšys, originalo failo pavadinimas, SHA-256, failas archyve, įkėlimo ir patvirtinimo duomenys.',
+    '- originalai/ – gauti dokumentai tokie, kokie buvo įkelti ar gauti (PDF, nuotraukos, XML e-sąskaitos). Failų pavadinimai: <data>_<tiekėjas>_<numeris>.<plėtinys>; vienam pirkimui priklausantys mokėjimo kvitai ir priedai turi priesagą _kvitas arba _priedas. XML e-sąskaitos vaizdinis PDF (jei buvo) yra atskiras failas tuo pačiu pavadinimu.',
     `- Pirkimai, kuriems originalas nepateiktas (pvz., importuoti ar suvesti rankiniu būdu), registre pažymėti žodžiais „${MISSING_ORIGINAL}“.`,
     '',
     'KAIP PATIKRINTI, KAD FAILAI NEPAKEISTI',

@@ -45,7 +45,8 @@ function sameSupplier(a: Pick<DuplicateSubject, 'clientId' | 'supplierCode' | 's
 
 const rank = (h: DuplicateHit) => (h.strength === 'strong' ? 0 : 1);
 
-// Purchases already filed and other open documents of the queue (two photos of one receipt). `excludeDocumentId` is the document being reviewed.
+// Purchases already filed and other open documents of the queue (two photos of one receipt). `excludeDocumentId` is the document being reviewed;
+// the receipt paired with it (received together) is not its duplicate.
 export function findDuplicates(db: Database.Database, companyId: number, subject: DuplicateSubject, excludeDocumentId: number | null): DuplicateHit[] {
   const hits: DuplicateHit[] = [];
   if (!alnum(subject.supplierName) && subject.clientId === null && !alnum(subject.supplierCode) && !alnum(subject.supplierVatCode)) return hits;
@@ -63,7 +64,7 @@ export function findDuplicates(db: Database.Database, companyId: number, subject
     if (strength) hits.push({ kind: 'purchase', id: r.id, number: `${r.series}${r.number}`, date: r.date, gross: r.gross, strength });
   }
 
-  const queue = db.prepare("SELECT id, extractedJson FROM PurchaseDocument WHERE companyId=? AND status IN ('NEW','EXTRACTED','FAILED') AND extractedJson IS NOT NULL").all(companyId) as { id: number; extractedJson: string }[];
+  const queue = db.prepare("SELECT id, extractedJson FROM PurchaseDocument WHERE companyId=? AND status IN ('NEW','EXTRACTED','FAILED') AND extractedJson IS NOT NULL AND COALESCE(pairedWithId,0)<>COALESCE(?,-1)").all(companyId, excludeDocumentId) as { id: number; extractedJson: string }[];
   for (const d of queue) {
     if (d.id === excludeDocumentId) continue;
     let parsed;

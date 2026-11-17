@@ -2,9 +2,13 @@ import { NextResponse } from 'next/server';
 import { requireApiAccess, checkOrigin, currentUser, withCurrentActor } from '@/lib/access';
 import { apiError, assertFormCompany, currentErrorLang, HttpError, translateServerError } from '@/lib/errors';
 import { getActiveCompanyId } from '@/lib/company';
-import { confirmDocument, FieldErrorsError, type ConfirmInput } from '@/lib/purchase-recognition';
+import { FieldErrorsError, type ConfirmInput } from '@/lib/purchase-recognition';
+import { confirmDocumentWithPair } from '@/lib/purchase-document-pairing';
+import { promoteDocumentToPurchase } from '@/lib/purchase-document-attach';
 
 // body: the reviewed values (supplier, series, number, issueDate, lines with taxCode, totals, paidBy ...). Nothing is booked before this call.
+// { promote: true, intoPurchaseId }: the reviewed invoice becomes the main document of an existing receipt-based purchase (the purchase is updated, none is created).
+// `pairedReceipt` tells what happened to the receipt received together with the invoice (attached as the payment receipt, or left in the queue).
 // Invalid input answers 400 with { error, fields: { fieldName: message } }.
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -19,7 +23,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     assertFormCompany(formCompanyId, companyId);
     const user = await currentUser();
     try {
-      const result = await withCurrentActor(() => confirmDocument(companyId, id, user?.id ?? null, body as ConfirmInput));
+      const result = await withCurrentActor(() => (body.promote === true
+        ? promoteDocumentToPurchase(companyId, id, Number(body.intoPurchaseId), user?.id ?? null, body as ConfirmInput)
+        : confirmDocumentWithPair(companyId, id, user?.id ?? null, body as ConfirmInput)));
       return NextResponse.json({ success: true, ...result });
     } catch (error) {
       if (error instanceof FieldErrorsError) {

@@ -4,6 +4,7 @@ const invoices: Namespace = {
   lt: {
     copyInvoice: 'Kopijuoti sąskaitą', copyHint: 'Pažymėkite sąskaitą sąraše', selectCol: 'Pasirinkimas', selectRow: 'Pasirinkti sąskaitą',
     heading: 'Pardavimai / Sąskaitos faktūros',
+    inPeriod: 'Pasirinktame laikotarpyje: {count} sąskaitų.', periodShown: 'Rodomas laikotarpis: {from} – {to} (pagal sąskaitos datą).', periodShownAll: 'Rodomas visas laikas.',
     totalLabel: 'Sąskaitų sistemoje:',
     newInvoice: 'Išrašyti naują sąskaitą',
     searchPlaceholder: 'Paieška pagal numerį, seriją, klientą...',
@@ -88,6 +89,7 @@ const invoices: Namespace = {
   ru: {
     copyInvoice: 'Копировать счёт', copyHint: 'Отметьте счёт в списке', selectCol: 'Выбор', selectRow: 'Выбрать счёт',
     heading: 'Продажи / Счета-фактуры',
+    inPeriod: 'В выбранном периоде: {count} счетов.', periodShown: 'Показан период: {from} – {to} (по дате счёта).', periodShownAll: 'Показано всё время.',
     totalLabel: 'Счетов в системе:',
     newInvoice: 'Выписать новый счёт',
     searchPlaceholder: 'Поиск по номеру, серии, клиенту...',
@@ -172,6 +174,7 @@ const invoices: Namespace = {
   en: {
     copyInvoice: 'Copy invoice', copyHint: 'Select an invoice in the list', selectCol: 'Select', selectRow: 'Select invoice',
     heading: 'Sales / Invoices',
+    inPeriod: 'In the selected period: {count} invoices.', periodShown: 'Period shown: {from} – {to} (by invoice date).', periodShownAll: 'Showing all time.',
     totalLabel: 'Invoices in the system:',
     newInvoice: 'Issue new invoice',
     searchPlaceholder: 'Search by number, series, client...',

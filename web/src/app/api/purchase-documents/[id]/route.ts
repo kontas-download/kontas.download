@@ -3,6 +3,7 @@ import { requireApiAccess, checkOrigin } from '@/lib/access';
 import { apiError, HttpError } from '@/lib/errors';
 import { getActiveCompanyId } from '@/lib/company';
 import { localizePreview } from '@/lib/purchase-document-api';
+import { pairingOf } from '@/lib/purchase-document-pairing';
 import { deleteDocument, previewDocument } from '@/lib/purchase-recognition';
 
 type Context = { params: Promise<{ id: string }> };
@@ -23,7 +24,7 @@ export async function GET(request: Request, context: Context) {
     const original = new URL(request.url).searchParams.get('originalPurchaseId');
     const originalPurchaseId = original ? Number(original) : undefined;
     if (originalPurchaseId !== undefined && !Number.isSafeInteger(originalPurchaseId)) throw new HttpError(400, 'Neteisingas ID');
-    return NextResponse.json(await localizePreview(previewDocument(companyId, id, { originalPurchaseId })), { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ ...(await localizePreview(previewDocument(companyId, id, { originalPurchaseId }))), pairing: pairingOf(companyId, id) }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     return apiError(err);
   }

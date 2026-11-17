@@ -2,6 +2,8 @@ import type { Namespace } from './types';
 
 const purchases: Namespace = {
   lt: {
+    inPeriod: 'Pasirinktame laikotarpyje: {count} gautų pirkimo sąskaitų.',
+    periodShown: 'Rodomas laikotarpis: {from} – {to} (pagal pirkimo datą).', periodShownAll: 'Rodomas visas laikas.',
     title: 'Pirkimai ir sąnaudos', totalInSystem: 'Iš viso sistemoje: {count} gautų pirkimo sąskaitų.', addNew: 'Pridėti naują pirkimą',
     searchPlaceholder: 'Paieška pagal tiekėją, numerį, kodą...', series: 'Serija', allSeries: 'Visos serijos', filters: 'Filtrai', clearFilters: 'Išvalyti visus filtrus', reset: 'Atstatyti',
     dateFrom: 'Data nuo:', dateTo: 'Data iki:', sumFrom: 'Suma nuo (€):', sumTo: 'Suma iki (€):', found: 'Rasta įrašų: {shown} iš {total}',
@@ -24,6 +26,8 @@ const purchases: Namespace = {
     xmlCreditEffect: 'Poveikis: pirkimai sumažės {gross} € (be PVM {net} €, PVM {vat} €).', xmlCreditDeduct: 'Atskaitomo PVM atstatymas: {amount} € ({percent} %).', xmlCreditNoReview: 'Originalo PVM atskaita nebuvo peržiūrėta, todėl ji lieka neperžiūrėta.',
   },
   ru: {
+    inPeriod: 'В выбранном периоде: {count} полученных счетов на покупку.',
+    periodShown: 'Показан период: {from} – {to} (по дате покупки).', periodShownAll: 'Показано всё время.',
     title: 'Покупки и расходы', totalInSystem: 'Всего в системе: {count} полученных счетов на покупку.', addNew: 'Добавить новую покупку',
     searchPlaceholder: 'Поиск по поставщику, номеру, коду...', series: 'Серия', allSeries: 'Все серии', filters: 'Фильтры', clearFilters: 'Сбросить все фильтры', reset: 'Сбросить',
     dateFrom: 'Дата от:', dateTo: 'Дата до:', sumFrom: 'Сумма от (€):', sumTo: 'Сумма до (€):', found: 'Найдено записей: {shown} из {total}',
@@ -46,6 +50,8 @@ const purchases: Namespace = {
     xmlCreditEffect: 'Эффект: закупки уменьшатся на {gross} € (без PVM {net} €, PVM {vat} €).', xmlCreditDeduct: 'Сторно вычитаемого PVM: {amount} € ({percent} %).', xmlCreditNoReview: 'Вычет PVM по исходной закупке не рассматривался, он остаётся нерассмотренным.',
   },
   en: {
+    inPeriod: 'In the selected period: {count} received purchase invoices.',
+    periodShown: 'Period shown: {from} – {to} (by purchase date).', periodShownAll: 'Showing all time.',
     title: 'Purchases and expenses', totalInSystem: 'Total in the system: {count} received purchase invoices.', addNew: 'Add new purchase',
     searchPlaceholder: 'Search by supplier, number, code...', series: 'Series', allSeries: 'All series', filters: 'Filters', clearFilters: 'Clear all filters', reset: 'Reset',
     dateFrom: 'Date from:', dateTo: 'Date to:', sumFrom: 'Amount from (€):', sumTo: 'Amount to (€):', found: 'Records found: {shown} of {total}',

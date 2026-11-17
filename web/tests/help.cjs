@@ -106,3 +106,18 @@ test('help limitations, gpm313 and sales-invoices pages reflect current features
     assert.ok(invRules.includes('PVM15') && invRules.includes('PVM34'), `sales-invoices (${lang}) must mention reverse-charge codes PVM15 and PVM34`);
   }
 });
+
+test('document recognition help: the pairing section covers e-mail pairing and manual pairing in all languages', () => {
+  const page = helpPages.find(p => p.slug === 'document-recognition');
+  assert.ok(page);
+  const titles = { lt: 'Du dokumentai vienam pirkimui', ru: 'Два документа для одной покупки', en: 'Two documents for one purchase' };
+  const email = { lt: /viename el\. laiške/, ru: /в одном письме/, en: /in one e-mail/ };
+  const manual = { lt: /Rankinis sujungimas/, ru: /Ручное соединение/, en: /Pairing by hand/ };
+  for (const lang of LANGS) {
+    const section = page.text[lang].notes.find(s => s.title === titles[lang]);
+    assert.ok(section, `${lang}: section missing`);
+    const text = section.items.join('\n');
+    assert.match(text, email[lang], `${lang}: e-mail pairing paragraph`);
+    assert.match(text, manual[lang], `${lang}: manual pairing paragraph`);
+  }
+});

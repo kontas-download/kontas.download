@@ -7,7 +7,7 @@ import { askConfirm } from '@/components/ConfirmHost';
 import { waitingIds } from '@/lib/review-queue';
 
 export interface DocumentRow {
-  id: number; fileName: string; mimeType: string; source: 'UPLOAD' | 'EMAIL'; sender: string | null; receivedAt: string; status: string; error: string | null; purchaseId: number | null; costEur?: number | null;
+  id: number; fileName: string; mimeType: string; source: 'UPLOAD' | 'EMAIL'; sender: string | null; receivedAt: string; status: string; error: string | null; purchaseId: number | null; costEur?: number | null; pairNote?: string | null; pairedReceipt?: { id: number; fileName: string } | null; batchId?: string | null; pairedWithId?: number | null;
   summary: { supplier: string | null; number: string | null; issueDate: string | null; gross: number | null; docKind: string } | null;
 }
 const ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,application/xml,text/xml,.xml';
@@ -89,6 +89,8 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
     if (!files.length) return;
     setErrors([]);
     const problems: string[] = [];
+    // Files chosen together are one batch, so an invoice and its receipt can be paired.
+    const batchId = files.length > 1 ? `b${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}` : null;
     for (const file of files) {
       const uploading = t('docs.uploading', { name: file.name });
       const recognizing = t('docs.recognizing', { name: file.name });
@@ -96,6 +98,7 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
       const body = new FormData();
       body.append('file', file);
       body.append('companyId', String(companyId));
+      if (batchId) body.append('batchId', batchId);
       const res = await fetch('/api/purchase-documents', { method: 'POST', body });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -131,6 +134,26 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
     } finally { setBusyId(null); }
   }
 
+  // Open documents that are not paired with anything; those of one batch are shown as a group.
+  const isFree = (r: DocumentRow) => OPEN.includes(r.status) && !r.pairedReceipt && !r.pairedWithId;
+  const batchMembers = (r: DocumentRow) => (r.batchId ? rows.filter(x => x.batchId === r.batchId && isFree(x)) : []);
+  const [pairDialog, setPairDialog] = useState<{ row: DocumentRow; candidates: DocumentRow[]; batch: boolean } | null>(null);
+  const [otherId, setOtherId] = useState<number | null>(null);
+  const [thisIsMain, setThisIsMain] = useState(true);
+  function openPair(row: DocumentRow, batch: boolean) {
+    const candidates = batch ? batchMembers(row).filter(x => x.id !== row.id) : rows.filter(x => x.id !== row.id && isFree(x));
+    setOtherId(candidates.length === 1 ? candidates[0].id : null); setThisIsMain(true); setPairDialog({ row, candidates, batch });
+  }
+  async function confirmPair() {
+    if (!pairDialog || !otherId) return;
+    setBusyId(pairDialog.row.id); setErrors([]);
+    try {
+      const res = await fetch(`/api/purchase-documents/${pairDialog.row.id}/pair`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(thisIsMain ? { receiptId: otherId } : { invoiceId: otherId }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setErrors([data.error || t('common.error')]); return; }
+      setPairDialog(null); await load();
+    } finally { setBusyId(null); }
+  }
   const oldestWaiting = waitingIds(rows)[0];
   const visible = rows.filter(r => filter === 'ALL' || (filter === 'AWAITING' ? OPEN.includes(r.status) : r.status === filter));
   const btn = 'rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-40';
@@ -153,7 +176,7 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
 
       {!recognitionReady && (
         <div role="note" className="rounded-xl border border-amber-800 bg-amber-950/30 p-3 text-sm text-amber-200">
-          {t('docs.notReady')} <Link href="/settings/api" className="font-semibold underline">{t('docs.notReadyLink')}</Link>
+          {t('docs.notReady')} {t('docs.notReadyPair')} <Link href="/settings/api" className="font-semibold underline">{t('docs.notReadyLink')}</Link>
         </div>
       )}
 
@@ -193,15 +216,23 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60">
-            {visible.map(r => (
-              <tr key={r.id} className="hover:bg-slate-800/40">
-                <td className="p-3">
+            {visible.map(r => {
+              const group = batchMembers(r);
+              const grouped = group.length > 1;
+              return (
+              <tr key={r.id} className={`hover:bg-slate-800/40 ${grouped ? 'bg-amber-950/10' : ''}`}>
+                <td className={`p-3 ${grouped ? 'border-l-4 border-l-amber-600' : ''}`}>
                   <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold ${STATUS_STYLE[r.status] || ''}`}>{t(`docs.status_${r.status}`)}</span>
                   {r.error && <div className="mt-1 max-w-[220px] text-[11px] text-rose-300">{r.error}</div>}
                 </td>
                 <td className="p-3 whitespace-nowrap">{when(r.receivedAt)}</td>
                 <td className="p-3">{r.source === 'EMAIL' ? <>{t('docs.sourceEmail')}{r.sender && <div className="text-[11px] text-slate-400 truncate max-w-[180px]" title={r.sender}>{r.sender}</div>}</> : t('docs.sourceUpload')}</td>
-                <td className="p-3 max-w-[200px] truncate" title={r.fileName}>{r.fileName}</td>
+                <td className="p-3 max-w-[200px]">
+                  <div className="truncate" title={r.fileName}>{r.fileName}</div>
+                  {r.pairedReceipt && <div className="mt-1 inline-block rounded-full border border-emerald-800 bg-emerald-950 px-2 py-0.5 text-[10px] font-bold text-emerald-300" title={r.pairedReceipt.fileName}>{t('docs.pairBadge')}</div>}
+                  {r.pairNote && <div className="mt-1 whitespace-normal text-[11px] text-amber-300">{r.pairNote}</div>}
+                  {grouped && <div className="mt-1 whitespace-normal text-[11px] text-amber-300"><span className="inline-block rounded-full border border-amber-700 bg-amber-950 px-2 py-0.5 text-[10px] font-bold">{t('docs.batchGroup', { n: group.length })}</span> {t('docs.batchHint')}</div>}
+                </td>
                 <td className="p-3">{r.summary ? <>{r.summary.supplier || '—'}<div className="text-[11px] text-slate-400">{[r.summary.number, r.summary.issueDate].filter(Boolean).join(' · ')}</div></> : <span className="text-slate-500">—</span>}</td>
                 <td className="p-3 text-right font-mono">{r.summary?.gross != null ? `€${money(r.summary.gross)}` : '—'}</td>
                 <td className="p-3 text-right font-mono text-slate-400" title={t('docs.colCost')}>{r.costEur ? `€${r.costEur.toLocaleString(LOCALES[lang], { minimumFractionDigits: 2, maximumFractionDigits: 4 })}` : '—'}</td>
@@ -209,6 +240,8 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
                   <div className="flex flex-wrap items-center justify-center gap-1.5">
                     {OPEN.includes(r.status) && <Link href={`/purchase-documents/${r.id}`} className={`${btn} bg-emerald-700 border-emerald-600 text-white hover:bg-emerald-600`}>{t('docs.review')}</Link>}
                     {OPEN.includes(r.status) && recognitionReady && r.mimeType !== 'application/xml' && <button disabled={busyId === r.id} onClick={() => act(r, 'recognize')} className={btn}>{r.status === 'EXTRACTED' ? t('docs.recognizeAgain') : t('docs.recognize')}</button>}
+                    {grouped && <button disabled={busyId === r.id} onClick={() => openPair(r, true)} className={`${btn} border-amber-600 text-amber-200`}>{t('docs.pairAction')}</button>}
+                    {isFree(r) && <button disabled={busyId === r.id} onClick={() => openPair(r, false)} className={btn}>{t('docs.pairWith')}</button>}
                     {OPEN.includes(r.status) && <button disabled={busyId === r.id} onClick={() => act(r, 'reject')} className={btn}>{t('docs.reject')}</button>}
                     {r.status !== 'CONFIRMED' && <button disabled={busyId === r.id} onClick={() => act(r, 'delete')} className={`${btn} text-rose-300`}>{t('docs.delete')}</button>}
                     <a href={`/api/purchase-documents/${r.id}/file`} target="_blank" rel="noreferrer" className={btn}>{t('docs.original')}</a>
@@ -216,11 +249,47 @@ export function DocumentsClient({ companyId, recognitionReady, limitReached = fa
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
             {!visible.length && <tr><td colSpan={8} className="p-8 text-center text-slate-400">{loading ? t('common.loading') : t('docs.empty')}</td></tr>}
           </tbody>
         </table>
       </div>
+      {pairDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setPairDialog(null)}>
+          <div role="dialog" aria-modal="true" aria-label={t('docs.pairDialogTitle')} onClick={e => e.stopPropagation()} className="max-h-[90vh] w-full max-w-xl space-y-3 overflow-y-auto rounded-xl border border-slate-700 bg-slate-900 p-5 text-sm text-slate-200">
+            <h2 className="text-lg font-bold text-white">{t('docs.pairDialogTitle')}</h2>
+            <p className="text-slate-400">{t('docs.pairDialogIntro')}</p>
+            {[pairDialog.row, ...pairDialog.candidates].map(d => (
+              <div key={d.id} className="flex items-center gap-3 rounded-lg border border-slate-800 p-2">
+                {d.mimeType.startsWith('image/') && d.mimeType !== 'image/heic' && d.mimeType !== 'image/heif'
+                  // eslint-disable-next-line @next/next/no-img-element -- small preview of a stored original
+                  ? <img src={`/api/purchase-documents/${d.id}/file`} alt="" className="h-14 w-14 rounded object-cover" />
+                  : <span className="flex h-14 w-14 items-center justify-center rounded bg-slate-800 text-[10px] font-bold text-slate-400">{d.mimeType === 'application/pdf' ? 'PDF' : 'FILE'}</span>}
+                <span className="min-w-0 flex-1 truncate" title={d.fileName}>{d.fileName}</span>
+                <a href={`/api/purchase-documents/${d.id}/file`} target="_blank" rel="noreferrer" className={btn}>{t('docs.pairOpenFile')}</a>
+              </div>
+            ))}
+            {pairDialog.candidates.length === 0 && <p className="text-amber-300">{t('docs.pairNoOthers')}</p>}
+            {pairDialog.candidates.length > 1 && (
+              <fieldset className="space-y-1">
+                <legend className="font-semibold text-white">{t('docs.pairPickOther')}</legend>
+                {pairDialog.candidates.map(c => <label key={c.id} className="flex items-center gap-2"><input type="radio" name="pair-other" checked={otherId === c.id} onChange={() => setOtherId(c.id)} /> <span className="truncate">{c.fileName}</span></label>)}
+              </fieldset>
+            )}
+            {otherId && (
+              <fieldset className="space-y-1">
+                <label className="flex items-start gap-2"><input type="radio" name="pair-role" className="mt-1" checked={thisIsMain} onChange={() => setThisIsMain(true)} /> <span>{t('docs.pairOption', { invoice: pairDialog.row.fileName, receipt: pairDialog.candidates.find(c => c.id === otherId)?.fileName ?? '' })}</span></label>
+                <label className="flex items-start gap-2"><input type="radio" name="pair-role" className="mt-1" checked={!thisIsMain} onChange={() => setThisIsMain(false)} /> <span>{t('docs.pairOption', { invoice: pairDialog.candidates.find(c => c.id === otherId)?.fileName ?? '', receipt: pairDialog.row.fileName })}</span></label>
+              </fieldset>
+            )}
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setPairDialog(null)} className={btn}>{t('docs.pairCancel')}</button>
+              <button type="button" disabled={!otherId || busyId === pairDialog.row.id} onClick={() => { void confirmPair(); }} className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-40">{t('docs.pairConfirmBtn')}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {allowedNote && <p role="status" className="rounded-xl border border-emerald-800 bg-emerald-950/40 p-3 text-sm text-emerald-200">{allowedNote}</p>}
       {refused.length > 0 && (
         <section className="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-2" aria-label={t('docs.inboxSkippedTitle')}>

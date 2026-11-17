@@ -24,6 +24,8 @@ import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize,
 import { askConfirm } from '@/components/ConfirmHost';
 import { PurchaseBankMatches } from '@/components/PurchaseBankMatches';
 import Link from 'next/link';
+import { PeriodBar } from '@/components/PeriodBar';
+import type { ListPeriod } from '@/lib/list-period';
 import { displayPrice, editablePrice, lineSum, typedPrice } from '@/lib/line-price';
 
 // Own-funds payment, evidence type and cash receipt fields of a purchase (empty string = not set).
@@ -39,6 +41,7 @@ const itemGridCls = 'sm:grid-cols-[minmax(0,1fr)_5.5rem_7rem_5rem_6.5rem_2rem]';
 
 export function PurchasesClient({ 
   initialPurchases,
+  period,
   companyMode,
   accounts,
   warehouses,
@@ -49,6 +52,7 @@ export function PurchasesClient({
   catalog = []
 }: { 
   initialPurchases: any[];
+  period: ListPeriod;
   companyMode: string;
   accounts: { code: string; name: string }[];
   warehouses: string[];
@@ -324,7 +328,7 @@ export function PurchasesClient({
             <span>{t('purchases.title')}</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            {t('purchases.totalInSystem', { count: purchases.length })}
+            {t('purchases.inPeriod', { count: purchases.length })}
           </p>
         </div>
         <button
@@ -342,6 +346,8 @@ export function PurchasesClient({
       </div>
 
       <PurchaseXmlImport companyId={companyId} warehouses={warehouses} />
+
+      <PeriodBar period={period} basePath="/purchases" shown={period.from || period.to ? t('purchases.periodShown', { from: period.from ?? '…', to: period.to ?? '…' }) : t('purchases.periodShownAll')} />
 
       {/* Filter Bar */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
@@ -532,7 +538,7 @@ export function PurchasesClient({
                   </td>
                   <td className="py-2.5 px-3 text-center">
                     <div className="flex items-center justify-center gap-1">
-                      {p.documentId && <a href={`/api/purchase-documents/${p.documentId}/file`} target="_blank" rel="noreferrer" className="px-1.5 py-0.5 hover:bg-slate-800 rounded text-[10px] font-bold text-sky-300" title={t('docs.openOriginal')}>{t('docs.originalShort')}</a>}
+                      {(p.documents?.length ? p.documents : p.documentId ? [{ id: p.documentId, role: 'PRIMARY' }] : []).map((d: { id: number; role: string }, i: number) => <a key={d.id} href={`/api/purchase-documents/${d.id}/file`} target="_blank" rel="noreferrer" className="px-1.5 py-0.5 hover:bg-slate-800 rounded text-[10px] font-bold text-sky-300" title={`${t('docs.openOriginal')} · ${t(`docs.role_${d.role}`)}`}>{i === 0 ? t('docs.originalShort') : ''}{i === 0 && (p.documents?.length ?? 0) > 1 ? ' · ' : ''}{(p.documents?.length ?? 0) > 1 ? t(`docs.roleShort_${d.role}`) : ''}</a>)}
                       {p.docType !== 'KS' && p.paidBy !== 'PERSON' && (
                         <button
                           onClick={() => setBankOpenId(bankOpenId === p.id ? null : p.id)}
@@ -843,7 +849,7 @@ export function PurchasesClient({
                         <label className="block text-slate-300">{t('docs.reimbursedAt')}<input type="date" value={formData.reimbursedAt} onChange={e => setFormData({ ...formData, reimbursedAt: e.target.value })} className={`${fieldCls} mt-1`} /></label>
                       </>}
                     </div>
-                    {editingPurchase.documentId && <a href={`/api/purchase-documents/${editingPurchase.documentId}/file`} target="_blank" rel="noreferrer" className="inline-block text-xs font-semibold text-emerald-300 underline">{t('docs.openOriginal')}</a>}
+                    {(editingPurchase.documents?.length ? editingPurchase.documents : editingPurchase.documentId ? [{ id: editingPurchase.documentId, role: 'PRIMARY' }] : []).map((d: { id: number; role: string }) => <a key={d.id} href={`/api/purchase-documents/${d.id}/file`} target="_blank" rel="noreferrer" className="mr-3 inline-block text-xs font-semibold text-emerald-300 underline">{t('docs.openOriginal')} ({t(`docs.role_${d.role}`)})</a>)}
                   </section>
                 )}
 

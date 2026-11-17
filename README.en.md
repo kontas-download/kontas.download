@@ -11,7 +11,7 @@ The program is packaged to run in a Docker container (Next.js 16, React 19, Type
 ## Features
 
 - **Sales:** sales invoices (SF), credit notes (KS), recurring invoices.
-- **Purchases:** purchase documents, VAT (PVM) deduction, supplier credit notes, supplier e-invoice (UBL XML) import.
+- **Purchases:** purchase documents, VAT (PVM) deduction, supplier credit notes, supplier e-invoice (UBL XML) import. One purchase can have several originals (invoice and payment receipt); lists show the last 12 months by default with a period filter.
 - **Received documents:** purchase drafts from photos and PDFs (recognition always confirmed by a person; the recognition provider is selectable), intake by e-mail (in the cloud installation, directly to a per-company address) and a "Check mail now" button.
 - **PVM modes:** PVM payer, non-payer and SVS; the seller and the customer can be PVM payers independently of each other. The tax status of historical invoices is preserved.
 - **PDF and e-mail:** invoice PDF in the customer's language (Lithuanian, Russian or English); e-mail delivery through the seller company's own SMTP; archive of sent PDFs. The customer PDF contains no internal payment statuses or notes.

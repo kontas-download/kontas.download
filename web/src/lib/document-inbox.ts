@@ -3,6 +3,7 @@ import { getDb } from './db';
 import { HttpError } from './errors';
 import { encryptSecret, decryptSecret, validEmail } from './company-mail';
 import { detectMime, getRecognitionSettings, looksLikeUblInvoice, storeDocument } from './purchase-recognition';
+import { pairBatch } from './purchase-document-pairing';
 import { parseUblInvoice } from './ubl-invoice';
 import { classifySender, senderAllowed, senderContext, type SenderContext } from './document-inbox-senders';
 import { bodyText, originalSenderFromText } from './document-inbox-forward';
@@ -258,13 +259,16 @@ export async function processMessage(companyId: number, parsed: ParsedMail, meta
     if (same) { visualOf.set(x, same); taken.add(same); }
   }
   if (xmls.length === 1 && pdfs.length === 1 && !visualOf.size) { visualOf.set(xmls[0], pdfs[0]); taken.add(pdfs[0]); }
+  // Documents of one message belong together: the Message-ID (the R2 key for direct receiving) is their batch, so an invoice and its receipt can be paired.
+  const batchKey = origin === 'CLOUDFLARE' ? uidValidity : messageId ?? `${uidValidity}:${uid}`;
+  const batchId = entries.length - taken.size > 1 ? batchKey.slice(0, 500) : null;
   // XML first, so a PDF released by a failed XML is still visited.
   for (const entry of [...xmls, ...entries.filter(e => e.kind === 'doc')]) {
     if (taken.has(entry)) continue;
     if (++used > MAX_ATTACHMENTS) { detail.push(`Per daug priedų: apdorota tik pirmieji ${MAX_ATTACHMENTS}`); break; }
     const visual = visualOf.get(entry);
     try {
-      const row = storeDocument(companyId, { buffer: entry.content, fileName: entry.name, source: 'EMAIL', sender, originalSender: entry.original, ...(visual ? { visual: { buffer: visual.content, fileName: visual.name } } : {}) });
+      const row = storeDocument(companyId, { buffer: entry.content, fileName: entry.name, source: 'EMAIL', sender, originalSender: entry.original, batchId, ...(visual ? { visual: { buffer: visual.content, fileName: visual.name } } : {}) });
       stored++;
       if (visual && !row.visualSha256) detail.push(`Dublikatas: ${visual.name}`);
       // XML needs no recognition; the PDF/image documents are recognized when the company has it on.
@@ -277,6 +281,7 @@ export async function processMessage(companyId: number, parsed: ParsedMail, meta
       if (visual) { taken.delete(visual); }
     }
   }
+  if (batchId) pairBatch(companyId, batchId);
   const originals = [...new Set(entries.map(e => e.original).filter((a): a is string => Boolean(a)))];
   if (originals.length) detail.unshift(`Persiųsta: pradinis siuntėjas ${originals.join(', ')}`);
   if (stored) detail.unshift(`Išsaugota dokumentų: ${stored}`);

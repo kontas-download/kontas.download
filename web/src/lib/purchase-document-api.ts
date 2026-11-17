@@ -2,19 +2,19 @@ import { currentErrorLang, translateServerError } from './errors';
 
 // Server texts stored or produced in Lithuanian (recognition failures, warnings, field errors) are translated for the user's language
 // on the way out; the database keeps the Lithuanian source.
-export async function localizeDocuments<T extends { error?: string | null }>(rows: T[]): Promise<T[]> {
+export async function localizeDocuments<T extends { error?: string | null; pairNote?: string | null }>(rows: T[]): Promise<T[]> {
   const lang = await currentErrorLang();
-  return rows.map(row => (row.error ? { ...row, error: translateServerError(row.error, lang) } : row));
+  return rows.map(row => ({ ...row, ...(row.error ? { error: translateServerError(row.error, lang) } : {}), ...(row.pairNote ? { pairNote: translateServerError(row.pairNote, lang) } : {}) }));
 }
 
-export async function localizePreview<T extends { document: { error?: string | null }; warnings: string[]; missing: Record<string, string> }>(preview: T): Promise<T> {
+export async function localizePreview<T extends { document: { error?: string | null; pairNote?: string | null }; warnings: string[]; missing: Record<string, string> }>(preview: T): Promise<T> {
   const lang = await currentErrorLang();
   // XML e-invoice: the issues and warnings of the UBL preview are server texts as well.
   const xml = (preview as { xml?: { issues: string[]; warnings: string[] } }).xml;
   return {
     ...preview,
     ...(xml ? { xml: { ...xml, issues: xml.issues.map(i => translateServerError(i, lang)), warnings: xml.warnings.map(w => translateServerError(w, lang)) } } : {}),
-    document: preview.document.error ? { ...preview.document, error: translateServerError(preview.document.error, lang) } : preview.document,
+    document: { ...preview.document, ...(preview.document.error ? { error: translateServerError(preview.document.error, lang) } : {}), ...(preview.document.pairNote ? { pairNote: translateServerError(preview.document.pairNote, lang) } : {}) },
     warnings: preview.warnings.map(w => translateServerError(w, lang)),
     missing: Object.fromEntries(Object.entries(preview.missing).map(([k, v]) => [k, translateServerError(v, lang)])),
   };

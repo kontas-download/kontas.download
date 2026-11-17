@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3';
-import { companyTaxMode, purchaseDebitAccount, purchaseTax } from './tax';
+import { companyTaxMode, purchaseDebitAccount, purchaseTax, taxMode } from './tax';
 import { calculateLine, totalLines } from './money';
+import { restoreLineCodes, snapshotLineCodes } from './tax-line-codes';
 import { validateBody } from './validation';
 import { HttpError } from './errors';
 import { getDb } from './db';
@@ -68,4 +69,44 @@ export function createPurchase(companyId: number, body: any, options: { currency
   });
   const purchaseId = create();
   return { purchase: db.prepare('SELECT * FROM Purchase WHERE id = ?').get(purchaseId), items: db.prepare('SELECT * FROM PurchaseItem WHERE purchaseId=? ORDER BY id').all(purchaseId), purchaseId };
+}
+
+// Rewrites a purchase header and its lines in one transaction (ledger, period locks and stock rules are enforced by the database triggers).
+// Shared by the purchase API and by the promotion of a receipt-based purchase to an invoice. The historical VAT status of the buyer is kept.
+// `writeExtras` runs in the same transaction after the header update.
+export function updatePurchase(db: Database.Database, companyId: number, id: number, body: any, writeExtras?: () => void) {
+  const { series, number, purchaseDate, clientId, clientName, clientCode, notes, items = [] } = body;
+  const { sumWithoutVat, sumWithVat, vat } = totalLines(items);
+  const snapshot = db.prepare('SELECT buyerVatMode,deductionPercent,debitAccount,warehouseName FROM Purchase WHERE id=? AND companyId=?').get(id, companyId) as { buyerVatMode: string | null; deductionPercent: number | null; debitAccount: string | null; warehouseName: string | null };
+  const mode = snapshot.buyerVatMode ? taxMode(snapshot.buyerVatMode) : companyTaxMode(companyId, purchaseDate);
+  const { deductionPercent, deductibleVat } = purchaseTax(vat, mode, body.deductionPercent ?? snapshot.deductionPercent ?? undefined);
+  const debitAccount = body.debitAccount === undefined ? snapshot.debitAccount : purchaseDebitAccount(db, body.debitAccount);
+  const warehouseName = body.warehouseName === undefined ? snapshot.warehouseName : purchaseWarehouse(db, companyId, body.warehouseName);
+  let droppedTaxCodes: { itemName: string; taxCode: string }[] = [];
+  db.transaction(() => {
+    db.prepare(`
+      UPDATE Purchase SET
+        series = ?, number = ?, purchaseDate = ?, clientId = ?, clientName = ?, clientCode = ?,
+        sumWithoutVat = ?, vat = ?, sumWithVat = ?, notes = ?,
+        buyerVatMode = ?, deductionPercent = ?, deductibleVat = ?, debitAccount = ?, warehouseName = ?
+      WHERE id = ? AND companyId = ?
+    `).run(series || '', String(number).trim(), purchaseDate, clientId ? Number(clientId) : null, clientName || null, clientCode || null,
+      sumWithoutVat, vat, sumWithVat, notes || null, mode, deductionPercent, deductibleVat, debitAccount, warehouseName, id, companyId);
+    if (writeExtras) writeExtras();
+    // Replace items
+    const codesBefore = snapshotLineCodes(db, 'PURCHASE', id);
+    db.prepare('DELETE FROM PurchaseItem WHERE purchaseId = ?').run(id);
+    const insertItem = db.prepare(`
+      INSERT INTO PurchaseItem (
+        purchaseId, itemName, itemCode, quantity, price, sumWithoutVat, sumWithVat, vatRate
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    for (const it of items) {
+      const { qty, price, vatRate, lineNoVat, lineWithVat } = calculateLine(it);
+      insertItem.run(id, it.itemName || 'Prekė / Paslauga', it.itemCode || null, qty, price, lineNoVat, lineWithVat, vatRate);
+    }
+    // The accountant's i.SAF codes follow the lines; a code that fits no new line is reported and the document is marked for review.
+    droppedTaxCodes = restoreLineCodes(db, companyId, 'PURCHASE', id, codesBefore);
+  })();
+  return { droppedTaxCodes };
 }

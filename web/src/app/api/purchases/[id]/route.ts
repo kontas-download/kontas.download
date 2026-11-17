@@ -1,8 +1,6 @@
-import { purchaseWarehouse } from '@/lib/purchases';
+import { updatePurchase } from '@/lib/purchases';
 import { normalizePurchaseExtras, writePurchaseExtras } from '@/lib/purchase-recognition';
-import { companyTaxMode, purchaseDebitAccount, purchaseTax, taxMode } from '@/lib/tax';
-import { calculateLine, totalLines } from '@/lib/money';
-import { restoreLineCodes, snapshotLineCodes } from '@/lib/tax-line-codes';
+import { totalLines } from '@/lib/money';
 import { validateBody } from '@/lib/validation';
 import { requireApiAccess, checkOrigin, withCurrentActor } from '@/lib/access';
 import { apiError } from '@/lib/errors';
@@ -30,20 +28,11 @@ export async function PUT(
     if (locked.credited) return NextResponse.json({ error: 'Dokumentas turi kreditinių dokumentų: pirmiausia ištrinkite juos.' }, { status: 409 });
     const body = await request.json();
     validateBody(body, 'purchases', companyId);
-    const { 
-      series, 
-      number, 
-      purchaseDate, 
-      clientId, 
-      clientName, 
-      clientCode, 
-      notes, 
-      items = [] 
-    } = body;
+    const { items = [] } = body;
 
     const db = getDb();
 
-    const { sumWithoutVat, sumWithVat, vat } = totalLines(items);
+    const { sumWithVat } = totalLines(items);
     // Safety net: a form that lost the line prices (all zero) must never wipe out a stored amount.
     const stored = db.prepare('SELECT sumWithVat, sumWithoutVat FROM Purchase WHERE id=? AND companyId=?').get(id, companyId) as { sumWithVat: number; sumWithoutVat: number };
     const storedTotal = Math.max(Math.abs(Number(stored.sumWithVat) || 0), Math.abs(Number(stored.sumWithoutVat) || 0));
@@ -51,13 +40,6 @@ export async function PUT(
     if (storedTotal > 0.005 && (allZero || Math.abs(sumWithVat) < 0.005)) {
       return NextResponse.json({ error: 'Eilučių kainos nulinės, o dokumento suma nenulinė: išsaugojimas atmestas, kad suma nebūtų panaikinta. Patikrinkite eilučių kainas.' }, { status: 400 });
     }
-    const snapshot=db.prepare('SELECT buyerVatMode,deductionPercent,debitAccount,warehouseName FROM Purchase WHERE id=? AND companyId=?').get(id,companyId) as {buyerVatMode:string|null;deductionPercent:number|null;debitAccount:string|null;warehouseName:string|null};
-    const mode=snapshot.buyerVatMode?taxMode(snapshot.buyerVatMode):companyTaxMode(companyId,purchaseDate);
-    const {deductionPercent,deductibleVat}=purchaseTax(vat,mode,body.deductionPercent ?? snapshot.deductionPercent ?? undefined);
-    const debitAccount=body.debitAccount===undefined?snapshot.debitAccount:purchaseDebitAccount(db,body.debitAccount);
-    const warehouseName=body.warehouseName===undefined?snapshot.warehouseName:purchaseWarehouse(db,companyId,body.warehouseName);
-
-
     // Own-funds / receipt fields: only the keys present in the body change, the rest keep their stored values.
     const extraKeys = ['paidBy', 'paidByName', 'reimbursedAt', 'evidenceType', 'paymentMethod', 'cardLast4', 'cashRegisterNo', 'receiptNo', 'documentTime'];
     const extras = extraKeys.some(k => body[k] !== undefined)
@@ -71,67 +53,9 @@ export async function PUT(
       : null;
     if (extras instanceof NextResponse) return extras;
 
-    let droppedTaxCodes: { itemName: string; taxCode: string }[] = [];
-    const updateTx = db.transaction(() => {
-      db.prepare(`
-        UPDATE Purchase SET
-          series = ?,
-          number = ?,
-          purchaseDate = ?,
-          clientId = ?,
-          clientName = ?,
-          clientCode = ?,
-          sumWithoutVat = ?,
-          vat = ?,
-          sumWithVat = ?,
-          notes = ?,
-          buyerVatMode = ?, deductionPercent = ?, deductibleVat = ?, debitAccount = ?, warehouseName = ?
-        WHERE id = ? AND companyId = ?
-      `).run(
-        series || '',
-        String(number).trim(),
-        purchaseDate,
-        clientId ? Number(clientId) : null,
-        clientName || null,
-        clientCode || null,
-        sumWithoutVat,
-        vat,
-        sumWithVat,
-        notes || null,
-        mode, deductionPercent, deductibleVat, debitAccount, warehouseName,
-        id,
-        companyId
-      );
+    const updateTx = () => updatePurchase(db, companyId, id, body, extras ? () => writePurchaseExtras(db, companyId, id, extras) : undefined);
 
-      if (extras) writePurchaseExtras(db, companyId, id, extras);
-      // Replace items
-      const codesBefore = snapshotLineCodes(db, 'PURCHASE', id);
-      db.prepare('DELETE FROM PurchaseItem WHERE purchaseId = ?').run(id);
-
-      const insertItem = db.prepare(`
-        INSERT INTO PurchaseItem (
-          purchaseId, itemName, itemCode, quantity, price, sumWithoutVat, sumWithVat, vatRate
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      for (const it of items) {
-        const { qty, price, vatRate, lineNoVat, lineWithVat } = calculateLine(it);
-        insertItem.run(
-          id,
-          it.itemName || 'Prekė / Paslauga',
-          it.itemCode || null,
-          qty,
-          price,
-          lineNoVat,
-          lineWithVat,
-          vatRate
-        );
-      }
-      // The accountant's i.SAF codes follow the lines; a code that fits no new line is reported and the document is marked for review.
-      droppedTaxCodes = restoreLineCodes(db, companyId, 'PURCHASE', id, codesBefore);
-    });
-
-    await withCurrentActor(updateTx);
+    const { droppedTaxCodes } = await withCurrentActor(updateTx);
     const updated = db.prepare('SELECT * FROM Purchase WHERE id = ? AND companyId = ?').get(id, companyId);
     return NextResponse.json({ success: true, purchase: updated, items:db.prepare('SELECT * FROM PurchaseItem WHERE purchaseId=? ORDER BY id').all(id), droppedTaxCodes });
   } catch (err: any) {

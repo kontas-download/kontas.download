@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* The data folder (SQLite database and its -shm/-wal files, document originals) is not source: scanning it makes the dev
+   build fail on the locked dev.db-shm file and slows every build. */
+@source not "../../prisma";
 
 :root {
   --background: #181818;

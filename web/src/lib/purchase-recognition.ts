@@ -1,3 +1,4 @@
+import { normalizeTimeOfDay } from './time-of-day';
 import { createHash } from 'node:crypto';
 import { domesticTaxCode } from './isaf';
 import fs from 'node:fs';
@@ -34,7 +35,12 @@ export interface PurchaseDocumentRow {
   source: 'UPLOAD' | 'EMAIL'; sender: string | null; receivedAt: string; status: DocumentStatus; extractedJson: string | null; error: string | null;
   model: string | null; createdAt: string; confirmedAt: string | null; confirmedBy: number | null; accountSource: AccountSource | null;
   visualName: string | null; visualSha256: string | null; uploadedBy: number | null; originalSender: string | null;
+  // Place among the documents of one purchase; null = PRIMARY (existing rows).
+  role: DocumentRole | null;
+  // Documents that arrived together share a batchId; pairedWithId (on the receipt) points to the invoice it is paired with.
+  batchId: string | null; pairedWithId: number | null; pairNote: string | null; pairManual: number | null;
 }
+export type DocumentRole = 'PRIMARY' | 'PAYMENT_RECEIPT' | 'ATTACHMENT';
 // Field name -> Lithuanian message. Keys: 'supplier.name', 'issueDate', 'number', 'lines.0.taxCode', 'totals.gross', ...
 export type FieldErrors = Record<string, string>;
 export class FieldErrorsError extends HttpError {
@@ -44,7 +50,7 @@ export class FieldErrorsError extends HttpError {
 const MAX_SIZE = 20 * 1024 * 1024;
 export const XML_MIME = 'application/xml';
 const EXTENSIONS: Record<string, string> = { 'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', [XML_MIME]: 'xml' };
-const NOT_FINAL = ['NEW', 'EXTRACTED', 'FAILED'];
+export const NOT_FINAL = ['NEW', 'EXTRACTED', 'FAILED'];
 
 // ---------- settings ----------
 
@@ -194,7 +200,7 @@ export function detectMime(buffer: Buffer): string | null {
   return null;
 }
 // `visual`: the PDF of the same invoice received beside an XML e-invoice, kept as its visual original (not a queue item of its own).
-export function storeDocument(companyId: number, input: { buffer: Buffer; fileName: string; mimeType?: string; source?: 'UPLOAD' | 'EMAIL'; sender?: string | null; originalSender?: string | null; visual?: { buffer: Buffer; fileName: string } }): PurchaseDocumentRow {
+export function storeDocument(companyId: number, input: { buffer: Buffer; fileName: string; mimeType?: string; source?: 'UPLOAD' | 'EMAIL'; sender?: string | null; originalSender?: string | null; batchId?: string | null; visual?: { buffer: Buffer; fileName: string } }): PurchaseDocumentRow {
   const db = getDb();
   const { buffer } = input;
   if (!buffer.length) throw new HttpError(400, 'Failas tuščias');
@@ -227,8 +233,8 @@ export function storeDocument(companyId: number, input: { buffer: Buffer; fileNa
     remotePut(storagePath, buffer);
     if (visual) remotePut(`${companyId}/${new Date().getUTCFullYear()}/${visual.sha}.pdf`, visual.buffer);
     // An XML e-invoice needs no recognition: its data is read from the file, so it waits in the queue as EXTRACTED.
-    const res = db.prepare('INSERT INTO PurchaseDocument(companyId,fileName,mimeType,size,sha256,storagePath,source,sender,originalSender,status,visualName,visualSha256,uploadedBy) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
-      .run(companyId, (path.basename(input.fileName || 'dokumentas') || 'dokumentas').slice(0, 200), detected, buffer.length, sha256, storagePath, source, input.sender ? String(input.sender).slice(0, 254) : null, input.originalSender ? String(input.originalSender).slice(0, 254).toLowerCase() : null, detected === XML_MIME ? 'EXTRACTED' : 'NEW', visual?.name ?? null, visual?.sha ?? null, currentActorId(db));
+    const res = db.prepare('INSERT INTO PurchaseDocument(companyId,fileName,mimeType,size,sha256,storagePath,source,sender,originalSender,status,visualName,visualSha256,uploadedBy,batchId) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+      .run(companyId, (path.basename(input.fileName || 'dokumentas') || 'dokumentas').slice(0, 200), detected, buffer.length, sha256, storagePath, source, input.sender ? String(input.sender).slice(0, 254) : null, input.originalSender ? String(input.originalSender).slice(0, 254).toLowerCase() : null, detected === XML_MIME ? 'EXTRACTED' : 'NEW', visual?.name ?? null, visual?.sha ?? null, currentActorId(db), input.batchId ? String(input.batchId).slice(0, 500) : null);
     return getDocument(companyId, Number(res.lastInsertRowid));
   } catch (error) {
     if (created) fs.rmSync(full, { force: true });
@@ -287,7 +293,7 @@ export async function preparedImage(companyId: number, id: number): Promise<{ ro
 }
 
 // Row for clients: no server file path and no raw extraction.
-function publicRow(row: PurchaseDocumentRow, costEur?: number | null) {
+export function publicRow(row: PurchaseDocumentRow, costEur?: number | null) {
   const cost = costEur !== undefined ? costEur : documentCosts(row.companyId, [row.id]).get(row.id) ?? null;
   const copy: Partial<PurchaseDocumentRow> = { ...row };
   delete copy.storagePath;
@@ -296,12 +302,16 @@ function publicRow(row: PurchaseDocumentRow, costEur?: number | null) {
   return { ...copy, hasVisual: Boolean(row.visualSha256), costEur: cost };
 }
 
+// A receipt paired with an invoice is shown under that invoice, not as an item of its own, while it still waits.
+const NOT_PAIRED_WAITING = "NOT (pairedWithId IS NOT NULL AND status IN ('NEW','EXTRACTED','FAILED'))";
 export function listDocuments(companyId: number, status?: string) {
   const rows = (status
-    ? getDb().prepare('SELECT * FROM PurchaseDocument WHERE companyId=? AND status=? ORDER BY id DESC LIMIT 500').all(companyId, status)
-    : getDb().prepare('SELECT * FROM PurchaseDocument WHERE companyId=? ORDER BY id DESC LIMIT 500').all(companyId)) as PurchaseDocumentRow[];
+    ? getDb().prepare(`SELECT * FROM PurchaseDocument WHERE companyId=? AND status=? AND ${NOT_PAIRED_WAITING} ORDER BY id DESC LIMIT 500`).all(companyId, status)
+    : getDb().prepare(`SELECT * FROM PurchaseDocument WHERE companyId=? AND ${NOT_PAIRED_WAITING} ORDER BY id DESC LIMIT 500`).all(companyId)) as PurchaseDocumentRow[];
   const costs = documentCosts(companyId);
-  return rows.map(row => ({ ...publicRow(row, costs.get(row.id) ?? null), summary: documentSummary(row) }));
+  const receipts = new Map<number, { id: number; fileName: string }>();
+  for (const r of getDb().prepare("SELECT id, fileName, pairedWithId FROM PurchaseDocument WHERE companyId=? AND pairedWithId IS NOT NULL AND status IN ('NEW','EXTRACTED','FAILED')").all(companyId) as { id: number; fileName: string; pairedWithId: number }[]) receipts.set(r.pairedWithId, { id: r.id, fileName: r.fileName });
+  return rows.map(row => ({ ...publicRow(row, costs.get(row.id) ?? null), summary: documentSummary(row), pairedReceipt: receipts.get(row.id) ?? null }));
 }
 
 // Supplier, number, date and total of the extraction, for the inbox list (null until the document is recognized).
@@ -320,13 +330,14 @@ function documentSummary(row: PurchaseDocumentRow) {
 // Counts for the inbox badge; `awaiting` = documents that still need a person (NEW, EXTRACTED, FAILED).
 export function documentCounts(companyId: number) {
   const counts: Record<DocumentStatus, number> = { NEW: 0, EXTRACTED: 0, FAILED: 0, CONFIRMED: 0, REJECTED: 0 };
-  for (const r of getDb().prepare('SELECT status, COUNT(*) AS n FROM PurchaseDocument WHERE companyId=? GROUP BY status').all(companyId) as { status: DocumentStatus; n: number }[]) counts[r.status] = r.n;
+  for (const r of getDb().prepare(`SELECT status, COUNT(*) AS n FROM PurchaseDocument WHERE companyId=? AND ${NOT_PAIRED_WAITING} GROUP BY status`).all(companyId) as { status: DocumentStatus; n: number }[]) counts[r.status] = r.n;
   return { ...counts, awaiting: counts.NEW + counts.EXTRACTED + counts.FAILED };
 }
 
 export function deleteDocument(companyId: number, id: number) {
   const row = getDocument(companyId, id);
   if (row.status === 'CONFIRMED' || row.purchaseId) throw new HttpError(409, 'Patvirtinto dokumento originalo ištrinti negalima: jis saugomas kaip pirkimo įrodymas.');
+  getDb().prepare('UPDATE PurchaseDocument SET pairedWithId=NULL WHERE pairedWithId=? AND companyId=?').run(id, companyId); // a paired receipt returns to the queue
   getDb().prepare('DELETE FROM PurchaseDocument WHERE id=? AND companyId=?').run(id, companyId);
   fs.rmSync(absolutePath(row.storagePath), { force: true });
   if (isImageDocument(row)) fs.rmSync(absolutePath(preparedStoragePath(row)), { force: true });
@@ -341,6 +352,7 @@ export function rejectDocument(companyId: number, id: number) {
   const row = getDocument(companyId, id);
   if (!NOT_FINAL.includes(row.status)) throw new HttpError(409, 'Šio dokumento būsenos pakeisti negalima');
   getDb().prepare("UPDATE PurchaseDocument SET status='REJECTED' WHERE id=?").run(id);
+  getDb().prepare('UPDATE PurchaseDocument SET pairedWithId=NULL WHERE pairedWithId=? AND companyId=?').run(id, companyId); // a paired receipt returns to the queue
   return publicRow(getDocument(companyId, id));
 }
 
@@ -410,7 +422,7 @@ export function supplierAccountHistory(db: Database.Database, companyId: number,
 
 // Audit value stored at confirmation. The client only claims a source; the server accepts HISTORY/MODEL when the value really matches
 // the supplier's latest purchase / the validated suggestion, and records everything else that is non-empty as USER.
-function resolveAccountSource(db: Database.Database, companyId: number, clientId: number | null, account: string | null, claimed: unknown, extracted: RecognizedDocument | null): AccountSource | null {
+export function resolveAccountSource(db: Database.Database, companyId: number, clientId: number | null, account: string | null, claimed: unknown, extracted: RecognizedDocument | null): AccountSource | null {
   if (!account) return null;
   if (claimed === 'HISTORY' && supplierAccountHistory(db, companyId, clientId)?.account === account) return 'HISTORY';
   if (claimed === 'MODEL' && sanitizeSuggestedAccount(db, extracted?.suggestedAccount)?.code === account) return 'MODEL';
@@ -450,8 +462,9 @@ export function normalizePurchaseExtras(input: Record<string, unknown>): { value
   if (paymentMethod !== null && !['CARD', 'CASH', 'TRANSFER', 'OTHER'].includes(paymentMethod as string)) errors.paymentMethod = 'Neteisingas mokėjimo būdas';
   const cardLast4 = empty(input.cardLast4) ? null : String(input.cardLast4).trim();
   if (cardLast4 !== null && (!/^\d{4}$/.test(cardLast4) || paymentMethod !== 'CARD')) errors.cardLast4 = 'Kortelės paskutiniai 4 skaitmenys nurodomi tik mokant kortele';
-  const documentTime = empty(input.documentTime) ? null : String(input.documentTime).trim();
-  if (documentTime !== null && !/^([01]\d|2[0-3]):[0-5]\d$/.test(documentTime)) errors.documentTime = 'Laikas turi būti HH:MM';
+  const rawTime = empty(input.documentTime) ? null : String(input.documentTime).trim();
+  const documentTime = rawTime === null ? null : normalizeTimeOfDay(rawTime);
+  if (rawTime !== null && documentTime === null) errors.documentTime = 'Laikas turi būti HH:MM arba HH:MM:SS';
   return {
     errors,
     values: {
@@ -504,7 +517,7 @@ export interface ConfirmInput {
   docKind?: unknown; credit?: { originalPurchaseId?: unknown } | null;
   [extra: string]: unknown;
 }
-interface Normalized {
+export interface Normalized {
   clientId: number | null; supplier: { name: string; code: string; vatCode: string; address: string };
   body: { series: string; number: string; [key: string]: unknown }; taxCodes: string[]; extras: PurchaseExtras; declaredGross: number;
   stockCreates: { name: string; code: string; warehouseName: string }[]; assets: AssetRequest[];
@@ -525,7 +538,7 @@ function creditAmounts(input: ConfirmInput): ConfirmInput {
   };
 }
 
-function validateEdit(db: Database.Database, companyId: number, rawInput: ConfirmInput, extracted: RecognizedDocument | null): { errors: FieldErrors; normalized: Normalized | null } {
+export function validateEdit(db: Database.Database, companyId: number, rawInput: ConfirmInput, extracted: RecognizedDocument | null): { errors: FieldErrors; normalized: Normalized | null } {
   const errors: FieldErrors = {};
   const isCredit = rawInput.docKind === 'CREDIT_NOTE' || (rawInput.docKind === undefined && extracted?.docKind === 'CREDIT_NOTE');
   const input = isCredit ? creditAmounts(rawInput) : rawInput;
@@ -702,11 +715,11 @@ function validateEdit(db: Database.Database, companyId: number, rawInput: Confir
   };
 }
 
-const duplicateSql = "SELECT id FROM Purchase WHERE companyId=? AND number=? AND COALESCE(series,'')=? AND (clientId=? OR (clientId IS NULL AND clientName=?)) LIMIT 1";
+export const duplicateSql = "SELECT id FROM Purchase WHERE companyId=? AND number=? AND COALESCE(series,'')=? AND (clientId=? OR (clientId IS NULL AND clientName=?)) LIMIT 1";
 
 // ---------- preview ----------
 
-function parseExtracted(row: PurchaseDocumentRow): RecognizedDocument | null {
+export function parseExtracted(row: PurchaseDocumentRow): RecognizedDocument | null {
   if (!row.extractedJson) return null;
   const parsed = RecognizedDocumentSchema.safeParse(JSON.parse(row.extractedJson));
   return parsed.success ? parsed.data : null;
@@ -744,7 +757,7 @@ function emptyPreview(db: Database.Database, companyId: number, row: PurchaseDoc
     recognized: false, draft, missing, warnings: [] as string[],
     supplier: { clientId: null as number | null, name: null as string | null, code: null as string | null, vatCode: null as string | null },
     supplierFromEmail: null as string | null, rule: null as ReturnType<typeof ruleSummary>,
-    needsSupplier: true, buyerMatches: null as boolean | null, duplicatePurchaseId: null as number | null, duplicates: [] as DuplicateHit[],
+    needsSupplier: true, buyerMatches: null as boolean | null, duplicatePurchaseId: null as number | null, duplicates: [] as AnnotatedDuplicate[],
     suggestedEvidenceType: 'INVOICE' as const, suggestedDeductionPercent: null as number | null, companyVatPayer,
     suggestions: { debitAccount: null as string | null, debitAccountFromPurchaseId: null as number | null, accountHistory: null as AccountHistory | null, modelAccount: null as { code: string; reason: string } | null, lineTaxCodes: [] as (string | null)[] },
     ...reviewExtras(db, companyId, []),
@@ -797,6 +810,17 @@ function documentSenders(db: Database.Database, companyId: number, row: Purchase
   return out;
 }
 
+// What the review screen may offer for a duplicate that is an existing purchase: attach this document to it, or (this one is an invoice
+// and the purchase was made from a receipt) make this document the main one.
+export interface AnnotatedDuplicate extends DuplicateHit { evidenceType?: 'INVOICE' | 'RECEIPT' | null; promotable?: boolean; documentCount?: number }
+function annotateDuplicate(db: Database.Database, companyId: number, hit: DuplicateHit, docKind: string): AnnotatedDuplicate {
+  if (hit.kind !== 'purchase') return hit;
+  const p = db.prepare("SELECT evidenceType, docType, EXISTS(SELECT 1 FROM Purchase c WHERE c.originalPurchaseId=Purchase.id) AS credited, (SELECT COUNT(*) FROM PurchaseDocument d WHERE d.purchaseId=Purchase.id) AS documentCount FROM Purchase WHERE id=? AND companyId=?")
+    .get(hit.id, companyId) as { evidenceType: 'INVOICE' | 'RECEIPT' | null; docType: string | null; credited: number; documentCount: number } | undefined;
+  if (!p) return hit;
+  return { ...hit, evidenceType: p.evidenceType, documentCount: p.documentCount, promotable: docKind === 'INVOICE' && p.evidenceType === 'RECEIPT' && (p.docType ?? 'SF') === 'SF' && !p.credited };
+}
+
 export function previewDocument(companyId: number, id: number, options: { originalPurchaseId?: number } = {}) {
   const db = getDb();
   const row = getDocument(companyId, id);
@@ -835,7 +859,7 @@ export function previewDocument(companyId: number, id: number, options: { origin
   const duplicates = findDuplicates(db, companyId, {
     clientId: supplierId, supplierCode: x.supplier.code || '', supplierVatCode: x.supplier.vatCode || '', supplierName: x.supplier.name || '',
     series, number, receiptNo: x.receipt?.receiptNo?.trim() || '', cashRegisterNo: x.receipt?.cashRegisterNo?.trim() || '', date: x.issueDate || '', gross: x.totals.gross,
-  }, id);
+  }, id).map(hit => annotateDuplicate(db, companyId, hit, x.docKind));
 
   // Arithmetic checks, tolerance 0.01.
   const sum = (f: 'net' | 'vat' | 'gross') => x.lines.reduce((a, l) => a + (l[f] ?? 0), 0);

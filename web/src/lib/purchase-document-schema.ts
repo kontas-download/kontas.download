@@ -131,4 +131,30 @@ export function migratePurchaseDocuments(db: Database.Database) {
     if (!usage.has('provider')) db.exec("ALTER TABLE RecognitionUsage ADD COLUMN provider TEXT NOT NULL DEFAULT 'PRIMARY'");
     db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-purchase-documents-v8');
   })();
+  // One purchase may have several source documents: the main one (an invoice, or the first receipt), a payment receipt and attachments.
+  // NULL = PRIMARY, so existing rows keep their meaning.
+  db.transaction(() => {
+    if (db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-11-purchase-documents-v9')) return;
+    const have = new Set((db.prepare('PRAGMA table_info(PurchaseDocument)').all() as { name: string }[]).map(c => c.name));
+    if (!have.has('role')) db.exec("ALTER TABLE PurchaseDocument ADD COLUMN role TEXT CHECK(role IN ('PRIMARY','PAYMENT_RECEIPT','ATTACHMENT'))");
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-purchase-documents-v9');
+  })();
+  // Documents that arrived together (one e-mail, one upload with several files) share a batchId; an invoice and a receipt of one batch can be
+  // paired: the receipt row then points to its invoice (pairedWithId) and stays out of the awaiting list until the pair is confirmed or split.
+  db.transaction(() => {
+    if (db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-11-purchase-documents-v10')) return;
+    const have = new Set((db.prepare('PRAGMA table_info(PurchaseDocument)').all() as { name: string }[]).map(c => c.name));
+    if (!have.has('batchId')) db.exec('ALTER TABLE PurchaseDocument ADD COLUMN batchId TEXT');
+    if (!have.has('pairedWithId')) db.exec('ALTER TABLE PurchaseDocument ADD COLUMN pairedWithId INTEGER REFERENCES PurchaseDocument(id) ON DELETE SET NULL');
+    if (!have.has('pairNote')) db.exec('ALTER TABLE PurchaseDocument ADD COLUMN pairNote TEXT');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_purchase_document_batch ON PurchaseDocument(companyId,batchId)');
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-purchase-documents-v10');
+  })();
+  // A pair made by the person (not by the recognition rule) is marked: its receipt is attached on confirm without an amount comparison.
+  db.transaction(() => {
+    if (db.prepare('SELECT version FROM AppMigration WHERE version=?').get('2026-11-purchase-documents-v11')) return;
+    const have = new Set((db.prepare('PRAGMA table_info(PurchaseDocument)').all() as { name: string }[]).map(c => c.name));
+    if (!have.has('pairManual')) db.exec('ALTER TABLE PurchaseDocument ADD COLUMN pairManual INTEGER');
+    db.prepare("INSERT INTO AppMigration VALUES(?,datetime('now'))").run('2026-11-purchase-documents-v11');
+  })();
 }

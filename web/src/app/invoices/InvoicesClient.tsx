@@ -27,6 +27,9 @@ import { findCatalogItem, type CatalogItem } from '@/lib/item-catalog';
 import { LOCALES } from '@/lib/i18n/config';
 import { SortableTh, compareValues, TablePagination, SortDirection, usePageSize, downloadCsv } from '@/components/TableSort';
 import { askConfirm } from '@/components/ConfirmHost';
+import { PeriodBar } from '@/components/PeriodBar';
+import type { ListPeriod } from '@/lib/list-period';
+import { nextCreditNumber as creditNumberFor, nextInvoiceNumber, type NumberBase } from '@/lib/sale-numbers';
 
 interface InvoiceItem {
   id?: number;
@@ -43,6 +46,8 @@ interface InvoiceItem {
 
 export function InvoicesClient({ 
   initialSales, 
+  period,
+  numberBase,
   itemsBySaleId,
   company,
   clientsList = [],
@@ -50,6 +55,9 @@ export function InvoicesClient({
   suggest = {}
 }: { 
   initialSales: any[];
+  period: ListPeriod;
+  // Highest numbers over all of the company's sales: the list holds only the chosen period.
+  numberBase: NumberBase;
   itemsBySaleId: Record<number, any[]>;
   company?: any;
   clientsList?: any[];
@@ -87,10 +95,7 @@ export function InvoicesClient({
   const [printModalSale, setPrintModalSale] = useState<any | null>(null);
 
   const [creditSale, setCreditSale] = useState<any | null>(null);
-  const nextCreditNumber = () => {
-    const used = sales.filter(s => s.docType === 'KS').map(s => parseInt(String(s.number).replace(/\D/g, ''), 10)).filter(n => !isNaN(n));
-    return String((used.length ? Math.max(...used) : 0) + 1).padStart(6, '0');
-  };
+  const nextCreditNumber = () => creditNumberFor(numberBase, sales);
   const [emailClientId, setEmailClientId] = useState<number | null>(null);
   const [emailInvoice, setEmailInvoice] = useState<any | null>(null);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- read the URL after hydration
@@ -285,22 +290,8 @@ export function InvoicesClient({
     return filteredAndSortedSales.slice(start, start + pageSize);
   }, [filteredAndSortedSales, currentPage, pageSize]);
 
-  // Next invoice number = highest numeric number in the series + 1 (keeps leading zeros width)
-  const getNextInvoiceNumber = (series: string) => {
-    let maxNum = 0;
-    let width = 6;
-    for (const s of sales) {
-      if ((s.series || '') !== series) continue;
-      const digits = String(s.number || '').match(/\d+$/);
-      if (!digits) continue;
-      const val = parseInt(digits[0], 10);
-      if (val > maxNum) {
-        maxNum = val;
-        width = Math.max(digits[0].length, 1);
-      }
-    }
-    return String(maxNum + 1).padStart(width, '0');
-  };
+  // Next invoice number = highest numeric number in the series (over all sales, not just the period) + 1, keeping the leading-zero width
+  const getNextInvoiceNumber = (series: string) => nextInvoiceNumber(numberBase, sales, series);
 
   const handleSeriesChange = (series: string) => {
     if (editingSale) {
@@ -545,7 +536,7 @@ export function InvoicesClient({
             <span>{t('invoices.heading')}</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            {t('invoices.totalLabel')} <strong className="text-white font-mono">{sales.length}</strong>
+            {t('invoices.inPeriod', { count: sales.length })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start">
@@ -568,6 +559,8 @@ export function InvoicesClient({
           </button>
         </div>
       </div>
+
+      <PeriodBar period={period} basePath="/invoices" shown={period.from || period.to ? t('invoices.periodShown', { from: period.from ?? '…', to: period.to ?? '…' }) : t('invoices.periodShownAll')} />
 
       {/* Main Filter Bar */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">

@@ -6,15 +6,21 @@ import { getActiveCompany } from '@/lib/company';
 import { InvoicesClient } from './InvoicesClient';
 import { itemCatalog } from '@/lib/item-catalog';
 import { openDocuments } from '@/lib/payments';
+import { todayVilnius } from '@/lib/dates';
+import { resolveListPeriod, dateRangeSql } from '@/lib/list-period';
+import { saleNumberBase } from '@/lib/sale-numbers';
 import { pageTitle } from '@/lib/i18n/page-title';
 
 export async function generateMetadata() { return { title: await pageTitle('nav.sales') }; }
 
-export default async function InvoicesPage() {
+export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ period?: string; from?: string; to?: string }> }) {
   await requirePageAccess();
   const db = getDb();
   const company = await getActiveCompany();
   const companyId = company.id;
+  // Only the chosen period is loaded (default: the last 12 months); the client switches period through the URL.
+  const period = resolveListPeriod(await searchParams, todayVilnius());
+  const dates = dateRangeSql('s.saleDate', period.from, period.to);
 
   // Load sales with pre-joined metrics and clientEmail (using indexed subqueries instead of full scans)
   const sales = db.prepare(`
@@ -28,9 +34,9 @@ export default async function InvoicesPage() {
            COALESCE(NULLIF(TRIM(cl.correspondenceEmail),''), cl.email) as clientEmail
     FROM Sale s
     LEFT JOIN Client cl ON cl.id = s.clientId
-    WHERE s.companyId = ?
+    WHERE s.companyId = ?${dates.sql}
     ORDER BY s.saleDate DESC, s.id DESC
-  `).all(companyId) as any[];
+  `).all(companyId, ...dates.args) as any[];
 
   // The stored flag is only a hint: an invoice is paid when nothing is left to collect (bank payments, manual settlements),
   // so one entered after payment tracking began shows as unpaid until the money actually arrives.
@@ -55,6 +61,9 @@ export default async function InvoicesPage() {
 
   return (
     <InvoicesClient 
+      key={`${period.from}|${period.to}`}
+      period={period}
+      numberBase={saleNumberBase(db, companyId)}
       initialSales={sales} 
       itemsBySaleId={itemsBySaleId} 
       company={company} 

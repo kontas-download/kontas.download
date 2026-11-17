@@ -1,23 +1,26 @@
 import { createPurchase } from '@/lib/purchases';
+import { withDocuments } from '@/lib/purchase-document-attach';
 import { requireApiAccess, checkOrigin, withCurrentActor } from '@/lib/access';
-import { apiError, assertFormCompany } from '@/lib/errors';
+import { apiError, assertFormCompany, HttpError } from '@/lib/errors';
+import { parseApiRange } from '@/lib/list-period';
+import { purchaseListQuery } from '@/lib/purchases-period';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getActiveCompanyId } from '@/lib/company';
 
-export async function GET() {
+// Optional ?from=&to= (inclusive ISO dates) limit the list by purchase date; without them every purchase is returned.
+export async function GET(request: Request) {
   try {
     const denied = await requireApiAccess();
     if (denied) return denied;
+    const { from, to, error } = parseApiRange(new URL(request.url).searchParams);
+    if (error) throw new HttpError(400, error);
     const db = getDb();
     const companyId = await getActiveCompanyId();
-    const purchases = db.prepare(`
-      SELECT p.*,
-        (SELECT COUNT(*) FROM PurchaseItem WHERE purchaseId = p.id) as itemCount
-      FROM Purchase p
-      WHERE p.companyId = ?
-      ORDER BY p.purchaseDate DESC, p.id DESC
-    `).all(companyId);
+    const query = purchaseListQuery(companyId, from, to);
+    const rows = db.prepare(query.sql).all(...query.args) as { id: number }[];
+    // Every original of a purchase with its role (PRIMARY, PAYMENT_RECEIPT, ATTACHMENT); documentId is the main one.
+    const purchases = withDocuments(db, companyId, rows);
 
     return NextResponse.json({ purchases });
   } catch (err: any) {

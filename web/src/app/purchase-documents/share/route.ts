@@ -5,6 +5,7 @@ import { currentErrorLang, translateServerError } from '@/lib/errors';
 import { getActiveCompanyId } from '@/lib/company';
 import { recognizeDocument, storeDocument, getRecognitionSettings } from '@/lib/purchase-recognition';
 import { defaultRecognitionProvider } from '@/lib/recognition/factory';
+import { pairBatch } from '@/lib/purchase-document-pairing';
 import { processSharedFiles, sharedFilesFrom } from '@/lib/share-target';
 
 // Target of the Web Share Target declared in the manifest. Always answers with 303 so the browser follows with a GET.
@@ -27,6 +28,7 @@ export async function POST(request: Request) {
   const result = await processSharedFiles(files, user.email, {
     store: input => withActor(getDb(), user.id, () => storeDocument(companyId, input)),
     recognize: settings.enabled && settings.hasKey ? id => recognizeDocument(companyId, id, defaultRecognitionProvider) : null,
+    pair: batchId => withActor(getDb(), user.id, () => pairBatch(companyId, batchId)),
   }, message => translateServerError(message, lang));
   return see(request, result.location);
 }

@@ -2,6 +2,11 @@
 // Merged into the general server error translation (lib/errors.ts).
 type Ru = (...m: string[]) => string;
 const EXACT: [string, string, string][] = [
+  ['Gauti kartu — patikrinkite, ar tai tas pats pirkimas', 'Получены вместе — проверьте, относятся ли они к одной покупке', 'Received together — check whether this is the same purchase'],
+  ['Dokumento negalima sujungti su pačiu savimi', 'Документ нельзя соединить с самим собой', 'A document cannot be paired with itself'],
+  ['Sujungti galima tik dar neapdorotus dokumentus', 'Соединять можно только необработанные документы', 'Only documents that are still open can be paired'],
+  ['Vienas iš dokumentų jau sujungtas su kitu — pirmiausia atskirkite', 'Один из документов уже соединён с другим — сначала разделите их', 'One of the documents is already paired with another — separate them first'],
+  ['Dokumentas neturi pririšto kvito','У документа нет связанной квитанции', 'The document has no paired receipt'],
   ['Pasiektas mėnesio atpažinimo išlaidų limitas: automatinis atpažinimas sustabdytas iki kito mėnesio. Dokumentas išsaugotas, duomenis galite suvesti rankiniu būdu.', 'Достигнут месячный лимит расходов на распознавание: автоматическое распознавание остановлено до следующего месяца. Документ сохранён, данные можно ввести вручную.', 'The monthly recognition spending limit has been reached: automatic recognition is paused until next month. The document is stored; you can enter the data manually.'],
   ['Mėnesio limitas turi būti teigiamas skaičius eurais', 'Месячный лимит должен быть положительным числом в евро', 'The monthly limit must be a positive number in euros'],
   ['Dokumentas atrodo kaip jau užregistruoto dublikatas. Pažymėkite „Tai ne dublikatas, vis tiek patvirtinti“.', 'Документ похож на дубликат уже зарегистрированного. Отметьте «Это не дубликат, всё равно подтвердить».', 'The document looks like a duplicate of one already registered. Tick "This is not a duplicate, confirm anyway".'],
@@ -27,7 +32,7 @@ const EXACT: [string, string, string][] = [
   ['Kompensuoti galima tik pirkimą, apmokėtą asmens lėšomis', 'Компенсировать можно только покупку, оплаченную из средств лица', "Only a purchase paid from a person's own funds can be reimbursed"],
   ['Kortelės paskutiniai 4 skaitmenys nurodomi tik mokant kortele', 'Последние 4 цифры карты указываются только при оплате картой', 'The last 4 card digits apply only to card payments'],
   ['Kreditinių dokumentų čia registruoti negalima: naudokite kreditinį pirkimą', 'Кредитные документы здесь регистрировать нельзя: используйте кредитную покупку', 'Credit notes cannot be registered here: use a credit purchase'],
-  ['Laikas turi būti HH:MM', 'Время должно быть в формате ЧЧ:ММ', 'The time must be HH:MM'],
+  ['Laikas turi būti HH:MM arba HH:MM:SS', 'Время должно быть в формате ЧЧ:ММ или ЧЧ:ММ:СС', 'The time must be HH:MM or HH:MM:SS'],
   ['Mokėtojas turi būti įmonė arba asmuo', 'Плательщик должен быть компанией или лицом', 'The payer must be the company or a person'],
   ['Nepavyko atpažinti dokumento duomenų.', 'Не удалось распознать данные документа.', 'The document data could not be recognized.'],
   ['Nepavyko palyginti pirkėjo: dokumente arba įmonės duomenyse nėra juridinio asmens kodo ir PVM kodo.', 'Не удалось сравнить покупателя: в документе или в данных компании нет кода юрлица и PVM-кода.', 'The buyer could not be compared: the document or the company data has no company code and VAT code.'],
@@ -94,11 +99,20 @@ const EXACT: [string, string, string][] = [
   ['Neteisingas PVM klasifikatoriaus kodas', 'Некорректный код классификатора PVM', 'Invalid VAT classifier code'],
   ['Šiam tiekėjui arba siuntėjui taisyklė jau yra', 'Для этого поставщика или отправителя правило уже есть', 'A rule for this supplier or sender already exists'],
   ['Taisyklė nerasta', 'Правило не найдено', 'Rule not found'],
+  ['Pirkimas nerastas', 'Покупка не найдена', 'Purchase not found'],
+  ['Prie kreditinio dokumento kitų dokumentų prisegti negalima', 'К кредитовому документу другие документы прикреплять нельзя', 'Other documents cannot be attached to a credit note'],
+  ['Neteisinga dokumento paskirtis pirkime', 'Некорректное назначение документа в покупке', 'Invalid role of the document in the purchase'],
+  ['Dokumento tiekėjas arba suma skiriasi nuo pirkimo. Patvirtinkite, kad tai tas pats pirkimas.', 'Поставщик или сумма документа отличаются от покупки. Подтвердите, что это та же покупка.', 'The document supplier or total differs from the purchase. Confirm that it is the same purchase.'],
+  ['XML e-sąskaitos pagrindiniu dokumentu čia padaryti negalima: prisekite ją kaip priedą', 'XML-счёт здесь нельзя сделать основным документом: прикрепите его как приложение', 'An XML e-invoice cannot be made the main document here: attach it as an attachment'],
+  ['Pagrindiniu dokumentu galima padaryti sąskaitą faktūrą tik pirkimui, sukurtam iš kvito', 'Основным документом можно сделать счёт-фактуру только для покупки, созданной из чека', 'An invoice can become the main document only of a purchase made from a receipt'],
+  ['Pirkimas turi kreditinių dokumentų: pirmiausia ištrinkite juos.', 'У покупки есть кредитовые документы: сначала удалите их.', 'The purchase has credit notes: delete them first.'],
+  ['Kvito pagrindu sukurtam pirkimui užsienio valiuta, naujos atsargų ir ilgalaikio turto kortelės nepalaikomos: sąskaitą prisekite kaip priedą.', 'Для покупки, созданной из чека, иностранная валюта и новые карточки запасов и основных средств не поддерживаются: прикрепите счёт как приложение.', 'Foreign currency and new stock or fixed asset cards are not supported for a purchase made from a receipt: attach the invoice as an attachment.'],
 ];
 export const RECOGNITION_EXACT: Record<string, { ru: string; en: string }> = Object.fromEntries(EXACT.map(([lt, ru, en]) => [lt, { ru, en }]));
 
 export const RECOGNITION_PATTERNS: { re: RegExp; ru: Ru; en: Ru }[] = [
-  { re: /^Atpažinimo paslaugos klaida \((.+)\)\. Bandykite vėliau\.$/, ru: (_, s) => `Ошибка сервиса распознавания (${s}). Повторите позже.`, en: (_, s) => `Recognition service error (${s}). Try again later.` },
+  { re: /^Atpažinimo paslaugos klaida \(([^)]+)\)((?:: .+?)?)\. Bandykite vėliau\.$/, ru: (_, s, d) => `Ошибка сервиса распознавания (${s})${d}. Повторите позже.`, en: (_, s, d) => `Recognition service error (${s})${d}. Try again later.` },
+  { re: /^Nepavyko paversti PDF failo į paveikslėlius \((.+)\) — įkelkite nuotrauką arba naudokite kitą teikėją\.$/, ru: (_, c) => `Не удалось преобразовать PDF в изображения (${c}) — загрузите фотографию или используйте другого провайдера.`, en: (_, c) => `The PDF could not be converted to images (${c}) - upload a photo or use another provider.` },
   { re: /^Dokumento valiuta (\S+): įveskite sumas eurais ir patvirtinkite$/, ru: (_, c) => `Валюта документа ${c}: введите суммы в евро и подтвердите`, en: (_, c) => `The document currency is ${c}: enter the amounts in euro and confirm` },
   { re: /^Eilutė (\d+): PVM nesutampa su tarifu (.+)%$/, ru: (_, n, r) => `Строка ${n}: PVM не соответствует ставке ${r}%`, en: (_, n, r) => `Line ${n}: VAT does not match the ${r}% rate` },
   { re: /^Eilutė (\d+): kiekis turi būti teigiamas$/, ru: (_, n) => `Строка ${n}: количество должно быть положительным`, en: (_, n) => `Line ${n}: the quantity must be positive` },
